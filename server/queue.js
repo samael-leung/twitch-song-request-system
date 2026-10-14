@@ -121,6 +121,15 @@ function getState() {
   return { nowPlaying, queue, playedSongs, pending };
 }
 
+function linkCurrentSong(leihuId) {
+  if (!nowPlaying) return false;
+  if (nowPlaying.leihuId !== leihuId) {
+    nowPlaying = { ...nowPlaying, leihuId };
+    broadcastState();
+  }
+  return true;
+}
+
 // Reuse an existing request so requester/key metadata survives external selection.
 function selectSong(song) {
   const normalize = value => String(value || '').normalize('NFKC').trim().toLowerCase();
@@ -269,5 +278,5 @@ module.exports = {
   registerClient, addSong, addPending, acceptPending,
   skipSong, clearQueue, getState, deleteSong, moveSong, redrawSong,
   broadcastSettings, broadcastRaw,
-  getSelectionState, selectSong,
+  getSelectionState, selectSong, linkCurrentSong,
 };

@@ -23,9 +23,9 @@ test('selection API promotes requests, preserves metadata, broadcasts and reject
   });
   await new Promise(resolve => ws.once('message', resolve));
   const get = () => fetch(base + '/selection').then(r => r.json());
-  const post = (song, expectedRevision) => fetch(base + '/selection', {
+  const post = (song, expectedRevision, action) => fetch(base + '/selection', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ song, expectedRevision }),
+    body: JSON.stringify({ song, expectedRevision, action }),
   });
   const initial = await get();
   queue.addSong({ title: '目前歌曲', requester: 'first' });
@@ -54,11 +54,23 @@ test('selection API promotes requests, preserves metadata, broadcasts and reject
   assert.equal(queue.getState().nowPlaying.title, '新歌');
   assert.equal(queue.getState().nowPlaying.requester, 'leihu');
   assert.equal(queue.getState().queue.length, 2);
+  const canonical = { ...queue.getState().nowPlaying };
+  const beforeLink = await get();
+  const linked = await post({ id: 'corrected', title: 'Decorated YouTube title', artist: 'Different metadata' }, beforeLink.revision, 'link');
+  assert.equal(linked.status, 200);
+  assert.deepEqual(queue.getState().nowPlaying, { ...canonical, leihuId: 'corrected' });
+  assert.equal(queue.getState().queue.length, 2);
+  const linkRevision = (await get()).revision;
+  assert.equal((await post({ id: 'corrected', title: 'Another display name' }, linkRevision, 'link')).status, 200);
+  assert.equal((await get()).revision, linkRevision);
+  assert.equal((await post({ id: 'stale', title: 'Stale' }, beforeLink.revision, 'link')).status, 409);
+  assert.equal((await post({ id: 'unsupported', title: 'Unsupported' }, linkRevision, 'unsupported')).status, 400);
   assert.equal((await post({ id: 'bad', title: ' ' }, (await get()).revision)).status, 400);
   queue.skipSong();
   assert.equal((await get()).nowPlaying.title, '下一首');
   queue.clearQueue();
   assert.equal((await get()).nowPlaying, null);
+  assert.equal((await post({ id: 'empty', title: 'Nothing' }, (await get()).revision, 'link')).status, 409);
 });
 
 test('external selection reuses pending and played entries and stabilizes revisions', () => {
