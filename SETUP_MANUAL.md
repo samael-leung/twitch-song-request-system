@@ -1,5 +1,7 @@
 # 🎵 VTuber Song Queue — Manual Setup Guide
 
+> Default setup now uses outbound Twitch EventSub WebSocket, without ngrok or additional software. Follow [TWITCH_WEBSOCKET.md](TWITCH_WEBSOCKET.md). The webhook/tunnel walkthrough below is legacy documentation for an optional public HTTPS deployment. The current start scripts run Node directly.
+
 > This guide is for those who prefer to set up everything manually without scripts.
 > If you prefer an automated setup, use `setup.ps1` and `start.ps1` instead — see `SETUP.md`.
 

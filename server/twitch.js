@@ -37,7 +37,7 @@ function verifySignature(req) {
   const timestamp = req.headers['twitch-eventsub-message-timestamp'];
   const signature = req.headers['twitch-eventsub-message-signature'];
 
-  if (!messageId || !timestamp || !signature) return false;
+  if (!messageId || !timestamp || !signature || !process.env.TWITCH_WEBHOOK_SECRET) return false;
 
   const hmacMessage = messageId + timestamp + req.rawBody;
   const expectedSig = 'sha256=' + crypto
@@ -58,16 +58,14 @@ function verifySignature(req) {
 // ─── Subscription Registration ────────────────────────────────────────────────
 
 async function registerEventSub() {
-  const token = await getAppToken();
   const publicUrl = process.env.PUBLIC_URL;
   const broadcasterId = process.env.TWITCH_BROADCASTER_ID;
   const rewardId = process.env.TWITCH_REWARD_ID;
 
   if (!publicUrl || publicUrl.includes('your-ngrok')) {
-    console.warn('[twitch] PUBLIC_URL not set — skipping EventSub registration.');
-    console.warn('[twitch] Set PUBLIC_URL in .env to your ngrok URL and restart.');
-    return;
+    throw new Error('Webhook transport requires a public HTTPS PUBLIC_URL. Use websocket to connect without a tunnel.');
   }
+  const token = await getAppToken();
 
   const callbackUrl = `${publicUrl}/twitch/webhook`;
 
@@ -83,6 +81,8 @@ async function registerEventSub() {
   const existingSubs = existing.data.data?.filter(
     sub => sub.type === 'channel.channel_points_custom_reward_redemption.add'
       && sub.status === 'enabled'
+      && sub.condition?.broadcaster_user_id === broadcasterId
+      && sub.transport?.method === 'webhook'
   ) || [];
 
   // Always delete existing subscriptions and re-register to ensure

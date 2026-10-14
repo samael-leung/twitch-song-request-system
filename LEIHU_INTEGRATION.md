@@ -4,7 +4,7 @@
 
 ## 啟動
 
-1. 在點歌系統執行 `npm install`、設定原有 Twitch／Google Sheets 憑證，再執行 `npm start`。既有程式會在 HTTP 服務啟動前取得 Twitch Token，因此缺少憑證時仍無法啟動。
+1. 使用既有 Node.js／練唱台執行環境，不需安裝 ngrok、通道工具或其他同步軟體。在點歌系統設定 `TWITCH_CLIENT_ID`，執行 `npm start`，再由控制台的「連接 Twitch」以主播帳號授權。預設使用 EventSub WebSocket，Twitch 功能維持啟用；沒有新增離線模式。完整設定請見 [TWITCH_WEBSOCKET.md](TWITCH_WEBSOCKET.md)。Google Sheets 沿用原有設定。
 2. 在雷虎練唱台依其 README 安裝並啟動。兩個服務在同一台電腦時不需額外設定；預設連接 `http://127.0.0.1:3000`。若需更改，在啟動練唱台的程序設定 `SONG_REQUEST_URL`，例如 PowerShell：
 
    ```powershell

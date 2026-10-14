@@ -366,6 +366,8 @@
   <span class="status-dot off" id="dot"></span>
   <span class="topbar-title">Song Queue Dashboard</span>
   <span class="topbar-spacer"></span>
+  <a class="btn" id="twitch-connect" href="/auth/twitch" target="_blank" rel="noopener">連接 Twitch</a>
+  <span class="topbar-hint" id="twitch-status" role="status"></span>
   <span class="topbar-hint">drag songs between columns to move them</span>
   <button class="btn skip" onclick="api('skip')">⏭ Skip</button>
   <button class="btn danger" onclick="if(confirm('Clear entire queue?')) api('clear')">✕ Clear All</button>
@@ -819,6 +821,21 @@ function esc(s) {
 connect();
 loadSongList();
 loadHistory();
+async function refreshTwitchStatus() {
+  try {
+    const response = await fetch('/api/twitch/status');
+    if (!response.ok) return;
+    const info = await response.json();
+    const labels = { connected: 'Twitch 已連線', connecting: 'Twitch 連線中…',
+      authorization_required: '請授權 Twitch', reconnecting: 'Twitch 重連中…',
+      error: 'Twitch 事件處理失敗', webhook: 'Twitch Webhook' };
+    document.getElementById('twitch-status').textContent = labels[info.status] || 'Twitch 啟動中…';
+    document.getElementById('twitch-status').title = info.message || '';
+    document.getElementById('twitch-connect').hidden = info.transport === 'webhook';
+  } catch (_) {}
+}
+refreshTwitchStatus();
+setInterval(refreshTwitchStatus, 5000);
 </script>
 </body>
 </html>

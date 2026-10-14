@@ -4,6 +4,7 @@
 # ============================================================
 
 $ErrorActionPreference = "Stop"
+Set-Location $PSScriptRoot
 $HOST.UI.RawUI.WindowTitle = "VTuber Song Queue Setup"
 
 function Write-Header($text) {
@@ -41,7 +42,8 @@ try {
 
 # ── npm install ───────────────────────────────────────────────────────────────
 Write-Step "Installing npm packages..."
-npm install --silent
+npm install --silent --package-lock=false
+if ($LASTEXITCODE -ne 0) { throw "npm install failed" }
 Write-OK "npm packages installed"
 
 # ── Check/create .env ─────────────────────────────────────────────────────────
@@ -74,7 +76,7 @@ function Set-EnvValue($key, $value) {
 # ── Twitch credentials ────────────────────────────────────────────────────────
 Write-Header "Step 3 — Twitch App Credentials"
 Write-Host "  Go to: https://dev.twitch.tv/console/apps" -ForegroundColor DarkCyan
-Write-Host "  Register an app (Name: anything, Redirect: http://localhost, Category: Other)" -ForegroundColor DarkGray
+Write-Host "  Register an app (Name: anything, Redirect: http://localhost:3000/auth/twitch/callback, Category: Other)" -ForegroundColor DarkGray
 Write-Host ""
 
 $clientId = Get-EnvValue "TWITCH_CLIENT_ID"
@@ -83,6 +85,18 @@ if (-not $clientId -or $clientId -eq "your_client_id_here") {
     Set-EnvValue "TWITCH_CLIENT_ID" $clientId
 }
 Write-OK "Client ID: $clientId"
+
+# WebSocket uses broadcaster authorization in the existing browser.
+$transport = Get-EnvValue "TWITCH_TRANSPORT"
+if (-not $transport -or $transport -eq "websocket") {
+    Set-EnvValue "TWITCH_TRANSPORT" "websocket"
+    Write-OK "Twitch EventSub WebSocket selected; no tunnel software required."
+    Write-Host "Create Channel Points rewards in Twitch Dashboard and set TWITCH_REWARD_ID / TWITCH_RANDOM_REWARD_ID in .env."
+    Write-Host "For Google Sheets, fill GOOGLE_SHEET_ID / HISTORY_SHEET_ID and provide google-credentials.json (see SETUP.md)."
+    Write-Host "Start the server, then open http://localhost:3000/auth/twitch in your browser as the broadcaster."
+    Pause-Key
+    exit 0
+}
 
 $clientSecret = Get-EnvValue "TWITCH_CLIENT_SECRET"
 if (-not $clientSecret -or $clientSecret -eq "your_client_secret_here") {
@@ -280,35 +294,8 @@ if (-not $historyId -or $historyId -eq "your_history_sheet_id_here") {
 }
 if ($historyId) { Write-OK "History sheet ID saved" }
 
-# ── ngrok ─────────────────────────────────────────────────────────────────────
-Write-Header "Step 7 — ngrok"
-Write-Step "Checking ngrok..."
-$ngrokPath = ""
-if (Get-Command ngrok -ErrorAction SilentlyContinue) {
-    $ngrokPath = "ngrok"
-    Write-OK "ngrok found in PATH"
-} elseif (Test-Path "C:\ngrok\ngrok.exe") {
-    $ngrokPath = "C:\ngrok\ngrok.exe"
-    Write-OK "ngrok found at C:\ngrok\ngrok.exe"
-} else {
-    Write-Warn "ngrok not found. Download from https://ngrok.com/download"
-    Write-Host "  Unzip to C:/ngrok/ and run this script again, or add ngrok to PATH." -ForegroundColor DarkGray
-}
-
-if ($ngrokPath) {
-    Write-Host "  The authtoken authenticates your ngrok account. To get one:" -ForegroundColor DarkGray
-    Write-Host "  1. Sign up for a free account at https://ngrok.com" -ForegroundColor DarkGray
-    Write-Host "  2. Go to https://dashboard.ngrok.com/authtokens after logging in" -ForegroundColor DarkGray
-    Write-Host "  3. Copy the authtoken shown on that page" -ForegroundColor DarkGray
-    Write-Host ""
-    $ngrokToken = Ask "Paste your ngrok authtoken"
-    if ($ngrokToken) {
-        & $ngrokPath config add-authtoken $ngrokToken
-        Write-OK "ngrok authtoken configured"
-    }
-    # Save ngrok path to .env for use by start.ps1
-    Set-EnvValue "NGROK_PATH" $ngrokPath
-}
+# Webhook is opt-in for an existing public HTTPS deployment.
+Write-Host "Webhook transport requires your own public HTTPS PUBLIC_URL. No tunnel software is installed or started."
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 Write-Header "Setup Complete! 🎉"

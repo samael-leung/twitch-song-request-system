@@ -8,12 +8,13 @@ const WebSocket = require('ws');
 const path = require('path');
 
 const { startAutoRefresh } = require('./sheets');
-const { matchSong } = require('./matcher');
 const { registerClient, addSong, addPending, acceptPending, skipSong, clearQueue, getState, deleteSong, moveSong } = require('./queue');
-const { verifySignature, registerEventSub, refundRedemption } = require('./twitch');
+const { verifySignature } = require('./twitch');
+const { handleRedemption } = require('./redemptions');
+const { createTwitchConnection } = require('./twitch-connection');
 const { init: initHistory, recordRequest, getHistory } = require('./history');
-const { pickRandom } = require('./random');
 
+const twitch = createTwitchConnection({ onRedemption: handleRedemption });
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
@@ -33,6 +34,9 @@ app.use((req, res, next) => {
 // ─── Static overlay files ─────────────────────────────────────────────────────
 app.use('/overlay', express.static(path.join(__dirname, '..', 'overlay')));
 app.use('/dashboard', express.static(path.join(__dirname, '..', 'dashboard')));
+
+app.use('/auth/twitch', require('./twitch-auth')(twitch));
+app.get('/api/twitch/status', (req, res) => res.json(twitch.getStatus()));
 
 // ─── Twitch EventSub Webhook ──────────────────────────────────────────────────
 app.post('/twitch/webhook', async (req, res) => {
@@ -58,76 +62,7 @@ app.post('/twitch/webhook', async (req, res) => {
 
   // 4. Handle actual redemption events
   if (messageType === 'notification') {
-    const event = req.body.event;
-    const requestText = event?.user_input?.trim();
-    const redemptionId = event?.id;
-    const rewardId = event?.reward?.id;
-    const broadcasterId = event?.broadcaster_user_id;
-    const requester = event?.user_name;
-
-    console.log(`[webhook] Redemption from @${requester}: "${requestText}" (reward: ${rewardId})`);
-
-    // ── Random song reward ──────────────────────────────────────────────────
-    const randomRewardId = process.env.TWITCH_RANDOM_REWARD_ID;
-    if (randomRewardId && rewardId === randomRewardId) {
-      const { getState } = require('./queue');
-      const { queue, nowPlaying } = getState();
-      const excludeTitles = [
-        ...(nowPlaying ? [nowPlaying.title] : []),
-        ...queue.map(s => s.title),
-      ];
-      const picked = pickRandom(excludeTitles);
-      if (picked) {
-        addSong({ title: picked.title, artist: picked.artist, key: picked.key || '', requester });
-        recordRequest({ title: picked.title, artist: picked.artist, requester });
-        console.log(`[random] 🎲 Added "${picked.title}" for @${requester}`);
-      } else {
-        console.log(`[random] No eligible songs to pick from`);
-      }
-      return res.sendStatus(204);
-    }
-
-    // ── Regular song request ────────────────────────────────────────────────
-    if (!requestText) {
-      console.log('[webhook] Empty request text — no match attempted');
-      return res.sendStatus(204);
-    }
-
-    const result = matchSong(requestText);
-
-    if (result.matched && result.confident) {
-      // Strong match → straight to queue
-      addSong({
-        title: result.song.title,
-        artist: result.song.artist,
-        key: result.song.key || '',
-        requester,
-      });
-      recordRequest({ title: result.song.title, artist: result.song.artist, requester });
-      console.log(`[queue] ✓ Added "${result.song.title}" for @${requester} (${result.confidence}% match)`);
-
-    } else if (result.matched && !result.confident) {
-      // Weak match → pending for review
-      addPending({
-        title: result.song.title,
-        artist: result.song.artist,
-        requester,
-        originalRequest: requestText,
-        confidence: result.confidence,
-      });
-      console.log(`[queue] ⚠ Weak match "${result.song.title}" (${result.confidence}%) for @${requester} — sent to pending`);
-
-    } else {
-      // No match → pending for review (no auto-refund anymore)
-      addPending({
-        title: '',
-        artist: '',
-        requester,
-        originalRequest: requestText,
-        confidence: null,
-      });
-      console.log(`[queue] ✗ No match for "${requestText}" by @${requester} — sent to pending`);
-    }
+    handleRedemption(req.body.event);
 
     return res.sendStatus(204);
   }
@@ -205,16 +140,27 @@ async function start() {
 
   await startAutoRefresh();
   await initHistory();
-  await registerEventSub();
 
-  server.listen(PORT, () => {
-    console.log(`\n✅ Server running at http://localhost:${PORT}`);
-    console.log(`   Overlay URL: http://localhost:${PORT}/overlay/index.html`);
-    console.log(`   API:         http://localhost:${PORT}/api/queue\n`);
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(PORT, resolve);
+  });
+  const listeningPort = server.address().port;
+  console.log(`\n✅ Server running at http://localhost:${listeningPort}`);
+  console.log(`   Overlay URL: http://localhost:${listeningPort}/overlay/index.html`);
+  console.log(`   API:         http://localhost:${listeningPort}/api/queue\n`);
+  await twitch.start();
+}
+
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.once(signal, () => {
+    twitch.stop();
+    wss.clients.forEach(client => client.terminate());
+    server.close(() => process.exit(0));
   });
 }
 
 start().catch(err => {
-  console.error('Fatal startup error:', err);
+  console.error('Fatal startup error:', err.message);
   process.exit(1);
 });

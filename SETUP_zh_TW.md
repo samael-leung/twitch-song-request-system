@@ -7,7 +7,7 @@
 ```
 觀眾兌換頻道點數（點歌券 或 隨機點歌券）
         ↓
-Twitch Webhook → 你的本機伺服器（透過 ngrok 通道）
+Twitch EventSub WebSocket → 你的本機伺服器（直接對外連線）
         ↓
 🎵 點歌券：模糊比對歌名 → 加入歌單 或 待審核（控制台）
 🎲 隨機點歌券：從歌曲清單中加權隨機選歌
@@ -24,7 +24,7 @@ OBS 顯示層透過 WebSocket 即時更新
 執行安裝腳本前，請先安裝以下工具：
 
 - **Node.js LTS** → https://nodejs.org （安裝時記得勾選「Add to PATH」）
-- **ngrok** → https://ngrok.com/download （免費註冊，解壓縮至 `C:\ngrok\`）
+- 不需要 ngrok 或其他通道軟體，Twitch 功能透過內建 WebSocket 運作。
 
 ---
 
@@ -36,17 +36,11 @@ OBS 顯示層透過 WebSocket 即時更新
 
 > 也提供英文版：`.\setup.ps1`
 
-腳本會以互動式引導完成所有設定：
+預設腳本安裝專案相依套件並設定 Twitch Client ID；之後執行 `npm start`，在控制台按「連接 Twitch」，以主播帳號授權。請先在 Twitch 開發者控制台將 Redirect URL 設為 `http://localhost:3000/auth/twitch/callback`。不需要 Client Secret 或公開網址。
 
-1. 安裝 npm 套件
-2. 輸入 Twitch Client ID 與 Secret → 自動取得存取金鑰
-3. 透過使用者名稱自動查詢你的 Broadcaster ID
-4. 自動建立 🎵 點歌券 與 🎲 隨機點歌券 頻道點數兌換項目
-5. 輸入 Google 試算表 ID
-6. 設定 ngrok 驗證金鑰（Authtoken）
-7. 將所有設定寫入 `.env`
+頻道點數兌換項目 ID 與 Google Sheets 請依 `.env.example` 設定。完整無通道軟體設定見 [TWITCH_WEBSOCKET.md](TWITCH_WEBSOCKET.md)。
 
-唯一需要手動完成的步驟是 **Google 服務帳戶** — 只需設定一次：
+使用 Google Sheets 時需要設定 **Google 服務帳戶** — 只需設定一次：
 
 1. 前往 https://console.cloud.google.com → 建立新專案 → 啟用 **Google Sheets API**
 2. **IAM 與管理 → 服務帳戶 → 建立** → **金鑰 → JSON**
@@ -63,10 +57,7 @@ OBS 顯示層透過 WebSocket 即時更新
 
 > 也提供英文版：`.\start.ps1`
 
-就這樣。腳本會自動：
-- 啟動 ngrok 並讀取公開網址
-- 將 `PUBLIC_URL` 更新至 `.env`
-- 啟動伺服器
+腳本直接啟動伺服器，從本機授權檔恢復 Twitch WebSocket 連線。首次授權或 Token 過期時，請在控制台按「連接 Twitch」。不需啟動通道，也不需更新公開網址。
 
 接著在瀏覽器開啟 **http://localhost:3000/dashboard** 即可。
 
@@ -191,5 +182,5 @@ vtuber-song-queue/
 
 - 歌曲清單**每 5 分鐘自動更新** — 新增歌曲後不需重新啟動伺服器
 - 點歌紀錄**約 2 秒內寫入**試算表（有防抖設計，不會頻繁呼叫 API）
-- 若 ngrok 網址改變：重新執行 `.\start.ps1` 即可 — 腳本會自動更新 `.env`
-- 想**永久架設**（不再需要 ngrok）：可部署至 Railway 或 Render 等平台
+- Twitch Token 到期或撤銷：在控制台按「連接 Twitch」重新授權。
+- WebSocket 模式不需要公開網址；若部署至遠端主機，請另規劃安全的主播 OAuth 授權流程。

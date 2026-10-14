@@ -4,6 +4,7 @@
 # ============================================================
 
 $ErrorActionPreference = "Stop"
+Set-Location $PSScriptRoot
 $HOST.UI.RawUI.WindowTitle = "VTuber Setup"
 
 function Write-Header($text) {
@@ -38,7 +39,8 @@ if ($LASTEXITCODE -ne 0) {
 Write-OK "Node.js 已安裝：$nodeVer"
 
 Write-Step "安裝 npm 套件..."
-npm install --silent
+npm install --silent --package-lock=false
+if ($LASTEXITCODE -ne 0) { throw "npm install failed" }
 Write-OK "npm 套件安裝完成"
 
 # ---- Step 2: .env --------------------------------------------------------
@@ -70,7 +72,7 @@ function Set-EnvValue($key, $value) {
 # ---- Step 3: Twitch App Credentials -------------------------------------
 Write-Header "步驟 3 - Twitch 應用程式憑證"
 Write-Host "  前往：https://dev.twitch.tv/console/apps" -ForegroundColor DarkCyan
-Write-Host "  建立應用程式（名稱隨意，OAuth 轉址：http://localhost，類別：Other）" -ForegroundColor DarkGray
+Write-Host "  建立應用程式（名稱隨意，OAuth 轉址：http://localhost:3000/auth/twitch/callback，類別：Other）" -ForegroundColor DarkGray
 Write-Host ""
 
 $clientId = Get-EnvValue "TWITCH_CLIENT_ID"
@@ -79,6 +81,18 @@ if (-not $clientId -or $clientId -eq "your_client_id_here") {
     Set-EnvValue "TWITCH_CLIENT_ID" $clientId
 }
 Write-OK "Client ID：$clientId"
+
+# WebSocket uses broadcaster authorization in the existing browser.
+$transport = Get-EnvValue "TWITCH_TRANSPORT"
+if (-not $transport -or $transport -eq "websocket") {
+    Set-EnvValue "TWITCH_TRANSPORT" "websocket"
+    Write-OK "Twitch EventSub WebSocket selected; no tunnel software required."
+    Write-Host "Create Channel Points rewards in Twitch Dashboard and set TWITCH_REWARD_ID / TWITCH_RANDOM_REWARD_ID in .env."
+    Write-Host "For Google Sheets, fill GOOGLE_SHEET_ID / HISTORY_SHEET_ID and provide google-credentials.json (see SETUP.md)."
+    Write-Host "Start the server, then open http://localhost:3000/auth/twitch in your browser as the broadcaster."
+    Pause-Key
+    exit 0
+}
 
 $clientSecret = Get-EnvValue "TWITCH_CLIENT_SECRET"
 if (-not $clientSecret -or $clientSecret -eq "your_client_secret_here") {
@@ -288,33 +302,8 @@ if (-not $historyId -or $historyId -eq "your_history_sheet_id_here") {
 }
 if ($historyId) { Write-OK "點歌紀錄試算表 ID 已儲存" }
 
-# ---- Step 7: ngrok -------------------------------------------------------
-Write-Header "步驟 7 - ngrok 設定"
-$ngrokPath = ""
-if (Get-Command ngrok -ErrorAction SilentlyContinue) {
-    $ngrokPath = "ngrok"
-    Write-OK "在系統路徑找到 ngrok"
-} elseif (Test-Path "C:\ngrok\ngrok.exe") {
-    $ngrokPath = "C:\ngrok\ngrok.exe"
-    Write-OK "在 C:\ngrok\ngrok.exe 找到 ngrok"
-} else {
-    Write-Warn "找不到 ngrok，請至 https://ngrok.com/download 下載並解壓縮至 C:\ngrok"
-}
-
-
-if ($ngrokPath) {
-    Write-Host "  Authtoken 是 ngrok 帳號的驗證金鑰，取得方式如下：" -ForegroundColor DarkGray
-    Write-Host "  1. 前往 https://ngrok.com 註冊免費帳號" -ForegroundColor DarkGray
-    Write-Host "  2. 登入後前往 https://dashboard.ngrok.com/authtokens" -ForegroundColor DarkGray
-    Write-Host "  3. 複製頁面上的 Authtoken" -ForegroundColor DarkGray
-    Write-Host ""
-    $ngrokToken = Ask "貼上你的 ngrok Authtoken"
-    if ($ngrokToken) {
-        & $ngrokPath config add-authtoken $ngrokToken
-        Write-OK "ngrok Authtoken 設定完成"
-    }
-    Set-EnvValue "NGROK_PATH" $ngrokPath
-}
+# Webhook is opt-in for an existing public HTTPS deployment.
+Write-Host "Webhook transport requires your own public HTTPS PUBLIC_URL. No tunnel software is installed or started."
 
 # ---- Done ----------------------------------------------------------------
 Write-Header "安裝完成"
