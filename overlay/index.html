@@ -16,10 +16,15 @@
     text-rendering: optimizeLegibility;
     background: transparent !important;
     background-color: transparent !important;
+    /* Render at 2x and let OBS/Streamlabs downscale the Browser Source by
+       50% -- supersampling makes text and edges noticeably sharper. */
+    zoom: 2;
   }
 
   :root {
-    --bg-panel: rgba(8, 8, 20, 0.92);
+    --panel-bg-alpha: 0.92;
+    --text-brightness: 1;
+    --bg-panel: rgba(8, 8, 20, var(--panel-bg-alpha));
     --bg-card: rgba(15, 10, 30, 0.95);
     --border: rgba(120, 60, 220, 0.3);
     --purple: #b06aff;
@@ -49,6 +54,7 @@
     padding: 12px 14px;
     position: relative;
     backdrop-filter: blur(8px);
+    filter: brightness(var(--text-brightness));
     display: flex;
     flex-direction: column;
   }
@@ -74,7 +80,7 @@
   .status-dot.disconnected { background: #ff4444; animation: none; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
   .badge {
-    font-size: 9px; padding: 2px 8px; border-radius: 3px; letter-spacing: 1px;
+    font-size: 12px; padding: 2px 8px; border-radius: 3px; letter-spacing: 1px;
     background: rgba(80,30,120,0.4); border: 1px solid rgba(120,60,200,0.4); color: var(--purple);
   }
 
@@ -161,18 +167,18 @@
   .played-item { background: transparent; border: 1px solid rgba(30,70,50,0.3); }
   @keyframes slide-in { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
 
-  .q-num   { font-size: 9px; color: var(--text-muted); min-width: 18px; }
+  .q-num   { font-size: 13px; color: var(--purple-dim); min-width: 22px; }
   .q-title { font-size: 21px; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .q-artist{ font-size: 15px; color: var(--text-dim); }
   .q-req   { font-size: 13px; color: var(--blue); white-space: nowrap; }
 
-  .p-num   { font-size: 9px; color: rgba(74,255,154,0.3); min-width: 18px; }
+  .p-num   { font-size: 13px; color: rgba(74,255,154,0.6); min-width: 22px; }
   .p-title { font-size: 21px; color: rgba(180,220,190,0.75); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .p-artist{ font-size: 15px; color: rgba(120,160,130,0.6); }
   .p-req   { font-size: 13px; color: rgba(90,154,255,0.6); white-space: nowrap; }
 
   .played-badge {
-    font-size: 9px; padding: 2px 8px; border-radius: 3px; letter-spacing: 1px;
+    font-size: 12px; padding: 2px 8px; border-radius: 3px; letter-spacing: 1px;
     background: rgba(20,80,50,0.4); border: 1px solid rgba(40,140,80,0.4); color: var(--green);
   }
 
@@ -224,11 +230,10 @@ const WS_URL = `ws://${location.host}`;
 let ws, reconnectTimer;
 
 const tickers = {
-  queue:  { el: null, inner: null, offset: 0, raf: null, lastTime: null },
-  played: { el: null, inner: null, offset: 0, raf: null, lastTime: null },
+  queue:  { el: null, inner: null, offset: 0, loopAt: 0, raf: null, lastTime: null },
+  played: { el: null, inner: null, offset: 0, loopAt: 0, raf: null, lastTime: null },
 };
-// Scroll speed — to change this, edit OVERLAY_SCROLL_PX_PER_SEC in server/config.js
-const SCROLL_PX_PER_SEC = 28;
+const SCROLL_PX_PER_SEC = 16;
 
 function connect() {
   ws = new WebSocket(WS_URL);
@@ -238,8 +243,25 @@ function connect() {
     try {
       const m = JSON.parse(e.data);
       if (m.type === 'state') renderState(m);
+      if (m.type === 'settings') applySettings(m);
     } catch(_) {}
   };
+}
+
+function applySettings({ panelBgAlpha, textBrightness }) {
+  if (panelBgAlpha != null) {
+    document.documentElement.style.setProperty('--panel-bg-alpha', panelBgAlpha);
+  }
+  if (textBrightness != null) {
+    document.documentElement.style.setProperty('--text-brightness', textBrightness);
+  }
+}
+
+async function loadSettings() {
+  try {
+    const res = await fetch('/api/settings');
+    applySettings(await res.json());
+  } catch(_) {}
 }
 
 function renderState({ nowPlaying, queue, playedSongs }) {
@@ -304,39 +326,45 @@ function renderState({ nowPlaying, queue, playedSongs }) {
 function resetTicker(key, container, inner) {
   const t = tickers[key];
   if (t.raf) { cancelAnimationFrame(t.raf); t.raf = null; }
+
+  // Remove clones from any previous run
+  inner.querySelectorAll('[data-clone]').forEach(el => el.remove());
+
   t.el = container;
   t.inner = inner;
   t.offset = 0;
+  t.loopAt = 0;
   t.lastTime = null;
   inner.style.transform = 'translateY(0)';
+
   requestAnimationFrame(() => {
-    if (inner.scrollHeight > container.clientHeight) {
+    if (inner.scrollHeight <= container.clientHeight) return;
+
+    // Duplicate all items — seamless loop: when we've scrolled one copy,
+    // wrap offset back to 0; the clone looks identical so there's no jump.
+    Array.from(inner.children).forEach(child => {
+      const clone = child.cloneNode(true);
+      clone.setAttribute('data-clone', '1');
+      inner.appendChild(clone);
+    });
+
+    requestAnimationFrame(() => {
+      const firstClone = inner.querySelector('[data-clone]');
+      t.loopAt = firstClone ? firstClone.offsetTop : 0;
       setTimeout(() => startTicker(key), 2000);
-    }
+    });
   });
 }
 
 function startTicker(key) {
   const t = tickers[key];
-  if (!t.el || !t.inner) return;
+  if (!t.el || !t.inner || !t.loopAt) return;
   function step(timestamp) {
     if (!t.lastTime) t.lastTime = timestamp;
     const delta = (timestamp - t.lastTime) / 1000;
     t.lastTime = timestamp;
-    const maxScroll = t.inner.scrollHeight - t.el.clientHeight;
-    if (maxScroll <= 0) return;
     t.offset += SCROLL_PX_PER_SEC * delta;
-    if (t.offset >= maxScroll) {
-      t.offset = maxScroll;
-      t.inner.style.transform = `translateY(-${t.offset}px)`;
-      setTimeout(() => {
-        t.offset = 0;
-        t.lastTime = null;
-        t.inner.style.transform = 'translateY(0)';
-        setTimeout(() => startTicker(key), 2000);
-      }, 2000);
-      return;
-    }
+    if (t.offset >= t.loopAt) t.offset -= t.loopAt;
     t.inner.style.transform = `translateY(-${t.offset}px)`;
     t.raf = requestAnimationFrame(step);
   }
@@ -348,6 +376,7 @@ function esc(s) {
 }
 
 connect();
+loadSettings();
 </script>
 </body>
 </html>

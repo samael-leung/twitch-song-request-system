@@ -81,6 +81,10 @@ async function fetchSongs() {
         continue;
       }
 
+      // Google Sheets wraps tab names containing spaces/CJK in single quotes
+      // in the range string (e.g. "'台語'!A:Z"). Strip them so the stored
+      // tab name matches what the Sheets API returns via spreadsheets.get().
+      const tabName = valueRange.range.split('!')[0].replace(/^'(.*)'$/, '$1');
       const songs = rows.slice(1)
         .filter(row => row[titleIdx]?.trim())
         .map(row => {
@@ -91,16 +95,18 @@ async function fetchSongs() {
             title: row[titleIdx].trim(),
             artist: artistIdx !== -1 ? (row[artistIdx] || '').trim() : '',
             key,
+            tab: tabName,
           };
         });
 
       allSongs.push(...songs);
     }
 
-    // Deduplicate by title (case-insensitive)
+    // Deduplicate by title+artist (case-insensitive) — songs with the same
+    // title but different artists are different songs and must both be kept
     const seen = new Set();
     const deduped = allSongs.filter(s => {
-      const key = s.title.toLowerCase();
+      const key = `${s.title.toLowerCase()}|${s.artist.toLowerCase()}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;

@@ -27,6 +27,7 @@ let startupSnapshot = {};  // frozen at startup — never updated during session
 let sheetsClient = null;
 let historySheetId = null;
 let initialized = false;
+let warnedDisabled = false;
 
 async function getClient() {
   if (sheetsClient) return sheetsClient;
@@ -39,16 +40,30 @@ async function getClient() {
   return sheetsClient;
 }
 
+// Re-callable: the wizard's history-sheet step is optional and can be
+// completed after the required fields already triggered service startup, so
+// HISTORY_SHEET_ID may not exist yet on the first call. Subsequent .env
+// changes re-invoke this — once `initialized` is true it's a no-op, and the
+// "disabled" warnings are only logged once to avoid spamming the console.
 async function init() {
-  historySheetId = process.env.HISTORY_SHEET_ID;
-  if (!historySheetId) {
-    console.warn('[history] HISTORY_SHEET_ID not set — request history disabled');
+  if (initialized) return;
+
+  const sheetId = process.env.HISTORY_SHEET_ID;
+  if (!sheetId) {
+    if (!warnedDisabled) {
+      console.warn('[history] HISTORY_SHEET_ID not set — request history disabled');
+      warnedDisabled = true;
+    }
     return;
   }
   if (!fs.existsSync(CREDENTIALS_PATH)) {
-    console.warn('[history] google-credentials.json not found — history disabled');
+    if (!warnedDisabled) {
+      console.warn('[history] google-credentials.json not found — history disabled');
+      warnedDisabled = true;
+    }
     return;
   }
+  historySheetId = sheetId;
 
   try {
     const sheets = await getClient();
@@ -231,4 +246,12 @@ async function recordRequest({ title, artist, requester }) {
   }
 }
 
-module.exports = { init, recordRequest, getHistory: () => startupSnapshot };
+// Live lookup (unlike getHistory(), which returns the frozen startup snapshot) —
+// used by the random picker's cooldown check, which must see requests made
+// earlier in the current session too.
+function getLastRequestedAt(title) {
+  const rec = rowData[title.toLowerCase().trim()];
+  return rec ? rec.last_requested_at : null;
+}
+
+module.exports = { init, recordRequest, getHistory: () => startupSnapshot, getLastRequestedAt };

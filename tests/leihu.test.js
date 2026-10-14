@@ -79,3 +79,30 @@ test('external selection reuses pending and played entries and stabilizes revisi
   assert.equal(queue.getSelectionState().revision, revision);
   queue.clearQueue();
 });
+
+test('merged upstream candidates, redraw and drag-to-pending retain Leihu synchronization', () => {
+  queue.clearQueue();
+  queue.addPending({ title: '', requester: 'candidate-viewer', originalRequest: '同名曲', candidates: [
+    { title: '同名曲', artist: 'A', key: '2' }, { title: '同名曲', artist: 'B', key: '-3' },
+  ] });
+  queue.selectSong({ id: 'artist-b', title: '同名曲', artist: 'B' });
+  let state = queue.getState();
+  assert.equal(state.nowPlaying.requester, 'candidate-viewer');
+  assert.equal(state.nowPlaying.key, '-3');
+  assert.equal(state.pending.some(entry => entry.originalRequest === '同名曲'), false);
+  queue.moveSong('nowPlaying', 0, 'pending', 0);
+  assert.equal(queue.getState().pending[0].leihuId, 'artist-b');
+  queue.selectSong({ id: 'artist-b', title: '同名曲', artist: 'B' });
+  assert.equal(queue.getState().pending.length, 0);
+  const before = queue.getSelectionState().revision;
+  queue.redrawSong('nowPlaying', 0, { title: 'Redrawn', artist: 'C', key: 1, requester: 'candidate-viewer' });
+  assert.notEqual(queue.getSelectionState().revision, before);
+  assert.equal(queue.getState().nowPlaying.isRandom, true);
+  queue.selectSong({ id: 'redrawn', title: 'Redrawn', artist: 'C' });
+  assert.equal(queue.getState().nowPlaying.isRandom, true);
+  queue.addPending({ requester: 'picker', candidates: [{ title: 'Choice 1' }, { title: 'Choice 2', key: '4' }] });
+  assert.equal(queue.acceptPending(0, undefined, undefined, 1), true);
+  assert.equal(queue.getState().queue.at(-1).title, 'Choice 2');
+  assert.equal(queue.getState().queue.at(-1).key, '4');
+  queue.clearQueue();
+});

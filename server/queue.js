@@ -6,6 +6,7 @@ let nowPlaying = null;
 let playedSongs = [];
 let pending = [];
 let clients = new Set();
+
 const sessionId = require('crypto').randomUUID();
 let playingRevision = 0;
 let lastPlaying = null;
@@ -18,11 +19,27 @@ function getSelectionState() {
   return { revision: `${sessionId}:${playingRevision}`, nowPlaying };
 }
 
+
 function broadcastState() {
   getSelectionState();
   const state = JSON.stringify({ type: 'state', nowPlaying, queue, playedSongs, pending });
   for (const client of clients) {
     if (client.readyState === 1) client.send(state);
+  }
+}
+
+// Push dashboard-adjustable display settings (e.g. overlay panel opacity) to all overlay clients
+function broadcastSettings(settings) {
+  const msg = JSON.stringify({ type: 'settings', ...settings });
+  for (const client of clients) {
+    if (client.readyState === 1) client.send(msg);
+  }
+}
+
+function broadcastRaw(msg) {
+  const str = JSON.stringify(msg);
+  for (const client of clients) {
+    if (client.readyState === 1) client.send(str);
   }
 }
 
@@ -40,22 +57,24 @@ function registerClient(ws) {
   });
 }
 
-function addSong({ title, artist, key, requester }) {
+function addSong({ title, artist, key, requester, isRandom }) {
   const entry = { title, artist, key: key != null ? String(key) : '', requester, addedAt: Date.now() };
+  if (isRandom) entry.isRandom = true;
   if (!nowPlaying) { nowPlaying = entry; }
   else { queue.push(entry); }
   broadcastState();
   return entry;
 }
 
-// Add to pending (weak match or no match)
-function addPending({ title, artist, requester, originalRequest, confidence }) {
+// Add to pending (weak match, no match, or multiple candidates)
+function addPending({ title, artist, requester, originalRequest, confidence, candidates }) {
   const entry = {
     title: title || '',
     artist: artist || '',
     requester,
     originalRequest,
-    confidence,   // null = no match at all
+    confidence,     // null = no match at all
+    candidates: candidates || null,   // array of songs when multiple confident matches exist
     addedAt: Date.now(),
   };
   pending.push(entry);
@@ -63,16 +82,25 @@ function addPending({ title, artist, requester, originalRequest, confidence }) {
   return entry;
 }
 
-// Accept a pending entry (with optionally edited title/artist) → move to queue
-function acceptPending(index, editedTitle, editedArtist) {
+// Accept a pending entry → move to queue.
+// When candidateIndex is provided, picks from entry.candidates[]; otherwise uses editedTitle/editedArtist.
+function acceptPending(index, editedTitle, editedArtist, candidateIndex) {
   if (index < 0 || index >= pending.length) return false;
   const entry = pending.splice(index, 1)[0];
-  addSong({
-    title: editedTitle || entry.title || entry.originalRequest,
-    artist: editedArtist !== undefined ? editedArtist : entry.artist,
-    key: entry.key != null ? String(entry.key) : '',
-    requester: entry.requester,
-  });
+
+  let title, artist, key;
+  if (candidateIndex != null && entry.candidates?.[candidateIndex]) {
+    const c = entry.candidates[candidateIndex];
+    title = c.title;
+    artist = c.artist;
+    key = c.key || '';
+  } else {
+    title = editedTitle || entry.title || entry.originalRequest;
+    artist = editedArtist !== undefined ? editedArtist : entry.artist;
+    key = entry.key != null ? String(entry.key) : '';
+  }
+
+  addSong({ title, artist, key, requester: entry.requester });
   return true;
 }
 
@@ -109,9 +137,11 @@ function selectSong(song) {
   }
   let entry;
   for (const list of [queue, pending, playedSongs]) {
-    const index = list.findIndex(matches);
+    const index = list.findIndex(item => matches(item) || item.candidates?.some(matches));
     if (index !== -1) {
       entry = list.splice(index, 1)[0];
+      const candidate = entry.candidates?.find(matches);
+      if (candidate) entry = { ...entry, title: candidate.title, artist: candidate.artist, key: candidate.key };
       break;
     }
   }
@@ -119,11 +149,15 @@ function selectSong(song) {
     key: song.key == null ? '' : String(song.key), requester: 'leihu', addedAt: Date.now() }),
     leihuId: song.id };
   delete entry.playedAt;
+  delete entry.candidates;
+  delete entry.originalRequest;
+  delete entry.confidence;
   if (nowPlaying) queue.unshift(nowPlaying);
   nowPlaying = entry;
   broadcastState();
   return entry;
 }
+
 
 function deleteSong(zone, index) {
   if (zone === 'nowPlaying') {
@@ -164,10 +198,11 @@ function moveSong(fromZone, fromIndex, toZone, toIndex) {
   } else if (fromZone === 'pending') {
     if (fromIndex < 0 || fromIndex >= pending.length) return false;
     const p = pending.splice(fromIndex, 1)[0];
-    // Promote pending to a proper song entry
+    const chosen = p.candidates?.[0];
     song = {
-      title: p.title || p.originalRequest,
-      artist: p.artist || '',
+      title: chosen?.title || p.title || p.originalRequest,
+      artist: chosen?.artist || p.artist || '',
+      key: chosen?.key || p.key || '',
       requester: p.requester,
       addedAt: p.addedAt,
     };
@@ -185,6 +220,20 @@ function moveSong(fromZone, fromIndex, toZone, toIndex) {
   } else if (toZone === 'played') {
     const i = Math.max(0, Math.min(toIndex, playedSongs.length));
     playedSongs.splice(i, 0, song);
+  } else if (toZone === 'pending') {
+    // Broadcaster dragged a card to pending for editing
+    const entry = {
+      title: song.title,
+      artist: song.artist || '',
+      requester: song.requester,
+      originalRequest: null,   // no viewer input — manually dragged
+      confidence: null,
+      candidates: null,
+      addedAt: song.addedAt || Date.now(),
+      ...(song.leihuId ? { leihuId: song.leihuId } : {}),
+    };
+    const i = Math.max(0, Math.min(toIndex, pending.length));
+    pending.splice(i, 0, entry);
   } else {
     return false;
   }
@@ -193,8 +242,32 @@ function moveSong(fromZone, fromIndex, toZone, toIndex) {
   return true;
 }
 
+// Replace a random-picked song in place (for the redraw feature).
+function redrawSong(zone, index, newSong) {
+  const entry = {
+    title: newSong.title,
+    artist: newSong.artist || '',
+    key: newSong.key != null ? String(newSong.key) : '',
+    requester: newSong.requester,
+    addedAt: Date.now(),
+    isRandom: true,
+  };
+  if (zone === 'nowPlaying') {
+    if (!nowPlaying) return false;
+    nowPlaying = entry;
+  } else if (zone === 'queue') {
+    if (index < 0 || index >= queue.length) return false;
+    queue[index] = entry;
+  } else {
+    return false;
+  }
+  broadcastState();
+  return true;
+}
+
 module.exports = {
   registerClient, addSong, addPending, acceptPending,
-  skipSong, clearQueue, getState, deleteSong, moveSong,
+  skipSong, clearQueue, getState, deleteSong, moveSong, redrawSong,
+  broadcastSettings, broadcastRaw,
   getSelectionState, selectSong,
 };

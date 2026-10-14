@@ -7,13 +7,43 @@
 
 const { getSongs } = require('./sheets');
 const config = require('./config');
-const { getHistory } = require('./history');
+const { getHistory, getLastRequestedAt } = require('./history');
 
 const MS_PER_DAY = 86400000;
-function getEligibleSongs(excludeTitles = []) {
+
+// How long a song stays off the random-pick pool after being requested,
+// configurable at runtime via the dashboard (RANDOM_COOLDOWN_DAYS in .env).
+// Defaults to 7 days if unset; 0 = no cooldown.
+const DEFAULT_COOLDOWN_DAYS = 7;
+
+function getCooldownMs() {
+  const raw = process.env.RANDOM_COOLDOWN_DAYS;
+  const days = raw == null || raw === '' ? DEFAULT_COOLDOWN_DAYS : parseFloat(raw);
+  return Number.isFinite(days) && days > 0 ? days * MS_PER_DAY : 0;
+}
+
+function getEligibleSongs(excludeTitles = [], allowedTabs = []) {
   const songs = getSongs();
   const excludeSet = new Set(excludeTitles.map(t => t.toLowerCase().trim()));
-  return songs.filter(s => !excludeSet.has(s.title.toLowerCase().trim()));
+  const tabSet = allowedTabs.length > 0 ? new Set(allowedTabs) : null;
+  const cooldownMs = getCooldownMs();
+  const now = Date.now();
+
+  return songs.filter(s => {
+    const title = s.title.toLowerCase().trim();
+    if (excludeSet.has(title)) return false;
+    if (tabSet && !tabSet.has(s.tab)) return false;
+
+    if (cooldownMs > 0) {
+      const lastRequestedAt = getLastRequestedAt(title);
+      if (lastRequestedAt) {
+        const lastDate = new Date(lastRequestedAt.replace(' ', 'T') + 'Z');
+        if (now - lastDate.getTime() < cooldownMs) return false;
+      }
+    }
+
+    return true;
+  });
 }
 
 function pickPure(songs) {
@@ -55,14 +85,15 @@ function pickWeighted(songs) {
   return weighted[weighted.length - 1].song;
 }
 
-function pickRandom(excludeTitles = []) {
+function pickRandom(excludeTitles = [], allowedTabs = []) {
   const mode = (process.env.RANDOM_PICK_MODE || 'weighted').toLowerCase();
-  const eligible = getEligibleSongs(excludeTitles);
+  const eligible = getEligibleSongs(excludeTitles, allowedTabs);
 
   if (eligible.length === 0) return null;
 
   const picked = mode === 'pure' ? pickPure(eligible) : pickWeighted(eligible);
-  console.log(`[random] Picked "${picked?.title}" (mode: ${mode}, pool: ${eligible.length} songs)`);
+  const tabInfo = allowedTabs.length > 0 ? ` [tabs: ${allowedTabs.join(', ')}]` : '';
+  console.log(`[random] Picked "${picked?.title}" (mode: ${mode}, pool: ${eligible.length} songs${tabInfo})`);
   return picked;
 }
 

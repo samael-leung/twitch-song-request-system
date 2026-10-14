@@ -56,6 +56,25 @@
   .status-dot.off { background: #ff4444; animation: none; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
   .topbar-spacer { flex: 1; }
+  .cooldown-group {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10px; color: var(--text-muted);
+  }
+  .cooldown-input {
+    width: 52px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 4px; padding: 5px 6px;
+    font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text);
+    outline: none; transition: border-color .15s;
+  }
+  .cooldown-input:focus { border-color: var(--purple); }
+  .opacity-slider {
+    width: 90px; accent-color: var(--purple); cursor: pointer;
+  }
+  .opacity-value {
+    width: 30px; text-align: right;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text);
+  }
   .topbar-hint { font-size: 10px; color: var(--text-muted); }
 
   .btn {
@@ -207,6 +226,24 @@
   }
   .pending-del:hover { background: rgba(255,90,90,0.15); color: var(--red); border-color: rgba(255,90,90,0.5); }
 
+  /* Candidate picker (multiple matches) */
+  .pending-candidates { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+  .candidate-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px;
+    background: rgba(10,8,20,0.6);
+    border: 1px solid rgba(120,60,220,0.2); border-radius: 4px;
+    cursor: pointer; transition: background .1s, border-color .1s;
+  }
+  .candidate-item:hover { background: rgba(74,255,154,0.08); border-color: rgba(74,255,154,0.3); }
+  .candidate-conf {
+    font-size: 9px; padding: 2px 5px; border-radius: 3px; white-space: nowrap; flex-shrink: 0;
+    background: rgba(80,45,10,0.5); border: 1px solid rgba(160,90,20,0.3); color: var(--orange);
+  }
+  .candidate-info { flex: 1; min-width: 0; }
+  .candidate-title { font-size: 11px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .candidate-artist { font-size: 9px; color: var(--text-dim); display: block; }
+
   .drag-handle {
     color: var(--text-muted); font-size: 14px; cursor: grab; flex-shrink: 0;
     display: flex; flex-direction: column; gap: 2px; padding: 2px;
@@ -349,6 +386,31 @@
     vertical-align: middle; line-height: 1;
   }
 
+  .copy-btn {
+    flex-shrink: 0; padding: 0 5px; height: 20px;
+    background: transparent; border: 1px solid rgba(90,154,255,0.2);
+    border-radius: 3px; color: rgba(90,154,255,0.35);
+    cursor: pointer; font-size: 10px; letter-spacing: 0.5px;
+    display: flex; align-items: center;
+    transition: all .15s; white-space: nowrap;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .copy-btn:hover { background: rgba(90,154,255,0.1); color: var(--blue); border-color: rgba(90,154,255,0.4); }
+
+  .redraw-btn {
+    flex-shrink: 0; width: 22px; height: 22px;
+    background: transparent; border: 1px solid rgba(120,60,220,0.2);
+    border-radius: 3px; color: rgba(176,106,255,0.45);
+    cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .redraw-btn:hover { background: rgba(176,106,255,0.12); color: var(--purple); border-color: rgba(176,106,255,0.5); }
+
+  .song-history { display: flex; gap: 8px; margin-top: 2px; }
+  .h-days { font-size: 9px; color: var(--text-muted); }
+  .h-req  { font-size: 9px; color: var(--blue); opacity: 0.6; }
+
   .toast {
     font-size: 10px; padding: 4px 10px; border-radius: 3px;
     opacity: 0; transition: opacity .3s;
@@ -366,9 +428,28 @@
   <span class="status-dot off" id="dot"></span>
   <span class="topbar-title">Song Queue Dashboard</span>
   <span class="topbar-spacer"></span>
-  <a class="btn" id="twitch-connect" href="/auth/twitch" target="_blank" rel="noopener">連接 Twitch</a>
-  <span class="topbar-hint" id="twitch-status" role="status"></span>
   <span class="topbar-hint">drag songs between columns to move them</span>
+  <span class="cooldown-group" title="Minimum days after a song is requested before the Random Song reward can pick it again — 0 disables the cooldown (max 60 days / ~2 months)">
+    🎲 cooldown
+    <input type="number" class="cooldown-input" id="cooldown-input" min="0" max="60" step="1"
+           onkeydown="if(event.key==='Enter') saveCooldown()" />
+    days
+    <button class="btn" onclick="saveCooldown()">Save</button>
+  </span>
+  <span class="cooldown-group" title="Overlay panel background opacity — 0 is fully transparent, 1 is solid">
+    🎨 opacity
+    <input type="range" class="opacity-slider" id="opacity-input" min="0" max="1" step="0.01"
+           oninput="document.getElementById('opacity-value').textContent = this.value" />
+    <span class="opacity-value" id="opacity-value">0.92</span>
+    <button class="btn" onclick="saveOpacity()">Save</button>
+  </span>
+  <span class="cooldown-group" title="Overlay brightness — 0.5 is darker, 2 is brighter, 1 is normal">
+    🔆 brightness
+    <input type="range" class="opacity-slider" id="brightness-input" min="0.5" max="2" step="0.05"
+           oninput="document.getElementById('brightness-value').textContent = this.value" />
+    <span class="opacity-value" id="brightness-value">1</span>
+    <button class="btn" onclick="saveBrightness()">Save</button>
+  </span>
   <button class="btn skip" onclick="api('skip')">⏭ Skip</button>
   <button class="btn danger" onclick="if(confirm('Clear entire queue?')) api('clear')">✕ Clear All</button>
 </div>
@@ -432,7 +513,8 @@
       <span class="col-title orange">Pending Review</span>
       <span class="col-badge orange" id="pending-badge">0</span>
     </div>
-    <div class="drop-zone" id="zone-pending" style="overflow-y:auto;">
+    <div class="drop-zone" id="zone-pending" data-zone="pending" style="overflow-y:auto;"
+         ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,0)">
       <p class="empty-state" id="pending-empty">no pending requests</p>
       <div id="pending-list"></div>
     </div>
@@ -482,6 +564,8 @@ function render() {
           ${historyHtml(nowPlaying.title)}
         </div>
         ${nowPlaying.key != null && nowPlaying.key !== '' ? `<span class="key-badge">${nowPlaying.key >= 0 ? '+' : ''}${esc(nowPlaying.key)}</span>` : ''}
+        <button class="copy-btn" onclick="copyTitle('${esc(nowPlaying.title)}')" title="Copy title">⧉</button>
+        ${nowPlaying.isRandom ? `<button class="redraw-btn" onclick="callRedraw('nowPlaying',0)" title="Redraw random song">🎲</button>` : ''}
         <button class="finish-btn" onclick="api('skip')" title="Mark as finished and move to Played">✓ Finished</button>
         <button class="del-btn" onclick="deleteSong('nowPlaying',0)" title="Remove">✕</button>
       </div>`;
@@ -510,6 +594,8 @@ function render() {
         ${historyHtml(item.title)}
       </div>
       ${item.key != null && item.key !== '' ? `<span class="key-badge">${item.key >= 0 ? '+' : ''}${esc(item.key)}</span>` : ''}
+      <button class="copy-btn" onclick="copyTitle('${esc(item.title)}')" title="Copy title">⧉</button>
+      ${item.isRandom ? `<button class="redraw-btn" onclick="callRedraw('queue',${i})" title="Redraw random song">🎲</button>` : ''}
       <button class="del-btn" onclick="deleteSong('queue',${i})" title="Remove">✕</button>
     </div>`).join('');
 
@@ -532,6 +618,7 @@ function render() {
         ${historyHtml(item.title)}
       </div>
       ${item.key != null && item.key !== '' ? `<span class="key-badge">${item.key >= 0 ? '+' : ''}${esc(item.key)}</span>` : ''}
+      <button class="copy-btn" onclick="copyTitle('${esc(item.title)}')" title="Copy title">⧉</button>
       <button class="del-btn" onclick="deleteSong('played',${i})" title="Remove">✕</button>
     </div>`).join('');
 
@@ -540,17 +627,46 @@ function render() {
   document.getElementById('pending-badge').textContent = pendingList.length;
   document.getElementById('pending-empty').style.display = pendingList.length === 0 ? 'block' : 'none';
   document.getElementById('pending-list').innerHTML = pendingList.map((item, i) => {
+    const isDragged = !item.originalRequest;  // dragged manually — no viewer input
     const hasMatch = item.confidence !== null;
     const confLabel = hasMatch ? `${item.confidence}% match` : 'no match';
     const confClass = hasMatch ? '' : 'no-match';
+
+    if (!isDragged && item.candidates?.length > 1) {
+      // Multiple candidates — show picker
+      const candidatesHtml = item.candidates.map((c, ci) => `
+        <div class="candidate-item" onclick="pickCandidate(${i},${ci})">
+          <span class="candidate-conf">${c.confidence}%</span>
+          <div class="candidate-info">
+            <span class="candidate-title">${esc(c.title)}</span>
+            ${c.artist ? `<span class="candidate-artist">${esc(c.artist)}</span>` : ''}
+          </div>
+          ${c.key != null && c.key !== '' ? `<span class="key-badge" style="width:28px;height:28px;min-width:28px;min-height:28px;font-size:10px;">${Number(c.key) >= 0 ? '+' : ''}${esc(c.key)}</span>` : ''}
+        </div>`).join('');
+      return `
+      <div class="pending-card" id="pending-card-${i}">
+        <div class="pending-top">
+          <span class="pending-original" title="Viewer typed: ${esc(item.originalRequest)}">
+            ❝ ${esc(item.originalRequest)}
+          </span>
+          <span class="pending-confidence">${item.candidates.length} matches</span>
+        </div>
+        <div class="pending-req">@${esc(item.requester)}</div>
+        <div class="pending-candidates">${candidatesHtml}</div>
+        <div class="pending-actions">
+          <button class="pending-del" style="width:auto;padding:4px 10px;" onclick="deleteSong('pending',${i})" title="Dismiss">✕ Dismiss</button>
+        </div>
+      </div>`;
+    }
+
     return `
     <div class="pending-card" id="pending-card-${i}">
-      <div class="pending-top">
-        <span class="pending-original" title="Viewer typed: ${esc(item.originalRequest)}">
-          ❝ ${esc(item.originalRequest)}
-        </span>
-        <span class="pending-confidence ${confClass}">${confLabel}</span>
-      </div>
+      ${isDragged
+        ? `<div class="pending-top"><span class="pending-original" style="color:var(--text-muted);font-size:10px;">✎ dragged for editing</span></div>`
+        : `<div class="pending-top">
+             <span class="pending-original" title="Viewer typed: ${esc(item.originalRequest)}">❝ ${esc(item.originalRequest)}</span>
+             <span class="pending-confidence ${confClass}">${confLabel}</span>
+           </div>`}
       <div class="pending-req">@${esc(item.requester)}</div>
       <div class="pending-fields">
         <input class="pending-field" id="pending-title-${i}" placeholder="song title"
@@ -663,6 +779,10 @@ function acceptPending(index) {
   api('accept-pending', { index, title, artist });
 }
 
+function pickCandidate(pendingIndex, candidateIndex) {
+  api('accept-pending', { index: pendingIndex, candidateIndex });
+}
+
 // ── Manual Request ─────────────────────────────────────────────────────────────
 let songList = [];       // full list from server
 let filteredSongs = [];  // current suggest results
@@ -678,6 +798,80 @@ async function loadHistory() {
     // Snapshot the data at load time — never overwrite during session
     render();
   } catch(_) {}
+}
+
+const COOLDOWN_MAX_DAYS = 60; // ~2 months
+
+async function loadSettings() {
+  try {
+    const res = await fetch('/api/settings');
+    const settings = await res.json();
+    document.getElementById('cooldown-input').value = settings.randomCooldownDays;
+    document.getElementById('opacity-input').value = settings.panelBgAlpha;
+    document.getElementById('opacity-value').textContent = settings.panelBgAlpha;
+    document.getElementById('brightness-input').value = settings.textBrightness;
+    document.getElementById('brightness-value').textContent = settings.textBrightness;
+  } catch(_) {}
+}
+
+async function saveCooldown() {
+  const input = document.getElementById('cooldown-input');
+  const days = Number(input.value);
+  if (!Number.isFinite(days) || days < 0 || days > COOLDOWN_MAX_DAYS) {
+    showToast(`cooldown must be between 0 and ${COOLDOWN_MAX_DAYS} days`, true);
+    return;
+  }
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ randomCooldownDays: days }),
+    });
+    if (!res.ok) throw new Error('save failed');
+    showToast(days > 0 ? `random cooldown set to ${days} day${days === 1 ? '' : 's'}` : 'random cooldown disabled');
+  } catch(_) {
+    showToast('failed to save cooldown', true);
+  }
+}
+
+async function saveOpacity() {
+  const input = document.getElementById('opacity-input');
+  const alpha = Number(input.value);
+  if (!Number.isFinite(alpha) || alpha < 0 || alpha > 1) {
+    showToast('opacity must be between 0 and 1', true);
+    return;
+  }
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ panelBgAlpha: alpha }),
+    });
+    if (!res.ok) throw new Error('save failed');
+    showToast(`overlay panel opacity set to ${alpha}`);
+  } catch(_) {
+    showToast('failed to save opacity', true);
+  }
+}
+
+async function saveBrightness() {
+  const input = document.getElementById('brightness-input');
+  const brightness = Number(input.value);
+  if (!Number.isFinite(brightness) || brightness < 0.5 || brightness > 2) {
+    showToast('brightness must be between 0.5 and 2', true);
+    return;
+  }
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ textBrightness: brightness }),
+    });
+    if (!res.ok) throw new Error('save failed');
+    showToast(`overlay brightness set to ${brightness}`);
+  } catch(_) {
+    showToast('failed to save brightness', true);
+  }
 }
 
 function daysAgo(dateStr) {
@@ -802,6 +996,31 @@ function showToast(msg, isError = false) {
 }
 
 
+async function copyTitle(title) {
+  try {
+    await navigator.clipboard.writeText(title);
+    showToast(`copied: ${title}`);
+  } catch(_) {
+    showToast('copy failed', true);
+  }
+}
+
+async function callRedraw(zone, index) {
+  try {
+    const res = await fetch('/api/redraw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ zone, index }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showToast(err.error || 'redraw failed', true);
+    }
+  } catch(_) {
+    showToast('redraw failed', true);
+  }
+}
+
 async function api(endpoint, body = {}) {
   try {
     await fetch(`/api/${endpoint}`, {
@@ -821,21 +1040,7 @@ function esc(s) {
 connect();
 loadSongList();
 loadHistory();
-async function refreshTwitchStatus() {
-  try {
-    const response = await fetch('/api/twitch/status');
-    if (!response.ok) return;
-    const info = await response.json();
-    const labels = { connected: 'Twitch 已連線', connecting: 'Twitch 連線中…',
-      authorization_required: '請授權 Twitch', reconnecting: 'Twitch 重連中…',
-      error: 'Twitch 事件處理失敗', webhook: 'Twitch Webhook' };
-    document.getElementById('twitch-status').textContent = labels[info.status] || 'Twitch 啟動中…';
-    document.getElementById('twitch-status').title = info.message || '';
-    document.getElementById('twitch-connect').hidden = info.transport === 'webhook';
-  } catch (_) {}
-}
-refreshTwitchStatus();
-setInterval(refreshTwitchStatus, 5000);
+loadSettings();
 </script>
 </body>
 </html>

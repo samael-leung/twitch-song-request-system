@@ -7,7 +7,7 @@ const os = require('node:os');
 const fs = require('node:fs');
 const WebSocket = require('ws');
 
-test('real server serves dashboard, queue and selection API while awaiting broadcaster authorization', async t => {
+test('merged server preserves setup, dashboard, new upstream routes and Leihu selection', async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'song-server-'));
   const child = spawn(process.execPath, [path.resolve(__dirname, '../server/index.js')], {
     cwd: dir, env: { ...process.env, PORT: '0', TWITCH_TRANSPORT: 'websocket',
@@ -31,12 +31,17 @@ test('real server serves dashboard, queue and selection API while awaiting broad
     child.once('exit', code => { clearTimeout(timeout); reject(new Error(`Server exited: ${code}`)); });
   });
   const base = `http://127.0.0.1:${port}`;
-  assert.match(await (await fetch(base + '/dashboard/')).text(), /twitch-connect/);
+  assert.match(await (await fetch(base + '/dashboard/')).text(), /Song Queue Dashboard/);
+  const root = await fetch(base + '/?lang=zh-TW', { redirect: 'manual' });
+  assert.equal(root.headers.get('location'), '/setup?lang=zh-TW');
+  assert.equal((await fetch(base + '/setup/')).status, 200);
+  assert.equal((await fetch(base + '/clip-player/')).status, 200);
+  const settings = await (await fetch(base + '/api/settings')).json();
+  assert.equal(settings.randomCooldownDays, 7);
   assert.equal((await fetch(base + '/overlay/index.html')).status, 200);
-  const status = await (await fetch(base + '/api/twitch/status')).json();
-  assert.equal(status.transport, 'websocket');
-  assert.equal(status.status, 'authorization_required');
-  assert.equal(JSON.stringify(status).includes('access_token'), false);
+  const status = await (await fetch(base + '/setup/api/status')).json();
+  assert.equal(typeof status.configured.twitch, 'boolean');
+  assert.equal(Object.hasOwn(status, 'access_token'), false);
   assert.deepEqual((await (await fetch(base + '/api/queue')).json()).queue, []);
   ws = new WebSocket(base.replace('http:', 'ws:'));
   const [raw] = await once(ws, 'message');
@@ -50,5 +55,5 @@ test('real server serves dashboard, queue and selection API while awaiting broad
   assert.equal(response.status, 200);
   assert.equal(JSON.parse((await broadcast)[0]).nowPlaying.title, '本機雙向同步');
   assert.equal((await (await fetch(base + '/api/queue')).json()).nowPlaying.leihuId, 'local');
-  assert.equal((await fetch(base + '/twitch/webhook', { method: 'POST' })).status, 403);
+  assert.equal((await fetch(base + '/twitch/webhook', { method: 'POST' })).status, 404);
 });

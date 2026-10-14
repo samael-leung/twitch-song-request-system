@@ -2,5 +2,9 @@ node_modules/
 .env
 google-credentials.json
 song-cache.json
+setup-progress.json
+package-lock.json
+clip-player/sponsor-voice.wav
+clip-player/sponsor-voice.mp3
 twitch-session.json
 twitch-session.json.tmp
