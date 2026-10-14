@@ -136,6 +136,7 @@ app.post('/twitch/webhook', async (req, res) => {
 });
 
 // ─── REST API (for dashboard / manual control) ───────────────────────────────
+app.use('/api/integrations/leihu/selection', require('./leihu')());
 app.get('/api/queue', (req, res) => res.json(getState()));
 app.post('/api/skip', (req, res) => res.json({ nowPlaying: skipSong() }));
 app.post('/api/clear', (req, res) => { clearQueue(); res.json({ ok: true }); });

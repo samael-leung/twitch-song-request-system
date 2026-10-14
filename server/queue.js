@@ -6,8 +6,20 @@ let nowPlaying = null;
 let playedSongs = [];
 let pending = [];
 let clients = new Set();
+const sessionId = require('crypto').randomUUID();
+let playingRevision = 0;
+let lastPlaying = null;
+
+function getSelectionState() {
+  if (lastPlaying !== nowPlaying) {
+    lastPlaying = nowPlaying;
+    playingRevision++;
+  }
+  return { revision: `${sessionId}:${playingRevision}`, nowPlaying };
+}
 
 function broadcastState() {
+  getSelectionState();
   const state = JSON.stringify({ type: 'state', nowPlaying, queue, playedSongs, pending });
   for (const client of clients) {
     if (client.readyState === 1) client.send(state);
@@ -81,6 +93,38 @@ function getState() {
   return { nowPlaying, queue, playedSongs, pending };
 }
 
+// Reuse an existing request so requester/key metadata survives external selection.
+function selectSong(song) {
+  const normalize = value => String(value || '').normalize('NFKC').trim().toLowerCase();
+  const matches = entry => entry.leihuId ? entry.leihuId === song.id : (
+    normalize(entry.title) === normalize(song.title) &&
+    (!song.artist || !entry.artist || normalize(entry.artist) === normalize(song.artist))
+  );
+  if (nowPlaying && matches(nowPlaying)) {
+    if (nowPlaying.leihuId !== song.id) {
+      nowPlaying = { ...nowPlaying, leihuId: song.id };
+      broadcastState();
+    }
+    return nowPlaying;
+  }
+  let entry;
+  for (const list of [queue, pending, playedSongs]) {
+    const index = list.findIndex(matches);
+    if (index !== -1) {
+      entry = list.splice(index, 1)[0];
+      break;
+    }
+  }
+  entry = { ...(entry || { title: song.title, artist: song.artist || '',
+    key: song.key == null ? '' : String(song.key), requester: 'leihu', addedAt: Date.now() }),
+    leihuId: song.id };
+  delete entry.playedAt;
+  if (nowPlaying) queue.unshift(nowPlaying);
+  nowPlaying = entry;
+  broadcastState();
+  return entry;
+}
+
 function deleteSong(zone, index) {
   if (zone === 'nowPlaying') {
     if (!nowPlaying) return false;
@@ -152,4 +196,5 @@ function moveSong(fromZone, fromIndex, toZone, toIndex) {
 module.exports = {
   registerClient, addSong, addPending, acceptPending,
   skipSong, clearQueue, getState, deleteSong, moveSong,
+  getSelectionState, selectSong,
 };

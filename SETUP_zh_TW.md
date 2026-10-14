@@ -1,5 +1,7 @@
 # 🎵 VTuber 點歌系統 — 安裝說明
 
+雷虎練唱台雙向選歌設定請見 [LEIHU_INTEGRATION.md](LEIHU_INTEGRATION.md)。
+
 ## 運作流程
 
 ```
