@@ -49,4 +49,4 @@ body { background-color: rgba(0, 0, 0, 0) !important; margin: 0px auto; overflow
 
 > 若資料夾內沒有圖片，背景顯示為深色。
 
-雷虎練唱台雙向同步：請見 [LEIHU_INTEGRATION.md](LEIHU_INTEGRATION.md)，沿用本分支上游設定流程。
+雷虎練唱台雙向同步：兩個儲存庫皆使用 `leihu-song-request-sync` 分支。已正式納入使用者驗證成功的相容 API 修復，避免選歌端點 404；保留既有點歌者、佇列與原生雷虎整合介面。部署、測試與 ZIP 升級注意事項見 [LEIHU_INTEGRATION.md](LEIHU_INTEGRATION.md)。

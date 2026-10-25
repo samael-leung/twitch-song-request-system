@@ -175,7 +175,8 @@ setEventHandler(async (event) => {
   }
 });
 
-app.use('/api/integrations/leihu/selection', require('./leihu')());
+// Shared compatibility endpoint: works with the legacy router and native Leihu integrations.
+require('./leihu-selection-compat')(app);
 
 // ── REST API ──────────────────────────────────────────────────────────────────
 app.get('/api/queue', (req, res) => res.json(getState()));

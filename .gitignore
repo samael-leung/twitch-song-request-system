@@ -3,8 +3,12 @@ node_modules/
 google-credentials.json
 song-cache.json
 setup-progress.json
-package-lock.json
 clip-player/sponsor-voice.wav
 clip-player/sponsor-voice.mp3
 twitch-session.json
 twitch-session.json.tmp
+
+# Local compatibility repair backups and machine-specific state
+.leihu-sync-repair.json
+backups/leihu-sync-*/
+song-links.json

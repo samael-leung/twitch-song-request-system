@@ -1,6 +1,31 @@
 # 雷虎練唱台雙向選歌
 
-搭配 `samael-leung/Leihu-singsing` 的 `windows-ai-choice` 分支使用；**兩個專案都必須包含這次整合變更**。既有 Windows 安裝檔尚未包含這些變更。
+兩個儲存庫後續整合更新都使用 **`leihu-song-request-sync`** 分支。練唱台 1.6.6 已包含同步介面；點歌系統必須提供下面的相容 API。
+
+使用者已在 `E:\songRequest` 的 ZIP 安裝版本實機確認相容修復成功。該版本原本有 `/api/leihu/status` 等原生功能，但缺少 `/api/integrations/leihu/selection`，因此練唱台顯示 404。本分支已正式掛載 `server/leihu-selection-compat.js`，不需要再手動套用路由補丁。
+
+## 部署與版本
+
+在專案目錄（使用者目前為 `E:\songRequest`）執行：
+
+```powershell
+npm ci --ignore-scripts
+npm test
+npm audit --omit=dev
+npm start
+```
+
+package-lock.json 已納入版本控制，固定已驗證的相依套件；body-parser 鎖定 1.20.9，修補壓縮請求造成阻斷服務的公告 GHSA-27r3-jxmh-p828。googleapis 固定為 188.0.0，修補舊依賴間接使用 uuid 的已知漏洞；Node.js 核心仍需自行使用已修補的受支援版本（24.x 至少 24.22.1）。
+
+ZIP 安裝沒有 .git 不影響執行。更新前保留 .env、Google 憑證與歌曲配對；若目前另有本機自訂功能，請合併程式碼或繼續使用已成功的[相容修復包](https://github.com/samael-leung/Leihu-singsing/tree/leihu-song-request-sync/repair/song-request-sync)，不要把這個分支當成本機自訂版本的完整快照。
+
+本分支使用一個獨立相容模組，沿用佇列公開 API，並保留既有 leihu.js。若原生雷虎模組提供 setLink，會同步保存其 song-links.json 對應；未提供時，練唱台仍保存自身的永久配對。首次部署後可在另一個 PowerShell 驗證：
+
+```powershell
+Invoke-RestMethod 'http://127.0.0.1:3000/api/integrations/leihu/selection'
+```
+
+應回傳 revision 與 nowPlaying。只有在正確的程式版本提供這個路由後，重新啟動及勾選同步才會消除 404；單純 npm 更新不會補上程式路由。
 
 ## 啟動
 
