@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>Clip Player</title>
+<script src="/shared/i18n.js"></script>
+<script src="/shared/i18n-viewer.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -209,6 +211,13 @@
     transition: opacity 0.6s ease;
   }
 
+  /* !endingtk group headings (感謝訂閱 …): smaller, closer to the rule */
+  #sponsor-title.heading {
+    top: 225px;
+    font-size: 84px;
+    letter-spacing: 0.12em;
+  }
+
   #sponsor-rule {
     position: absolute;
     top: 358px;
@@ -354,9 +363,14 @@
   let dismissTimer = null;
   let clearTimer = null;
   let ws = null;
+  let currentMediaId = null; // echoed back so the server can ignore stale end signals
 
   function sendToServer(msg) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+  }
+
+  function notifyEnded() {
+    sendToServer({ type: 'media-ended', mediaId: currentMediaId });
   }
 
   function showMedia(msg) {
@@ -370,7 +384,8 @@
     iframeEl.src = '';
     videoEl.src  = '';
 
-    badgeEl.textContent  = msg.label  || 'Shoutout';
+    // labelKey in the overlay language; older servers only send the English label
+    badgeEl.textContent  = msg.labelKey && I18N.has('clip.' + msg.labelKey) ? I18N.t('clip.' + msg.labelKey) : (msg.label || I18N.t('clip.shoutout'));
     creditEl.textContent = msg.credit || '';
     titleEl.textContent  = msg.title  || '';
 
@@ -420,7 +435,7 @@
     iframeEl.onload = null;
     if (dismissTimer) { clearTimeout(dismissTimer); dismissTimer = null; }
     clearTimer = setTimeout(() => { clearTimer = null; videoEl.src = ''; iframeEl.src = ''; }, 500);
-    if (notifyServer) sendToServer({ type: 'media-ended' });
+    if (notifyServer) notifyEnded();
   }
 
   // YouTube IFrame API sends postMessage events when enablejsapi=1 is in the URL.
@@ -450,11 +465,22 @@
 
   let sponsorGen = 0; // generation counter; incrementing cancels all pending callbacks
 
+  // !tk sends one list under 提供; !endingtk sends groups, each under its own heading (clip.credits.<key>)
+  function setSponsorHeading(key) {
+    sponsorTitleEl.textContent = key ? I18N.t('clip.credits.' + key) : '提供';
+    sponsorTitleEl.classList.toggle('heading', !!key);
+  }
+
   function showSponsorRoll(msg) {
-    const broadcasters = msg.broadcasters || [];
-    if (!broadcasters.length) { sendToServer({ type: 'media-ended' }); return; }
+    const groups = msg.groups || [{ key: null, people: msg.broadcasters || [] }];
+    const pages = [];
+    for (const g of groups) {
+      for (let i = 0; i < g.people.length; i += CARDS_PER_PAGE) pages.push({ key: g.key, people: g.people.slice(i, i + CARDS_PER_PAGE) });
+    }
+    if (!pages.length) { notifyEnded(); return; }
 
     const gen = ++sponsorGen;
+    setSponsorHeading(pages[0].key);
 
     sponsorBgEl.style.backgroundImage = msg.bgUrl ? `url("${msg.bgUrl}")` : 'none';
     sponsorTitleEl.style.opacity = '0';
@@ -476,13 +502,23 @@
       sponsorRuleEl.style.opacity = '1';
     }, 300);
 
-    // Start paging after title has faded in
-    const pages = [];
-    for (let i = 0; i < broadcasters.length; i += CARDS_PER_PAGE) {
-      pages.push(broadcasters.slice(i, i + CARDS_PER_PAGE));
+    // Start paging after title has faded in. A new group fades its heading in first.
+    function showPage(idx) {
+      if (sponsorGen !== gen) return;
+      if (idx > 0 && idx < pages.length && pages[idx].key !== pages[idx - 1].key) {
+        sponsorTitleEl.style.opacity = '0';
+        setTimeout(() => {
+          if (sponsorGen !== gen) return;
+          setSponsorHeading(pages[idx].key);
+          sponsorTitleEl.style.opacity = '1';
+          setTimeout(() => fillPage(idx), 600);
+        }, 600);
+        return;
+      }
+      fillPage(idx);
     }
 
-    function showPage(idx) {
+    function fillPage(idx) {
       if (sponsorGen !== gen) return;
 
       if (idx >= pages.length) {
@@ -492,13 +528,13 @@
         setTimeout(() => {
           if (sponsorGen !== gen) return;
           sponsorRollEl.classList.remove('active');
-          sendToServer({ type: 'media-ended' });
+          notifyEnded();
         }, 600);
         return;
       }
 
       sponsorCardsEl.innerHTML = '';
-      pages[idx].forEach(b => sponsorCardsEl.appendChild(makeSponsorCard(b)));
+      pages[idx].people.forEach(b => sponsorCardsEl.appendChild(makeSponsorCard(b)));
 
       setTimeout(() => {
         if (sponsorGen !== gen) return;
@@ -575,15 +611,21 @@
       let msg;
       try { msg = JSON.parse(e.data); } catch (_) { return; }
       if (msg.type === 'media') {
+        currentMediaId = msg.mediaId ?? null;
         if (msg.kind === 'sponsor-card') showSponsorRoll(msg);
         else showMedia(msg);
       }
       if (msg.type === 'media-stop') { hideSponsorRoll(); hideMedia(false); }
       if (msg.type === 'preload-avatar' && msg.url) { new Image().src = msg.url; }
+      if (msg.type === 'settings' && msg.overlayLanguage) I18N.setLang(msg.overlayLanguage, { save: false, tagPage: false });
     };
     ws.onclose = () => { ws = null; setTimeout(connect, 3000); };
     ws.onerror = () => ws.close();
   }
+
+  // Labels follow the dashboard's overlay-language setting (English until it arrives)
+  I18N.setLang('en', { save: false, tagPage: false });
+  fetch('/api/settings').then(r => r.json()).then(s => s.overlayLanguage && I18N.setLang(s.overlayLanguage, { save: false, tagPage: false })).catch(() => {});
 
   connect();
 </script>

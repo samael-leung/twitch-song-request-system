@@ -51,7 +51,9 @@ test('upstream connects once, subscribes to redemptions and chat, and deduplicat
   await f.twitch.connect(); await f.twitch.connect();
   assert.equal(f.sockets.length, 1);
   f.sockets[0].message('session_welcome', { session: { id: 'session' } }); await flush();
-  assert.equal(f.calls.length, 2);
+  assert.ok(f.calls.length >= 2);
+  assert.ok(f.calls.some(call => call[1].type === "channel.chat.notification"));
+  assert.ok(f.calls.some(call => call[1].type === "stream.online"));
   assert.equal(f.calls[0][1].transport.method, 'websocket');
   assert.equal(f.calls[0][1].transport.session_id, 'session');
   assert.equal(f.calls[1][1].type, 'channel.chat.message');

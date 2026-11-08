@@ -29,11 +29,11 @@ async function getAuthClient() {
 }
 
 async function fetchSongs() {
-  console.log('[sheets] fetchSongs v2 running (with key support)');
   const sheetId = process.env.GOOGLE_SHEET_ID;
   const songCol = process.env.SHEET_SONG_COLUMN || 'title';
   const artistCol = process.env.SHEET_ARTIST_COLUMN || 'artist';
-  console.log(`[sheets] Looking for columns: song="${songCol}", artist="${artistCol}"`);
+  const keyCol = process.env.SHEET_KEY_COLUMN || 'key';
+  const urlCol = config.YT_LINK_HEADER;   // filled by the link finder
 
   if (!sheetId) {
     console.warn('[sheets] GOOGLE_SHEET_ID not set — using empty song list');
@@ -50,51 +50,47 @@ async function fetchSongs() {
       .map(s => s.properties.title)
       .filter(name => !config.EXCLUDED_TABS.includes(name));
 
-    console.log(`[sheets] Found tabs: ${meta.data.sheets.map(s => s.properties.title).join(', ')}`);
-    console.log(`[sheets] Reading tabs: ${tabs.join(', ')}`);
-
     // Step 2: fetch all tabs in one batchGet call
     const batchRes = await sheets.spreadsheets.values.batchGet({
       spreadsheetId: sheetId,
-      ranges: tabs.map(tab => `${tab}!A:Z`),
+      // A1 notation: quote the tab name and double any apostrophe inside it.
+      ranges: tabs.map(tab => `'${tab.replace(/'/g, "''")}'!A:Z`),
     });
 
     const allSongs = [];
+    const rejectedKeys = [];
 
-    for (const valueRange of batchRes.data.valueRanges) {
+    // valueRanges come back in the same order as the requested tabs.
+    for (const [i, valueRange] of batchRes.data.valueRanges.entries()) {
+      const tabName = tabs[i];
       const rows = valueRange.values;
       if (!rows || rows.length < 2) continue;
 
       const headers = rows[0].map(h => h.toLowerCase().trim());
       const titleIdx = headers.indexOf(songCol.toLowerCase());
       const artistIdx = headers.indexOf(artistCol.toLowerCase());
-      const keyIdx = headers.indexOf('key');
-
-      console.log(`[sheets] Tab headers: ${headers.join(', ')}`);
-      console.log(`[sheets] keyIdx: ${keyIdx}`);
+      const keyIdx = headers.indexOf(keyCol.toLowerCase().trim());
+      const urlIdx = headers.indexOf(urlCol.toLowerCase().trim());
 
       if (titleIdx === -1) {
         console.warn(
-          `[sheets] Tab "${valueRange.range}" has no "${songCol}" column — skipping. ` +
+          `[sheets] Tab "${tabName}" has no "${songCol}" column — skipping. ` +
           `Found headers: ${headers.join(', ')}`
         );
         continue;
       }
 
-      // Google Sheets wraps tab names containing spaces/CJK in single quotes
-      // in the range string (e.g. "'台語'!A:Z"). Strip them so the stored
-      // tab name matches what the Sheets API returns via spreadsheets.get().
-      const tabName = valueRange.range.split('!')[0].replace(/^'(.*)'$/, '$1');
       const songs = rows.slice(1)
         .filter(row => row[titleIdx]?.trim())
         .map(row => {
           const rawKey = keyIdx !== -1 ? String(row[keyIdx] ?? '').trim() : '';
           const key = /^-?\d+(\.\d+)?$/.test(rawKey) ? rawKey : '';
-          if (rawKey && !key) console.log(`[sheets] Rejected key value: "${rawKey}"`);
+          if (rawKey && !key) rejectedKeys.push(rawKey);
           return {
             title: row[titleIdx].trim(),
             artist: artistIdx !== -1 ? (row[artistIdx] || '').trim() : '',
             key,
+            url: urlIdx !== -1 ? String(row[urlIdx] ?? '').trim() : '',
             tab: tabName,
           };
         });
@@ -112,10 +108,12 @@ async function fetchSongs() {
       return true;
     });
 
-    console.log(`[sheets] Loaded ${deduped.length} songs total across ${tabs.length} tabs`);
     const withKey = deduped.filter(s => s.key).length;
-    console.log(`[sheets] Songs with key: ${withKey}`);
-    console.log(`[sheets] Sample song: ${JSON.stringify(deduped.find(s => s.key) || deduped[0])}`);
+    console.log(`[sheets] Loaded ${deduped.length} songs from ${tabs.join(', ')} (${withKey} with key)`);
+    if (rejectedKeys.length) {
+      const examples = [...new Set(rejectedKeys)].slice(0, 3).map(k => `"${k}"`).join(', ');
+      console.log(`[sheets] Ignored ${rejectedKeys.length} non-numeric key value(s), e.g. ${examples}`);
+    }
 
     // Force write fresh cache (delete old one first to avoid stale reads)
     if (fs.existsSync(CACHE_PATH)) fs.unlinkSync(CACHE_PATH);

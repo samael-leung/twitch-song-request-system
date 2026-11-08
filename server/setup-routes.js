@@ -7,6 +7,8 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { google } = require('googleapis');
+const { ensureFreshToken, reconnect: reconnectTwitch } = require('./twitch');
+const { message } = require('./messages');
 
 const ENV_PATH = path.join(__dirname, '..', '.env');
 const PROGRESS_PATH = path.join(__dirname, '..', 'setup-progress.json');
@@ -32,9 +34,15 @@ function writeEnvValues(values) {
     : '';
   if (content.charCodeAt(0) === 0xFEFF) content = content.slice(1);
 
+  // A line break in a value would smuggle extra lines into .env.
+  for (const [key, value] of Object.entries(values)) {
+    if (/[\r\n]/.test(String(value))) throw new Error(`Invalid value for ${key}: line breaks are not allowed`);
+  }
+
   for (const [key, value] of Object.entries(values)) {
     if (new RegExp(`^${key}=`, 'm').test(content)) {
-      content = content.replace(new RegExp(`^${key}=.*$`, 'm'), `${key}=${value}`);
+      // Function replacer: a "$" in the value must not be read as a regex back-reference.
+      content = content.replace(new RegExp(`^${key}=.*$`, 'm'), () => `${key}=${value}`);
     } else {
       content += (content.endsWith('\n') ? '' : '\n') + `${key}=${value}\n`;
     }
@@ -98,36 +106,34 @@ router.get('/status', (req, res) => {
 
 // POST /setup/api/validate-client-id
 router.post('/validate-client-id', async (req, res) => {
-  const { clientId } = req.body;
+  const clientId = String(req.body.clientId || '').trim();
   if (!clientId) return res.status(400).json({ error: 'clientId required' });
   try {
-    // Try a simple API call to verify the client ID is valid
-    await axios.get('https://id.twitch.tv/oauth2/validate', {
-      headers: { 'Client-Id': clientId }
+    // Requesting a device code is the cheapest call that rejects an unknown
+    // Client ID ("invalid client"); the code itself is thrown away.
+    await axios.post('https://id.twitch.tv/oauth2/device', null, {
+      params: { client_id: clientId, scopes: 'user:read:chat' },
     });
-    writeEnvValues({ TWITCH_CLIENT_ID: clientId });
-    res.json({ ok: true });
   } catch (err) {
-    // 401 is expected (no token), but 400 means bad client ID
-    if (err.response?.status === 400) {
-      return res.status(400).json({ error: 'Invalid Client ID' });
-    }
-    // Any other response means the client ID format is accepted
-    writeEnvValues({ TWITCH_CLIENT_ID: clientId });
-    res.json({ ok: true });
+    if (err.response?.status === 400) return res.status(400).json({ error: 'invalid_client' });
+    return res.status(502).json(message('twitchUnreachable', { message: err.message }, `Could not reach Twitch: ${err.message}`));
   }
+  writeEnvValues({ TWITCH_CLIENT_ID: clientId });
+  res.json({ ok: true });
 });
 
 // POST /setup/api/start-device-auth
 router.post('/start-device-auth', async (req, res) => {
   const clientId = process.env.TWITCH_CLIENT_ID || readEnv().TWITCH_CLIENT_ID;
-  if (!clientId) return res.status(400).json({ error: 'Client ID not set' });
+  if (!clientId) return res.status(400).json(message('clientIdMissing', {}, 'Client ID not set'));
 
   try {
     const response = await axios.post('https://id.twitch.tv/oauth2/device', null, {
       params: {
         client_id: clientId,
-        scopes: 'channel:read:redemptions channel:manage:redemptions user:read:chat',
+        // moderator:read:followers: new followers for !endingtk (not in chat); user:write:chat: the Chat tab's message box;
+        // the last four: the Chat tab's ban / timeout, Shoutout, raid and pin buttons (chat-mod.js)
+        scopes: 'channel:read:redemptions channel:manage:redemptions user:read:chat user:write:chat moderator:read:followers moderator:manage:banned_users moderator:manage:shoutouts channel:manage:raids moderator:manage:chat_messages',
       }
     });
     deviceAuthState = {
@@ -149,7 +155,7 @@ router.post('/start-device-auth', async (req, res) => {
 
 // GET /setup/api/poll-device-auth
 router.get('/poll-device-auth', async (req, res) => {
-  if (!deviceAuthState) return res.status(400).json({ error: 'No active device auth' });
+  if (!deviceAuthState) return res.status(400).json(message('noDeviceAuth', {}, 'No active device auth'));
 
   const clientId = process.env.TWITCH_CLIENT_ID || readEnv().TWITCH_CLIENT_ID;
   const { device_code, startedAt, expires_in } = deviceAuthState;
@@ -188,6 +194,7 @@ router.get('/poll-device-auth', async (req, res) => {
     });
     saveProgress({ displayName: user.display_name, broadcasterId: user.id });
     deviceAuthState = null;
+    reconnectTwitch();   // a running connection picks up the new permissions
 
     res.json({ status: 'authorized', displayName: user.display_name, broadcasterId: user.id });
   } catch (err) {
@@ -198,130 +205,85 @@ router.get('/poll-device-auth', async (req, res) => {
   }
 });
 
+// Returns the broadcaster ID and Helix headers, or null if Twitch isn't
+// connected yet. Refreshes the token first: the wizard is often re-run long
+// after the token was issued, and an expired one gives confusing 401s.
+async function helixAuth() {
+  const { TWITCH_CLIENT_ID: clientId, TWITCH_USER_ACCESS_TOKEN: token, TWITCH_BROADCASTER_ID: broadcasterId } = process.env;
+  if (!clientId || !token || !broadcasterId) return null;
+  await ensureFreshToken();
+  return {
+    broadcasterId,
+    headers: {
+      'Client-Id': clientId,
+      'Authorization': `Bearer ${process.env.TWITCH_USER_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+  };
+}
+
 // GET /setup/api/rewards — fetch list of existing rewards
 router.get('/rewards', async (req, res) => {
-  const env = readEnv();
-  const clientId = env.TWITCH_CLIENT_ID || process.env.TWITCH_CLIENT_ID;
-  const token = env.TWITCH_USER_ACCESS_TOKEN || process.env.TWITCH_USER_ACCESS_TOKEN;
-  const broadcasterId = env.TWITCH_BROADCASTER_ID || process.env.TWITCH_BROADCASTER_ID;
-  if (!clientId || !token || !broadcasterId) {
-    return res.status(400).json({ error: 'Twitch not configured yet — please complete Step 2 first' });
-  }
   try {
-    const r = await axios.get(
-      `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${broadcasterId}`,
-      { headers: { 'Client-Id': clientId, 'Authorization': `Bearer ${token}` } }
-    );
-    res.json({ rewards: r.data.data || [] });
+    const auth = await helixAuth();
+    if (!auth) return res.status(400).json(message('twitchNotConfigured', {}, 'Twitch not configured yet — please complete Step 2 first'));
+    const [r, mine] = await Promise.all([
+      axios.get(`https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${auth.broadcasterId}`, { headers: auth.headers }),
+      axios.get(`https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${auth.broadcasterId}&only_manageable_rewards=true`, { headers: auth.headers }),
+    ]);
+    // manageable: made by this app, so the dashboard can mark its redemptions done / refunded
+    const ids = new Set((mine.data.data || []).map(x => x.id));
+    res.json({ rewards: (r.data.data || []).map(x => ({ ...x, manageable: ids.has(x.id) })) });
   } catch (err) {
     res.status(500).json({ error: err.response?.data?.message || err.message });
   }
 });
 
+// Stores the reward picked in the rewards step as the all-tabs random reward.
+// Per-tab rewards from the random-rewards step are kept, so re-running the
+// rewards step doesn't wipe them.
+function saveRewardForType(rewardType, id, name) {
+  if (rewardType === 'song') {
+    writeEnvValues({ TWITCH_REWARD_ID: id });
+    return;
+  }
+  let rewards = [];
+  try { rewards = JSON.parse(readEnv().TWITCH_RANDOM_REWARDS || '[]'); } catch (_) {}
+  const perTab = rewards.filter(r => r.tabs?.length > 0 && r.id !== id);
+  writeEnvValues({ TWITCH_RANDOM_REWARDS: JSON.stringify([{ id, name, tabs: [] }, ...perTab]) });
+}
+
 // POST /setup/api/create-rewards
 // Body options:
-//   { mode: 'pick', rewardType: 'song'|'random', rewardId } — assign existing reward
+//   { mode: 'pick', rewardType: 'song'|'random', rewardId, title } — assign existing reward
 //   { mode: 'create', rewardType: 'song'|'random', title, cost } — create new reward
 router.post('/create-rewards', async (req, res) => {
-  const { mode, rewardType, rewardId, title, cost, songRequestCost = 500, randomSongCost = 300 } = req.body;
-  const env = readEnv();
-  const clientId = env.TWITCH_CLIENT_ID;
-  const token = env.TWITCH_USER_ACCESS_TOKEN;
-  const broadcasterId = env.TWITCH_BROADCASTER_ID;
+  const { mode, rewardType, rewardId, title, cost } = req.body;
 
-  if (!clientId || !token || !broadcasterId) {
-    return res.status(400).json({ error: 'Twitch not configured yet' });
-  }
-
-  const headers = {
-    'Client-Id': clientId,
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  };
-
-  // Single reward pick or create
   if (mode === 'pick' && rewardId && rewardType) {
-    if (rewardType === 'song') {
-      writeEnvValues({ TWITCH_REWARD_ID: rewardId });
-    } else {
-      writeEnvValues({ TWITCH_RANDOM_REWARDS: JSON.stringify([{ id: rewardId, name: title || '隨機點歌券', tabs: [] }]) });
-    }
+    saveRewardForType(rewardType, rewardId, title || '隨機點歌券');
     return res.json({ ok: true });
   }
 
   if (mode === 'create' && title && rewardType) {
     const requireText = rewardType === 'song';
     try {
+      const auth = await helixAuth();
+      if (!auth) return res.status(400).json(message('twitchNotConfigured', {}, 'Twitch not configured yet'));
       const r = await axios.post(
-        `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${broadcasterId}`,
+        `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${auth.broadcasterId}`,
         { title, cost: parseInt(cost) || 500, is_user_input_required: requireText },
-        { headers }
+        { headers: auth.headers }
       );
       const reward = r.data.data[0];
-      if (rewardType === 'song') {
-        writeEnvValues({ TWITCH_REWARD_ID: reward.id });
-      } else {
-        writeEnvValues({ TWITCH_RANDOM_REWARDS: JSON.stringify([{ id: reward.id, name: reward.title, tabs: [] }]) });
-      }
+      saveRewardForType(rewardType, reward.id, reward.title);
       return res.json({ ok: true, id: reward.id, title: reward.title });
     } catch (err) {
       return res.status(500).json({ error: err.response?.data?.message || err.message });
     }
   }
 
-  // Check existing rewards
-  let existing = [];
-  try {
-    const r = await axios.get(
-      `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${broadcasterId}`,
-      { headers }
-    );
-    existing = r.data.data || [];
-  } catch (_) {}
-
-  const results = {};
-
-  // Song Request reward
-  const existingSong = existing.find(r => r.title.includes('點歌') || r.title.includes('Song Request'));
-  if (existingSong) {
-    writeEnvValues({ TWITCH_REWARD_ID: existingSong.id });
-    results.songRequest = { id: existingSong.id, title: existingSong.title, existing: true };
-  } else {
-    try {
-      const r = await axios.post(
-        `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${broadcasterId}`,
-        { title: '點歌券', cost: songRequestCost, is_user_input_required: true, prompt: '輸入想點的歌名' },
-        { headers }
-      );
-      const reward = r.data.data[0];
-      writeEnvValues({ TWITCH_REWARD_ID: reward.id });
-      results.songRequest = { id: reward.id, title: reward.title, existing: false };
-    } catch (err) {
-      results.songRequest = { error: err.response?.data?.message || err.message };
-    }
-  }
-
-  // Random Song reward
-  const existingRandom = existing.find(r => r.title.includes('隨機') || r.title.includes('Random'));
-  if (existingRandom) {
-    writeEnvValues({ TWITCH_RANDOM_REWARDS: JSON.stringify([{ id: existingRandom.id, name: existingRandom.title, tabs: [] }]) });
-    results.randomSong = { id: existingRandom.id, title: existingRandom.title, existing: true };
-  } else {
-    try {
-      const r = await axios.post(
-        `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${broadcasterId}`,
-        { title: '隨機點歌券', cost: randomSongCost, is_user_input_required: false },
-        { headers }
-      );
-      const reward = r.data.data[0];
-      writeEnvValues({ TWITCH_RANDOM_REWARDS: JSON.stringify([{ id: reward.id, name: reward.title, tabs: [] }]) });
-      results.randomSong = { id: reward.id, title: reward.title, existing: false };
-    } catch (err) {
-      results.randomSong = { error: err.response?.data?.message || err.message };
-    }
-  }
-
-  res.json({ ok: true, results });
+  res.status(400).json({ error: 'mode must be "pick" or "create"' });
 });
 
 // GET /setup/api/upload-credentials — show helpful error if accessed directly
@@ -338,14 +300,14 @@ router.post('/upload-credentials', (req, res) => {
       : JSON.parse(req.rawBody || '{}');
   } catch (e) {
     console.error('[setup] upload-credentials parse error:', e.message, 'rawBody length:', req.rawBody?.length);
-    return res.status(400).json({ error: 'Invalid JSON — please upload the credentials .json file from Google Cloud Console' });
+    return res.status(400).json(message('credsInvalidJson', {}, 'Invalid JSON — please upload the credentials .json file from Google Cloud Console'));
   }
   const required = ['type', 'client_email', 'private_key', 'project_id'];
   for (const field of required) {
-    if (!creds[field]) return res.status(400).json({ error: `Missing field: ${field}` });
+    if (!creds[field]) return res.status(400).json(message('credsMissingField', { field }, `Missing field: ${field}`));
   }
   if (creds.type !== 'service_account') {
-    return res.status(400).json({ error: 'Not a service account key file' });
+    return res.status(400).json(message('credsNotServiceAccount', {}, 'Not a service account key file'));
   }
   fs.writeFileSync(CREDS_PATH, JSON.stringify(creds, null, 2), { encoding: 'utf8' });
   res.json({ ok: true, clientEmail: creds.client_email });
@@ -358,49 +320,58 @@ router.post('/validate-sheet', async (req, res) => {
 
   // Extract sheet ID from URL
   const match = sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-  if (!match) return res.status(400).json({ error: 'Could not find Sheet ID in URL — please paste the full URL from your browser' });
+  if (!match) return res.status(400).json(message('sheetIdNotFound', {}, 'Could not find Sheet ID in URL — please paste the full URL from your browser'));
   const sheetId = match[1];
 
   if (!fs.existsSync(CREDS_PATH)) {
-    return res.status(400).json({ error: 'Google credentials not uploaded yet' });
+    return res.status(400).json(message('credsNotUploaded', {}, 'Google credentials not uploaded yet'));
   }
 
   try {
     const auth = new google.auth.GoogleAuth({
       keyFile: CREDS_PATH,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      scopes: [historyMode
+        ? 'https://www.googleapis.com/auth/spreadsheets'
+        : 'https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
     const authClient = await auth.getClient();
     const sheets = google.sheets({ version: 'v4', auth: authClient });
+
+    if (historyMode) {
+      // The history sheet needs Editor access. Prove it with a write that
+      // changes nothing (A1 written back as-is, formulas included), so a
+      // Viewer-only share fails here instead of silently losing history later.
+      const a1 = await sheets.spreadsheets.values.get({
+        spreadsheetId: sheetId, range: 'A1', valueRenderOption: 'FORMULA',
+      });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId, range: 'A1', valueInputOption: 'USER_ENTERED',
+        requestBody: { values: a1.data.values || [['']] },
+      });
+      writeEnvValues({ HISTORY_SHEET_ID: sheetId });
+      return res.json({ ok: true, sheetId });
+    }
 
     const r = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
       range: 'A1:Z5', // headers + first 4 data rows
     });
-
     const rows = r.data.values || [];
-
-    if (historyMode) {
-      // For history sheet — just confirm access. A brand-new sheet is
-      // expected to be empty (the server writes headers on first run).
-      writeEnvValues({ HISTORY_SHEET_ID: sheetId });
-      res.json({ ok: true, sheetId });
-    } else {
-      // For song list — return headers and preview for column selection
-      if (rows.length === 0) return res.status(400).json({ error: 'Sheet appears to be empty' });
-      res.json({
-        ok: true,
-        sheetId,
-        headers: rows[0],
-        preview: rows.slice(1, 5),
-      });
-    }
+    if (rows.length === 0) return res.status(400).json(message('sheetEmpty', {}, 'Sheet appears to be empty'));
+    res.json({ ok: true, sheetId, headers: rows[0], preview: rows.slice(1, 5) });
   } catch (err) {
     const msg = err.message || '';
+    // An .xlsx uploaded to Drive and opened in Sheets stays an Excel file: the Sheets API can't read it
+    if (msg.includes('not supported for this document')) {
+      return res.status(400).json(message('sheetIsExcel', {}, 'This is an Excel file in Google Drive, not a Google Sheet. In Google Sheets choose File → Save as Google Sheets, then paste the new address.'));
+    }
+    if (msg.includes('has not been used') || msg.includes('is disabled')) {
+      return res.status(400).json(message('sheetsApiOff', {}, 'The Google Sheets API is not switched on for your Google Cloud project. In console.cloud.google.com search for "Google Sheets API" and click Enable, wait a minute, then try again.'));
+    }
     if (msg.includes('403') || msg.includes('permission')) {
-      return res.status(400).json({
-        error: 'Access denied. Make sure you shared the sheet with the service account email shown above.',
-      });
+      return res.status(400).json(historyMode
+        ? message('sheetDeniedEditor', {}, 'Access denied. Share the sheet with the service account email shown above as an Editor (not Viewer).')
+        : message('sheetDenied', {}, 'Access denied. Make sure you shared the sheet with the service account email shown above.'));
     }
     res.status(400).json({ error: err.message });
   }
@@ -413,6 +384,7 @@ router.post('/save-columns', (req, res) => {
     GOOGLE_SHEET_ID: sheetId,
     SHEET_SONG_COLUMN: songColumn,
     SHEET_ARTIST_COLUMN: artistColumn,
+    SHEET_KEY_COLUMN: keyColumn || 'key',
   };
   writeEnvValues(values);
   res.json({ ok: true });
@@ -438,19 +410,15 @@ router.post('/save-random-rewards', async (req, res) => {
   const { rewards } = req.body;
   if (!Array.isArray(rewards)) return res.status(400).json({ error: 'rewards array required' });
 
-  const env = readEnv();
-  const clientId = env.TWITCH_CLIENT_ID;
-  const token = env.TWITCH_USER_ACCESS_TOKEN;
-  const broadcasterId = env.TWITCH_BROADCASTER_ID;
-  if (!clientId || !token || !broadcasterId) {
-    return res.status(400).json({ error: 'Twitch not configured' });
+  let auth = null;
+  if (rewards.some(r => !r.id)) {
+    try {
+      auth = await helixAuth();
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (!auth) return res.status(400).json(message('twitchNotConfigured', {}, 'Twitch not configured'));
   }
-
-  const headers = {
-    'Client-Id': clientId,
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  };
 
   const results = [];
   for (const reward of rewards) {
@@ -459,9 +427,9 @@ router.post('/save-random-rewards', async (req, res) => {
     } else {
       try {
         const r = await axios.post(
-          `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${broadcasterId}`,
+          `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${auth.broadcasterId}`,
           { title: reward.name, cost: reward.cost || 300, is_user_input_required: false },
-          { headers }
+          { headers: auth.headers }
         );
         results.push({ id: r.data.data[0].id, name: r.data.data[0].title, tabs: reward.tabs || [] });
       } catch (err) {
@@ -474,7 +442,8 @@ router.post('/save-random-rewards', async (req, res) => {
   // unless the user already added their own all-tabs entry in this step.
   const hasAllTabs = results.some(r => !r.tabs || r.tabs.length === 0);
   if (!hasAllTabs) {
-    const existing = JSON.parse(env.TWITCH_RANDOM_REWARDS || '[]');
+    let existing = [];
+    try { existing = JSON.parse(process.env.TWITCH_RANDOM_REWARDS || '[]'); } catch (_) {}
     const allTabsEntry = existing.find(r => !r.tabs || r.tabs.length === 0);
     if (allTabsEntry) results.push(allTabsEntry);
   }

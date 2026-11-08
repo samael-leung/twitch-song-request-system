@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Song Queue Dashboard</title>
+<script src="/shared/i18n.js"></script>
+<script src="/shared/i18n-server.js"></script>
+<script src="/dashboard/i18n-dashboard.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,7 +28,7 @@
     --blue: #5a9aff;
     --red: #ff5a5a;
     --text: #d4c8f0;
-    --text-dim: #7a6a9a;
+    --text-dim: #9a8cbc;
     --text-muted: #3a3060;
     --drag-over: rgba(176,106,255,0.15);
     --orange: #ff8c32;
@@ -33,12 +36,14 @@
   }
 
   html, body {
-    min-height: 100vh;
+    height: 100%;
     background: var(--bg);
     font-family: 'Share Tech Mono', monospace;
     color: var(--text);
-    font-size: 13px;
+    font-size: 15px;
   }
+  /* The page is exactly the window: each panel scrolls on its own */
+  body { display: flex; flex-direction: column; }
 
   /* ── Top bar ── */
   .topbar {
@@ -50,36 +55,83 @@
   }
   .topbar-title {
     font-family: 'Orbitron', sans-serif;
-    font-size: 11px; font-weight: 500; letter-spacing: 3px; color: var(--purple);
+    font-size: 14px; font-weight: 500; letter-spacing: 3px; color: var(--purple); white-space: nowrap;
   }
   .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--purple); animation: blink 2s infinite; }
   .status-dot.off { background: #ff4444; animation: none; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
   .topbar-spacer { flex: 1; }
-  .cooldown-group {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 10px; color: var(--text-muted);
-  }
   .cooldown-input {
-    width: 52px;
+    width: 64px;
     background: var(--bg-card); border: 1px solid var(--border);
     border-radius: 4px; padding: 5px 6px;
-    font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 14px; color: var(--text);
     outline: none; transition: border-color .15s;
   }
   .cooldown-input:focus { border-color: var(--purple); }
   .opacity-slider {
-    width: 90px; accent-color: var(--purple); cursor: pointer;
+    flex: 1; min-width: 0; accent-color: var(--purple); cursor: pointer;
   }
   .opacity-value {
-    width: 30px; text-align: right;
-    font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text);
+    width: 40px; text-align: right;
+    font-family: 'Share Tech Mono', monospace; font-size: 14px; color: var(--text);
   }
-  .topbar-hint { font-size: 10px; color: var(--text-muted); }
+
+  /* EN / 中文 switch (filled in by shared/i18n.js) */
+  .lang-switch { display: flex; gap: 4px; }
+  .lang-btn {
+    font-family: 'Share Tech Mono', monospace; font-size: 13px; padding: 4px 9px; cursor: pointer;
+    background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim);
+  }
+  .lang-btn:hover { color: var(--text); }
+  .lang-btn.active { color: var(--purple); border-color: var(--purple); }
+  .lang-select {
+    font-family: 'Share Tech Mono', monospace; font-size: 14px; color: var(--text);
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px;
+  }
+
+  /* Leihu status chip in the top bar (opens its settings) */
+  .chip {
+    font-family: 'Share Tech Mono', monospace; font-size: 13px; white-space: nowrap;
+    padding: 5px 12px; border-radius: 14px; cursor: pointer;
+    background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+  }
+  .chip:hover { background: rgba(176,106,255,0.1); }
+  .chip.on { color: var(--green); border-color: var(--border-green); }
+
+  /* Each tab's settings: ⚙ at the right end of the tab's top row opens a panel from the right,
+     over the tab (toggleTabConfig) */
+  .tab-config {
+    position: absolute; top: 0; right: 16px; bottom: 14px; z-index: 250; width: min(420px, calc(100% - 32px));
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+    padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
+  }
+  .tab-config[hidden] { display: none; }
+  .tab-config-close { position: absolute; top: 10px; right: 10px; }
+  .tab-config > section:first-of-type h3 { padding-right: 40px; }
+  .tab-config-btn[aria-expanded="true"] { background: rgba(176,106,255,0.15); }
+  .tab-config section { display: flex; flex-direction: column; gap: 8px; border-radius: 6px; }
+  .tab-config h3 {
+    font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--purple);
+  }
+  .setting { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text); cursor: pointer; }
+  .setting-name { width: 120px; flex-shrink: 0; }
+  .setting input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--purple); }
+  .setting-hint { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  .step { border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .step-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .step-status { font-size: 13px; color: var(--amber); }
+  .step-status.ok { color: var(--green); }
+  .step-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+  .link-btn {
+    align-self: flex-start; background: none; border: none; padding: 0; cursor: pointer;
+    font-family: 'Share Tech Mono', monospace; font-size: 13px; color: var(--purple); text-decoration: underline;
+  }
 
   .btn {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 11px; padding: 5px 12px;
+    font-size: 14px; padding: 6px 14px; white-space: nowrap;
     background: transparent; border: 1px solid var(--border);
     border-radius: 4px; color: var(--purple); cursor: pointer;
     transition: background .15s;
@@ -90,14 +142,214 @@
   .btn.skip { color: var(--amber); border-color: var(--border-amber); }
   .btn.skip:hover { background: rgba(255,184,74,0.1); }
 
-  /* ── Layout ── */
-  .columns {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    gap: 12px;
-    padding: 12px 16px;
-    align-items: start;
-    height: calc(100vh - 98px);
+  /* ── Tabs: one page each (later also chat room, rewards, OBS / Streamlabs control) ── */
+  .tabs { display: flex; gap: 4px; padding: 0 16px; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+  .tab {
+    font-family: 'Share Tech Mono', monospace; font-size: 14px; padding: 9px 16px; cursor: pointer;
+    background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-dim);
+  }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { color: var(--purple); border-bottom-color: var(--purple); }
+  /* The tabs on the left, the chat beside them on the right (not in the Chat tab itself) */
+  .workspace { flex: 1; min-height: 0; display: flex; }
+  .tab-area { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+  .tab-page { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+  .tab-page[hidden] { display: none; }
+
+  /* ── Leihu tab: Leihu's own screen; its settings open from ⚙ (.tab-config) ── */
+  .leihu-page { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 14px 16px; }
+  .leihu-view { flex: 1; background: var(--bg-panel); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+  .leihu-view .col-header { gap: 10px; }
+  .leihu-view .btn { font-size: 13px; padding: 4px 10px; text-decoration: none; }
+  .leihu-bulk { font-size: 13px; color: var(--amber); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .leihu-bulk[hidden] { display: none; }
+  .leihu-body { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .leihu-frame { flex: 1; width: 100%; min-height: 0; border: 0; background: var(--bg); }
+  .leihu-frame[hidden] { display: none; }
+  .leihu-placeholder {
+    flex: 1; display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center; text-align: center;
+    padding: 24px; color: var(--text-dim); font-size: 14px; line-height: 1.6;
+  }
+  .leihu-placeholder[hidden] { display: none; }
+
+  /* ── Chat tab: live chat and earlier days' logs, with filters ── */
+  .tab-count {
+    display: inline-block; min-width: 18px; margin-left: 6px; padding: 0 5px; border-radius: 9px;
+    background: var(--purple); color: var(--bg); font-size: 11px; line-height: 17px; text-align: center;
+  }
+  .tab-count[hidden] { display: none; }
+  .chat-page { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 14px 16px; }
+
+  /* ── The chat beside every other tab: the same .chat-view, moved here (placeChat) ── */
+  .chat-dock { position: relative; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; padding: 14px 16px 14px 0; }
+  .chat-dock[hidden] { display: none; }
+  .chat-dock-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+  .chat-dock-resize { position: absolute; left: -10px; top: 14px; bottom: 14px; width: 10px; cursor: col-resize; touch-action: none; }
+  .chat-dock-resize::after { content: ''; position: absolute; left: 4px; top: 0; bottom: 0; width: 2px; border-radius: 2px; background: transparent; }
+  .chat-dock-resize:hover::after, body.dock-resizing .chat-dock-resize::after { background: var(--purple); }
+  body.dock-resizing { cursor: col-resize; user-select: none; }
+  body.dock-resizing iframe { pointer-events: none; }   /* Leihu's screen would take the pointer */
+  .chat-dock-filter {
+    display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 6px; font-size: 13px;
+    background: rgba(255,184,74,0.08); border: 1px solid var(--border-amber); color: var(--amber);
+  }
+  .chat-dock-filter[hidden] { display: none; }
+  .chat-dock-filter span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chat-dock-filter button { background: none; border: none; color: var(--amber); cursor: pointer; font-family: inherit; font-size: 13px; }
+  .chat-view.docked .chat-tools, .chat-view.docked .chat-filters { display: none; }
+  .chat-view.docked .chat-list { font-size: 13px; padding: 6px 6px; }
+  .tab.dock-btn { margin-left: auto; }
+  .tab.dock-btn[aria-pressed="true"] { color: var(--purple); }
+  .tab.dock-btn[hidden] { display: none; }
+  .chat-view { flex: 1; background: var(--bg-panel); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; min-height: 0; position: relative; }
+  .chat-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .chat-tools input[type="search"] {
+    flex: 1; min-width: 180px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); padding: 6px 9px; font-family: 'Share Tech Mono', monospace; font-size: 14px;
+  }
+  .chat-tools .btn, .chat-tools .lang-select { font-size: 13px; padding: 4px 10px; text-decoration: none; }
+  .chat-filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--border); }
+  .chat-filters .chip { font-size: 12px; padding: 3px 10px; }
+  .chat-filters .chip.on { color: var(--bg); background: var(--purple); border-color: var(--purple); }
+  .chat-filters .chip.user { color: var(--amber); border-color: var(--border-amber); }
+  .chat-count { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+  .chat-list { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 10px; font-size: 14px; line-height: 1.55; }
+  .chat-empty { color: var(--text-dim); text-align: center; padding: 30px 10px; font-size: 13px; }
+  .chat-msg { padding: 2px 6px; border-radius: 3px; word-wrap: break-word; }
+  .chat-msg:hover { background: var(--bg-hover); }
+  .chat-msg.me-mention { background: rgba(176,106,255,0.12); }
+  .chat-msg.highlight { background: rgba(176,106,255,0.2); }
+  .chat-msg.intro { border-left: 2px solid var(--green); }
+  .chat-msg.redeem { background: rgba(255,184,74,0.08); color: var(--amber); }
+  .chat-msg.event { background: rgba(74,255,154,0.08); color: var(--green); }
+  .chat-msg.deleted .chat-text { text-decoration: line-through; opacity: 0.45; }
+  .chat-msg.to-announce { background: rgba(255,184,74,0.14); box-shadow: inset 3px 0 0 var(--amber); }
+  .chat-msg.to-announce:hover { background: rgba(255,184,74,0.22); }
+  .chat-msg.flash { animation: chat-flash 1.2s ease-out; }
+  @keyframes chat-flash { from { background: rgba(255,184,74,0.5); } }
+  .chat-msg .chat-act.undo { visibility: hidden; opacity: 0.7; }
+  .chat-msg:hover .chat-act.undo, .chat-act.undo:focus { visibility: visible; }
+  .chat-filters .chip.announce-next { color: var(--amber); border-color: var(--border-amber); }
+  .chat-filters .chip.announce-all { color: var(--green); border-color: var(--border-green); }
+  .chat-time { color: var(--text-dim); font-size: 12px; margin-right: 6px; }
+  .chat-badge {
+    display: inline-block; font-size: 10px; line-height: 14px; padding: 0 4px; margin-right: 3px; border-radius: 3px;
+    border: 1px solid currentColor; vertical-align: 1px;
+  }
+  .chat-badge.broadcaster { color: var(--red); }
+  .chat-badge.moderator { color: var(--green); }
+  .chat-badge.vip { color: #ff6ad5; }
+  .chat-badge.subscriber, .chat-badge.founder { color: var(--purple); }
+  .chat-name { font-weight: 600; cursor: pointer; }
+  .chat-name:hover { text-decoration: underline; }
+  .chat-text img { height: 24px; vertical-align: middle; }
+  .chat-text .mention { font-weight: 600; }
+  .chat-text mark { background: rgba(255,184,74,0.35); color: inherit; border-radius: 2px; }
+  .chat-reply { display: block; font-size: 12px; color: var(--text-dim); }
+  .chat-tag { font-size: 11px; color: var(--text-dim); margin-left: 6px; }
+  .chat-song {
+    margin-left: 6px; font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 0 7px; cursor: pointer;
+    background: transparent; border: 1px solid var(--border-green); border-radius: 10px; color: var(--green);
+  }
+  .chat-song:hover { background: rgba(74,255,154,0.1); }
+  .chat-song.recent { color: var(--amber); border-color: var(--border-amber); }
+  .chat-song.recent:hover { background: rgba(255,184,74,0.1); }
+  .chat-msg.redeem.waiting { border-left: 2px solid var(--amber); }
+  .chat-act {
+    margin-left: 6px; font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 0 7px; cursor: pointer; text-decoration: none;
+    background: transparent; border: 1px solid var(--border-amber); border-radius: 10px; color: var(--amber);
+  }
+  .chat-act:hover { background: rgba(255,184,74,0.1); }
+  .chat-act.done { color: var(--green); border-color: var(--border-green); }
+  .chat-act.done:hover { background: rgba(74,255,154,0.1); }
+  .chat-act.sure, .chat-act.sure:hover { color: var(--bg); background: var(--amber); }
+  .chat-act:disabled { opacity: 0.5; cursor: default; }
+  .reward-rows { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .reward-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; }
+  .reward-row .reward-name { font-weight: 600; }
+  .reward-row .chat-tag { margin-left: 0; }
+  .reward-row .reward-state { color: var(--text-dim); flex: 1 1 160px; }
+  .reward-row .reward-state.ok { color: var(--green); }
+  .reward-row .reward-steps { flex-basis: 100%; color: var(--amber); line-height: 1.5; }
+  .reward-row .btn { font-size: 12px; padding: 3px 9px; text-decoration: none; }
+  .chat-more {
+    position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+    background: var(--purple); color: var(--bg); border: none; border-radius: 14px; padding: 5px 14px;
+    font-family: 'Share Tech Mono', monospace; font-size: 13px; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  }
+  .chat-more[hidden] { display: none; }
+  .chat-reply-btn {
+    margin-left: 6px; font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 0 7px; cursor: pointer;
+    background: transparent; border: 1px solid var(--border); border-radius: 10px; color: var(--text-dim); opacity: 0;
+  }
+  .chat-msg:hover .chat-reply-btn, .chat-reply-btn:focus { opacity: 1; }
+  .chat-reply-btn:hover { color: var(--text); }
+  .chat-compose { border-top: 1px solid var(--border); padding: 8px 10px; }
+  .chat-banners { display: flex; flex-direction: column; gap: 4px; padding: 6px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .chat-banners:empty { display: none; }
+  .chat-banner { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .chat-banner .what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chat-banner .when { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
+  .chat-banner.pinned .what b { color: var(--purple); }
+  .chat-banner.raid { color: var(--amber); }
+  .chat-banner .chat-act { margin-left: 0; }
+  .mod-menu {
+    position: fixed; z-index: 50; width: 320px; max-width: calc(100vw - 16px); display: flex; flex-direction: column; gap: 8px;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 13px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.6);
+  }
+  .mod-head { display: flex; align-items: baseline; gap: 8px; font-size: 15px; }
+  .mod-head .mod-login { color: var(--text-dim); font-size: 12px; }
+  .mod-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .mod-row .chat-act { margin-left: 0; }
+  .mod-label { color: var(--text-dim); font-size: 12px; }
+  .mod-menu input, .mod-menu select {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 4px 8px; font-size: 13px;
+  }
+  .mod-menu .mod-n { width: 70px; }
+  .mod-menu .mod-who, .mod-menu .mod-reason { width: 100%; }
+  .mod-item { text-align: left; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 5px 8px; cursor: pointer; font-size: 13px; }
+  .mod-item:hover { background: var(--bg-hover); }
+  .mod-menu .chat-act.danger { color: var(--red); border-color: rgba(255,90,90,0.4); }
+  .mod-menu .chat-act.danger.sure { color: var(--bg); background: var(--red); }
+  .mod-menu .chat-act:disabled { opacity: 0.4; }
+  .mod-note { color: var(--amber); font-size: 12px; }
+  .mod-note a { color: var(--blue); }
+  .chat-compose[hidden], .chat-compose [hidden] { display: none; }
+  .chat-replying { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+  .chat-replying span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chat-compose-row { display: flex; gap: 8px; align-items: center; }
+  .chat-compose input {
+    flex: 1; min-width: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); padding: 7px 9px; font-size: 14px;
+  }
+  .chat-compose input:disabled { opacity: 0.5; }
+  .chat-compose .btn { font-size: 13px; padding: 5px 14px; }
+  .chat-left { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+  .chat-left.over { color: var(--red); }
+  .chat-compose-note { font-size: 12px; color: var(--amber); margin-top: 6px; }
+
+  /* ── Layout: 2×2 — left: Now Playing over Up Next, right: Pending Review over Played ── */
+  .board {
+    flex: 1; min-height: 0;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 14px; padding: 14px 16px;
+  }
+  .stack { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+  .col-panel.grow { flex: 1; }
+  .np-panel { flex-shrink: 0; }
+  .np-panel .drop-zone { min-height: 72px; }
+  .pending-panel { flex: 0 1 auto; max-height: 55%; }
+  /* Narrow windows: one column, the page scrolls */
+  @media (max-width: 900px) {
+    html, body { height: auto; }
+    .board { grid-template-columns: 1fr; }
+    .col-panel.grow { min-height: 320px; }
+    .pending-panel { max-height: none; }
+    .leihu-frame { flex: none; height: 85vh; }
+    .chat-list { flex: none; height: 75vh; }
+    .workspace { display: block; }
+    .chat-dock, .tab.dock-btn { display: none !important; }   /* no room: the Chat tab only */
   }
 
   /* ── Column panels ── */
@@ -107,7 +359,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    min-height: 0;
   }
   .col-header {
     display: flex; align-items: center; gap: 8px;
@@ -122,18 +374,18 @@
 
   .col-title {
     font-family: 'Orbitron', sans-serif;
-    font-size: 9px; font-weight: 500; letter-spacing: 2px;
+    font-size: 12px; font-weight: 500; letter-spacing: 2px;
     text-transform: uppercase; flex: 1;
   }
-  .col-title.purple { color: var(--purple-dim); }
-  .col-title.green  { color: var(--green-dim); }
-  .col-title.amber  { color: var(--amber-dim); }
-  .col-title.orange { color: var(--orange-dim); }
+  .col-title.purple { color: var(--purple); }
+  .col-title.green  { color: var(--green); }
+  .col-title.amber  { color: var(--amber); }
+  .col-title.orange { color: var(--orange); }
 
   .col-badge.orange { background: rgba(80,45,10,0.4); border: 1px solid rgba(160,90,20,0.3); color: var(--orange); }
 
   .col-badge {
-    font-size: 9px; padding: 2px 7px; border-radius: 3px; letter-spacing: 1px;
+    font-size: 12px; padding: 2px 8px; border-radius: 3px; letter-spacing: 1px;
   }
   .col-badge.purple { background: rgba(80,30,120,0.4); border: 1px solid rgba(120,60,200,0.3); color: var(--purple); }
   .col-badge.green  { background: rgba(20,80,50,0.4);  border: 1px solid rgba(40,140,80,0.3);  color: var(--green); }
@@ -148,7 +400,7 @@
     scrollbar-width: thin;
     scrollbar-color: rgba(176,106,255,0.2) transparent;
   }
-  .drop-zone::-webkit-scrollbar { width: 3px; }
+  .drop-zone::-webkit-scrollbar { width: 6px; }
   .drop-zone::-webkit-scrollbar-thumb { background: rgba(176,106,255,0.2); border-radius: 2px; }
   .drop-zone.drag-over { background: var(--drag-over); }
 
@@ -187,44 +439,80 @@
   .pending-card:last-child { margin-bottom: 0; }
   .pending-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
   .pending-original {
-    font-size: 10px; color: var(--orange); flex: 1;
+    font-size: 14px; color: var(--orange); flex: 1;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .pending-confidence {
-    font-size: 9px; padding: 1px 6px; border-radius: 3px; white-space: nowrap;
+    font-size: 12px; padding: 1px 6px; border-radius: 3px; white-space: nowrap;
     background: rgba(80,45,10,0.5); border: 1px solid rgba(160,90,20,0.3); color: var(--orange);
   }
   .pending-confidence.no-match {
     background: rgba(80,20,20,0.5); border-color: rgba(160,40,40,0.3); color: var(--red);
   }
-  .pending-req { font-size: 9px; color: var(--blue); }
+  .pending-req { font-size: 13px; color: var(--blue); }
   .pending-fields { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
   .pending-field {
     width: 100%; background: rgba(10,8,20,0.8);
     border: 1px solid rgba(120,60,220,0.2); border-radius: 3px;
     padding: 4px 7px; font-family: 'Share Tech Mono', monospace;
-    font-size: 11px; color: var(--text); outline: none;
+    font-size: 14px; color: var(--text); outline: none;
     transition: border-color .15s;
   }
   .pending-field:focus { border-color: var(--purple); }
-  .pending-field::placeholder { color: var(--text-muted); }
+  .pending-field::placeholder { color: var(--text-dim); opacity: 0.7; }
   .pending-actions { display: flex; gap: 5px; }
   .accept-btn {
-    flex: 1; padding: 4px 8px;
+    flex: 1; padding: 5px 10px;
     background: rgba(74,255,154,0.08); border: 1px solid rgba(74,255,154,0.3);
-    border-radius: 3px; color: var(--green); font-size: 10px;
+    border-radius: 3px; color: var(--green); font-size: 13px;
     font-family: 'Share Tech Mono', monospace; cursor: pointer;
     transition: all .15s;
   }
   .accept-btn:hover { background: rgba(74,255,154,0.18); }
   .pending-del {
-    flex-shrink: 0; width: 24px; height: 24px;
-    background: transparent; border: 1px solid rgba(255,90,90,0.2);
-    border-radius: 3px; color: rgba(255,90,90,0.5);
-    cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; width: 28px; height: 28px;
+    background: transparent; border: 1px solid rgba(255,90,90,0.3);
+    border-radius: 3px; color: rgba(255,90,90,0.75);
+    cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center;
     transition: all .15s;
   }
   .pending-del:hover { background: rgba(255,90,90,0.15); color: var(--red); border-color: rgba(255,90,90,0.5); }
+
+  /* 🔍 Find: lyric sites + YouTube search for a song not on the sheet */
+  .find-btn {
+    flex-shrink: 0; padding: 4px 9px;
+    background: rgba(90,180,255,0.08); border: 1px solid rgba(90,180,255,0.3);
+    border-radius: 3px; color: var(--blue); font-size: 13px;
+    font-family: 'Share Tech Mono', monospace; cursor: pointer; transition: all .15s;
+  }
+  .find-btn:hover { background: rgba(90,180,255,0.18); }
+  .find-btn:disabled { opacity: 0.5; cursor: default; }
+  .found { margin-bottom: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .found-note { font-size: 13px; color: var(--text-muted); }
+  .found-note.error { color: var(--red); }
+  .found-status { font-size: 12px; padding: 1px 6px; border-radius: 3px; align-self: flex-start;
+    background: rgba(80,45,10,0.5); border: 1px solid rgba(160,90,20,0.3); color: var(--orange); }
+  .found-status.confident { background: rgba(20,80,45,0.5); border-color: rgba(74,255,154,0.3); color: var(--green); }
+  .found-video {
+    display: flex; align-items: flex-start; gap: 6px; padding: 4px 6px; cursor: pointer;
+    background: rgba(10,8,20,0.6); border: 1px solid rgba(120,60,220,0.2); border-radius: 4px;
+  }
+  .found-video input { margin-top: 3px; flex-shrink: 0; }
+  .found-video-info { flex: 1; min-width: 0; }
+  .found-video a { font-size: 13px; color: var(--text); text-decoration: none; display: block;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .found-video a:hover { text-decoration: underline; }
+  .found-video-meta { font-size: 12px; color: var(--text-muted); }
+  .found-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+  .found-actions .accept-btn { flex: 1 1 auto; }
+  .add-sheet-btn {
+    flex: 1 1 auto; padding: 5px 10px;
+    background: rgba(255,160,40,0.08); border: 1px solid rgba(255,160,40,0.3);
+    border-radius: 3px; color: var(--orange); font-size: 13px;
+    font-family: 'Share Tech Mono', monospace; cursor: pointer; transition: all .15s;
+  }
+  .add-sheet-btn:hover { background: rgba(255,160,40,0.18); }
+  .add-sheet-btn:disabled { opacity: 0.6; cursor: default; }
 
   /* Candidate picker (multiple matches) */
   .pending-candidates { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
@@ -237,12 +525,12 @@
   }
   .candidate-item:hover { background: rgba(74,255,154,0.08); border-color: rgba(74,255,154,0.3); }
   .candidate-conf {
-    font-size: 9px; padding: 2px 5px; border-radius: 3px; white-space: nowrap; flex-shrink: 0;
+    font-size: 12px; padding: 2px 6px; border-radius: 3px; white-space: nowrap; flex-shrink: 0;
     background: rgba(80,45,10,0.5); border: 1px solid rgba(160,90,20,0.3); color: var(--orange);
   }
   .candidate-info { flex: 1; min-width: 0; }
-  .candidate-title { font-size: 11px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-  .candidate-artist { font-size: 9px; color: var(--text-dim); display: block; }
+  .candidate-title { font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .candidate-artist { font-size: 12px; color: var(--text-dim); display: block; }
 
   .drag-handle {
     color: var(--text-muted); font-size: 14px; cursor: grab; flex-shrink: 0;
@@ -253,15 +541,15 @@
   }
 
   .song-info { flex: 1; min-width: 0; }
-  .song-title { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .song-artist { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
-  .song-req { font-size: 9px; color: var(--blue); margin-top: 2px; }
+  .song-title { font-size: 15px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .song-artist { font-size: 13px; color: var(--text-dim); margin-top: 1px; }
+  .song-req { font-size: 12px; color: var(--blue); margin-top: 2px; }
 
   .del-btn {
-    flex-shrink: 0; width: 22px; height: 22px;
-    background: transparent; border: 1px solid rgba(255,90,90,0.2);
-    border-radius: 3px; color: rgba(255,90,90,0.5);
-    cursor: pointer; font-size: 13px; line-height: 1;
+    flex-shrink: 0; width: 28px; height: 28px;
+    background: transparent; border: 1px solid rgba(255,90,90,0.3);
+    border-radius: 3px; color: rgba(255,90,90,0.75);
+    cursor: pointer; font-size: 15px; line-height: 1;
     display: flex; align-items: center; justify-content: center;
     transition: all .15s;
   }
@@ -277,29 +565,29 @@
     margin: 8px;
     display: flex; align-items: center; gap: 10px;
   }
-  .now-playing-card .song-info .song-title { font-size: 13px; color: #ddc8ff; }
+  .now-playing-card .song-info .song-title { font-size: 16px; color: #ddc8ff; }
   .now-playing-card .song-line1 {
     display: flex; align-items: baseline; gap: 10px;
     flex-wrap: wrap; justify-content: space-between;
   }
-  .now-playing-card .song-line1 .song-title  { font-size: 16px; color: #ddc8ff; flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-  .now-playing-card .song-line1 .song-req    { font-size: 13px; color: var(--blue); white-space: nowrap; flex-shrink: 0; margin-left: auto; }
+  .now-playing-card .song-line1 .song-title  { font-size: 22px; color: #ddc8ff; flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .now-playing-card .song-line1 .song-req    { font-size: 15px; color: var(--blue); white-space: nowrap; flex-shrink: 0; margin-left: auto; }
 
   .song-line1 {
     display: flex; align-items: baseline; gap: 10px;
     flex-wrap: wrap; justify-content: space-between;
   }
-  .song-line1 .song-title  { font-size: 13px; color: var(--text); flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .song-line1 .song-req    { font-size: 11px; color: var(--blue); white-space: nowrap; flex-shrink: 0; margin-left: auto; }
+  .song-line1 .song-title  { font-size: 16px; color: var(--text); flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .song-line1 .song-req    { font-size: 13px; color: var(--blue); white-space: nowrap; flex-shrink: 0; margin-left: auto; }
   .song-line2 {
     display: flex; align-items: baseline; gap: 10px; margin-top: 2px;
   }
-  .song-line2 .song-artist { font-size: 11px; color: var(--text-dim); flex: 1; }
-  .song-line2 .song-req    { font-size: 11px; color: var(--blue); white-space: nowrap; }
+  .song-line2 .song-artist { font-size: 13px; color: var(--text-dim); flex: 1; }
+  .song-line2 .song-req    { font-size: 13px; color: var(--blue); white-space: nowrap; }
   .now-playing-label {
-    font-size: 8px; letter-spacing: 2px; color: var(--purple-dim); margin-bottom: 4px;
+    font-size: 11px; letter-spacing: 2px; color: var(--purple); margin-bottom: 4px;
   }
-  .np-empty { font-size: 11px; color: var(--text-muted); padding: 12px; text-align: center; }
+  .np-empty { font-size: 14px; color: var(--text-dim); padding: 12px; text-align: center; }
 
   /* ── Drop placeholder ── */
   .drop-placeholder {
@@ -312,30 +600,40 @@
   .drop-placeholder.visible { display: block; }
 
   /* ── Empty state ── */
-  .empty-state { font-size: 10px; color: var(--text-muted); text-align: center; padding: 20px 0; }
+  .empty-state { font-size: 14px; color: var(--text-dim); text-align: center; padding: 20px 12px; line-height: 1.6; }
 
   /* ── Manual request bar ── */
+  .node-warn {
+    display: flex; align-items: center; gap: 16px;
+    padding: 10px 20px;
+    background: rgba(80,45,10,0.5); border-bottom: 1px solid rgba(160,90,20,0.5);
+    color: var(--orange); font-size: 15px;
+  }
+  .node-warn[hidden] { display: none; }
+  .node-warn span { flex: 1; }
+  .node-warn a { color: inherit; }
+  .node-warn code { background: rgba(0,0,0,0.35); padding: 1px 6px; border-radius: 3px; user-select: all; }
   .request-bar {
     display: flex; align-items: center; gap: 8px;
     padding: 10px 20px;
     background: var(--bg);
     border-bottom: 1px solid var(--border);
-    position: sticky; top: 49px; z-index: 90;
+    z-index: 90;
   }
   .request-label {
-    font-size: 9px; letter-spacing: 2px; color: var(--text-muted);
+    font-size: 12px; letter-spacing: 2px; color: var(--text-dim);
     white-space: nowrap; text-transform: uppercase;
   }
   .request-input-wrap { position: relative; flex: 2; }
   .request-input-wrap input {
     width: 100%;
     background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 4px; padding: 6px 10px;
-    font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text);
+    border-radius: 4px; padding: 7px 10px;
+    font-family: 'Share Tech Mono', monospace; font-size: 15px; color: var(--text);
     outline: none; transition: border-color .15s;
   }
   .request-input-wrap input:focus { border-color: var(--purple); }
-  .request-input-wrap input::placeholder { color: var(--text-muted); }
+  .request-input-wrap input::placeholder { color: var(--text-dim); opacity: 0.7; }
 
   .suggest-list {
     position: absolute; top: calc(100% + 4px); left: 0; right: 0;
@@ -346,51 +644,62 @@
   }
   .suggest-list.open { display: block; }
   .suggest-item {
-    padding: 7px 10px; cursor: pointer; font-size: 12px;
+    padding: 8px 10px; cursor: pointer; font-size: 15px;
     border-bottom: 1px solid rgba(120,60,220,0.1);
     transition: background .1s;
   }
   .suggest-item:last-child { border-bottom: none; }
   .suggest-item:hover, .suggest-item.active { background: rgba(176,106,255,0.12); }
-  .suggest-item .s-artist { font-size: 10px; color: var(--text-dim); margin-left: 6px; }
+  .suggest-item .s-artist { font-size: 13px; color: var(--text-dim); margin-left: 6px; }
 
   .requester-input {
     flex: 1;
     background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 4px; padding: 6px 10px;
-    font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text);
+    border-radius: 4px; padding: 7px 10px;
+    font-family: 'Share Tech Mono', monospace; font-size: 15px; color: var(--text);
     outline: none; transition: border-color .15s; min-width: 0;
   }
   .requester-input:focus { border-color: var(--blue); }
-  .requester-input::placeholder { color: var(--text-muted); }
+  .requester-input::placeholder { color: var(--text-dim); opacity: 0.7; }
 
   .btn.add { color: var(--green); border-color: var(--border-green); white-space: nowrap; }
   .btn.add:hover { background: rgba(74,255,154,0.1); }
   .btn.add:disabled { opacity: 0.35; cursor: not-allowed; }
 
   .finish-btn {
-    flex-shrink: 0; padding: 5px 10px;
+    flex-shrink: 0; padding: 6px 12px;
     background: rgba(74,255,154,0.08); border: 1px solid rgba(74,255,154,0.3);
-    border-radius: 4px; color: var(--green); font-size: 10px; letter-spacing: 1px;
+    border-radius: 4px; color: var(--green); font-size: 13px; letter-spacing: 1px;
     font-family: 'Share Tech Mono', monospace; cursor: pointer;
     transition: all .15s; white-space: nowrap;
   }
   .finish-btn:hover { background: rgba(74,255,154,0.18); border-color: var(--green); }
 
+  /* Opens the song in Leihu Singsing's practice window (shown by paintBadges) */
+  .sing-btn {
+    margin: 4px 0 0 4px; padding: 3px 10px; vertical-align: top;
+    background: rgba(255,184,74,0.08); border: 1px solid var(--border-amber);
+    border-radius: 4px; color: var(--amber); font-size: 13px; letter-spacing: 1px;
+    font-family: 'Share Tech Mono', monospace; cursor: pointer;
+    transition: all .15s; white-space: nowrap;
+  }
+  .sing-btn:hover { background: rgba(255,184,74,0.18); border-color: var(--amber); }
+  .sing-btn[hidden] { display: none; }
+
   .key-badge {
-    width: 36px; height: 36px; min-width: 36px; min-height: 36px;
+    width: 42px; height: 42px; min-width: 42px; min-height: 42px;
     border-radius: 50%; flex-shrink: 0; box-sizing: border-box;
     background: rgba(50,30,80,0.5); border: 2px solid rgba(140,80,255,0.5); color: #c09aff;
-    font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 500;
+    font-family: 'Share Tech Mono', monospace; font-size: 14px; font-weight: 500;
     display: inline-flex; align-items: center; justify-content: center;
     vertical-align: middle; line-height: 1;
   }
 
   .copy-btn {
-    flex-shrink: 0; padding: 0 5px; height: 20px;
-    background: transparent; border: 1px solid rgba(90,154,255,0.2);
-    border-radius: 3px; color: rgba(90,154,255,0.35);
-    cursor: pointer; font-size: 10px; letter-spacing: 0.5px;
+    flex-shrink: 0; padding: 0 7px; height: 28px;
+    background: transparent; border: 1px solid rgba(90,154,255,0.3);
+    border-radius: 3px; color: rgba(90,154,255,0.7);
+    cursor: pointer; font-size: 14px; letter-spacing: 0.5px;
     display: flex; align-items: center;
     transition: all .15s; white-space: nowrap;
     font-family: 'Share Tech Mono', monospace;
@@ -398,27 +707,161 @@
   .copy-btn:hover { background: rgba(90,154,255,0.1); color: var(--blue); border-color: rgba(90,154,255,0.4); }
 
   .redraw-btn {
-    flex-shrink: 0; width: 22px; height: 22px;
-    background: transparent; border: 1px solid rgba(120,60,220,0.2);
-    border-radius: 3px; color: rgba(176,106,255,0.45);
-    cursor: pointer; font-size: 13px;
+    flex-shrink: 0; width: 28px; height: 28px;
+    background: transparent; border: 1px solid rgba(120,60,220,0.3);
+    border-radius: 3px; color: rgba(176,106,255,0.75);
+    cursor: pointer; font-size: 15px;
     display: flex; align-items: center; justify-content: center;
     transition: all .15s;
   }
   .redraw-btn:hover { background: rgba(176,106,255,0.12); color: var(--purple); border-color: rgba(176,106,255,0.5); }
 
-  .song-history { display: flex; gap: 8px; margin-top: 2px; }
-  .h-days { font-size: 9px; color: var(--text-muted); }
-  .h-req  { font-size: 9px; color: var(--blue); opacity: 0.6; }
+  /* Artist · history · Leihu badge on one line (wraps when narrow) */
+  .song-meta { display: flex; align-items: center; gap: 4px 12px; flex-wrap: wrap; margin-top: 3px; }
+  .song-meta:empty { display: none; }
+  .song-meta .song-artist { margin-top: 0; }
+  .song-meta .bt-badge, .song-meta .sing-btn { margin: 0; }
+  .song-history { display: flex; gap: 8px; }
+  .h-days { font-size: 12px; color: var(--text-dim); }
+  .h-req  { font-size: 12px; color: var(--blue); opacity: 0.8; }
+
+  /* Leihu Singsing backing-track badge (filled in by paintBadges) */
+  .bt-badge {
+    display: inline-block; margin-top: 4px; padding: 2px 6px; border-radius: 3px;
+    font-family: 'Share Tech Mono', monospace; font-size: 12px; white-space: nowrap;
+    border: 1px solid var(--border); color: var(--text-dim); background: transparent;
+  }
+  .bt-badge:empty { display: none; }
+  .bt-badge.click { cursor: pointer; }
+  .bt-badge.click:hover { background: rgba(176,106,255,0.12); }
+  .bt-badge.ready      { color: var(--green); border-color: var(--border-green); }
+  .bt-badge.processing, .bt-badge.nolyrics { color: var(--amber); border-color: var(--border-amber); }
+  .bt-badge.missing    { color: var(--blue);  border-color: rgba(90,154,255,0.3); }
+  .bt-badge.failed, .bt-badge.broken { color: var(--red); border-color: rgba(255,90,90,0.3); }
+
+  .picker-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .picker {
+    width: min(520px, calc(100vw - 32px)); max-height: 70vh; display: flex; flex-direction: column; gap: 8px;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px;
+  }
+  .picker-title { font-size: 15px; color: var(--purple); }
+  .picker input {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); padding: 7px 9px; font-size: 14px;
+  }
+  .picker-list { overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .picker-item {
+    padding: 7px 9px; border-radius: 3px; cursor: pointer; font-size: 14px; color: var(--text);
+    display: flex; justify-content: space-between; gap: 8px;
+  }
+  .picker-item:hover, .picker-item.cur { background: var(--bg-hover); }
+  .picker-item .st { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
+  .picker-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
   .toast {
-    font-size: 10px; padding: 4px 10px; border-radius: 3px;
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 400;
+    max-width: calc(100vw - 32px); pointer-events: none;
+    font-size: 13px; padding: 5px 12px; border-radius: 3px;
     opacity: 0; transition: opacity .3s;
-    background: rgba(74,255,154,0.15); border: 1px solid rgba(74,255,154,0.3); color: var(--green);
-    white-space: nowrap;
+    background: linear-gradient(rgba(74,255,154,0.15), rgba(74,255,154,0.15)), var(--bg-panel);
+    border: 1px solid rgba(74,255,154,0.3); color: var(--green);
+    white-space: nowrap; box-shadow: 0 4px 20px rgba(0,0,0,0.6);
   }
-  .toast.error { background: rgba(255,90,90,0.15); border-color: rgba(255,90,90,0.3); color: var(--red); }
+  .toast.error { background: linear-gradient(rgba(255,90,90,0.15), rgba(255,90,90,0.15)), var(--bg-panel); border-color: rgba(255,90,90,0.3); color: var(--red); }
   .toast.show { opacity: 1; }
+  .toast.long { white-space: normal; width: max-content; max-width: min(720px, calc(100vw - 32px)); }
+
+  /* ── Modes: buttons in the top bar, the 🎛 Modes tab (server/modes.js) ── */
+  /* The modes in a labelled box, so they read as one control; "🎛 Modes" opens the tab */
+  .mode-box {
+    display: flex; align-items: center; gap: 8px; min-width: 0; padding: 3px 4px 3px 12px;
+    border: 1px solid var(--border); border-radius: 18px; background: rgba(176,106,255,0.05);
+  }
+  .mode-box[hidden] { display: none; }
+  .mode-box-label {
+    background: none; border: none; cursor: pointer; padding: 0; white-space: nowrap;
+    font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--purple-dim);
+  }
+  .mode-box-label:hover { color: var(--purple); }
+  .mode-bar { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+  .mode-bar.busy .mode-chip { opacity: 0.5; pointer-events: none; }
+  .mode-chip.on { color: var(--bg); background: var(--purple); border-color: var(--purple); }
+  .mode-chip.on:hover { background: var(--purple); }
+  .modes-page { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+  .modes-list { display: flex; flex-direction: column; gap: 10px; }
+  .modes-box { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .modes-box h3, .mode-section h4 {
+    font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--purple);
+  }
+  .modes-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+  .modes-row[hidden] { display: none; }
+  .modes-input {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px;
+    font-family: 'Share Tech Mono', monospace; font-size: 14px; color: var(--text); outline: none; min-width: 0;
+  }
+  .modes-input:focus { border-color: var(--purple); }
+  .modes-box.compact { padding: 8px 14px; }
+  .modes-status { font-size: 13px; color: var(--text-dim); }
+  .modes-status:empty { display: none; }
+  .modes-status.ok { color: var(--green); }
+  .modes-status.err { color: var(--red); }
+  .modes-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .modes-head .col-title { flex: 1; }
+  .mode-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; }
+  .mode-card.active { border-color: var(--purple); }
+  .mode-card.dragging { opacity: 0.6; border-style: dashed; }
+  .mode-move { display: flex; align-items: center; gap: 2px; }
+  .mode-grip { cursor: grab; touch-action: none; user-select: none; color: var(--text-dim); font-size: 18px; padding: 2px 4px; }
+  .mode-grip:hover { color: var(--purple); }
+  body.mode-dragging, body.mode-dragging .mode-grip { cursor: grabbing; user-select: none; }
+  .mode-arrows { display: flex; flex-direction: column; gap: 2px; }
+  .mode-card .mode-arrows .btn { font-size: 10px; padding: 0 6px; line-height: 1.4; }
+  .mode-card-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; flex-wrap: wrap; }
+  .mode-icon { width: 52px; text-align: center; }
+  .mode-name { width: 160px; }
+  .mode-sum { flex: 1; min-width: 140px; font-size: 13px; color: var(--text-dim); }
+  .mode-warn { color: var(--amber); }
+  .mode-body { border-top: 1px solid var(--border); padding: 12px; display: flex; flex-direction: column; gap: 16px; }
+  .mode-section { display: flex; flex-direction: column; gap: 8px; }
+  /* Items and sounds share the columns [toggle][toggle][name][volume][✕], so names line up */
+  .mode-table { border-collapse: collapse; font-size: 14px; width: 100%; max-width: 640px; }
+  .mode-table td { padding: 3px 4px; vertical-align: middle; }
+  .mode-table td.name { width: 100%; overflow-wrap: anywhere; padding-left: 8px; }
+  .mode-table td.vol { white-space: nowrap; color: var(--text-dim); }
+  .mode-table tr[data-i]:hover, .mode-table tr[data-a]:hover { background: rgba(176, 106, 255, 0.08); }
+  .mode-table tr[data-i] td:first-child, .mode-table tr[data-a] td:first-child { border-radius: 4px 0 0 4px; }
+  .mode-table tr[data-i] td:last-child, .mode-table tr[data-a] td:last-child { border-radius: 0 4px 4px 0; }
+  .mode-drop {
+    background: none; border: 1px solid transparent; border-radius: 4px; padding: 1px 7px;
+    font-size: 13px; color: var(--text-dim); cursor: pointer; opacity: 0.6;
+  }
+  .mode-table tr:hover .mode-drop { opacity: 1; }
+  .mode-drop:hover { color: var(--red); border-color: rgba(255, 90, 90, 0.5); }
+  .mode-tog-blank { display: inline-block; width: 32px; }
+  .mode-table tr.scene-row td { padding-top: 8px; font-size: 12px; color: var(--text-dim); }
+  .mode-table tr.missing td.name { color: var(--amber); }
+  .mode-table input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--purple); vertical-align: middle; }
+  .mode-table label { white-space: nowrap; cursor: pointer; }
+  .mode-tog {
+    width: 32px; background: none; border: 1px solid var(--border); border-radius: 4px; padding: 1px 0;
+    font-size: 15px; line-height: 1.3; color: var(--text); cursor: pointer; filter: grayscale(1); opacity: 0.4;
+  }
+  .mode-tog.on { filter: none; opacity: 1; border-color: var(--purple); }
+  .mode-tog:hover:not(:disabled) { border-color: var(--purple); }
+  .mode-tog:disabled { opacity: 0.15; cursor: default; }
+  .mode-table select { max-width: 220px; }
+  .mode-vol { width: 76px; }
+  .mode-extra { max-width: 640px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--text-dim); }
+  .mode-card .btn { font-size: 13px; padding: 3px 9px; }
+  .mode-card .btn:disabled { opacity: 0.35; cursor: default; }
+  .mode-card .btn.sure { color: var(--red); border-color: rgba(255,90,90,0.5); }
+  .mode-chat { flex: 1; min-width: 200px; }
+  .mode-foot { display: flex; gap: 8px; flex-wrap: wrap; }
 
 </style>
 </head>
@@ -426,103 +869,329 @@
 
 <div class="topbar">
   <span class="status-dot off" id="dot"></span>
-  <span class="topbar-title">Song Queue Dashboard</span>
+  <span class="topbar-title" data-i18n="dash.title">Song Queue Dashboard</span>
   <span class="topbar-spacer"></span>
-  <span class="topbar-hint">drag songs between columns to move them</span>
-  <span class="cooldown-group" title="Minimum days after a song is requested before the Random Song reward can pick it again — 0 disables the cooldown (max 60 days / ~2 months)">
-    🎲 cooldown
-    <input type="number" class="cooldown-input" id="cooldown-input" min="0" max="60" step="1"
-           onkeydown="if(event.key==='Enter') saveCooldown()" />
-    days
-    <button class="btn" onclick="saveCooldown()">Save</button>
-  </span>
-  <span class="cooldown-group" title="Overlay panel background opacity — 0 is fully transparent, 1 is solid">
-    🎨 opacity
-    <input type="range" class="opacity-slider" id="opacity-input" min="0" max="1" step="0.01"
-           oninput="document.getElementById('opacity-value').textContent = this.value" />
-    <span class="opacity-value" id="opacity-value">0.92</span>
-    <button class="btn" onclick="saveOpacity()">Save</button>
-  </span>
-  <span class="cooldown-group" title="Overlay brightness — 0.5 is darker, 2 is brighter, 1 is normal">
-    🔆 brightness
-    <input type="range" class="opacity-slider" id="brightness-input" min="0.5" max="2" step="0.05"
-           oninput="document.getElementById('brightness-value').textContent = this.value" />
-    <span class="opacity-value" id="brightness-value">1</span>
-    <button class="btn" onclick="saveBrightness()">Save</button>
-  </span>
-  <button class="btn skip" onclick="api('skip')">⏭ Skip</button>
-  <button class="btn danger" onclick="if(confirm('Clear entire queue?')) api('clear')">✕ Clear All</button>
+  <!-- Modes (🎛 Modes tab): one click switches -->
+  <div class="mode-box" id="mode-box" hidden>
+    <button class="mode-box-label" type="button" onclick="showTab('modes')" data-i18n-title="dash.modes.barEdit" data-i18n="dash.modes.barLabel">🎛 Modes</button>
+    <div class="mode-bar" id="mode-bar" role="group" data-i18n-aria-label="dash.modes.bar"></div>
+  </div>
+  <span class="lang-switch" role="group" data-i18n-aria-label="dash.set.language"></span>
+  <button class="chip" id="leihu-chip" onclick="showTab('leihu')" data-i18n-title="dash.leihuChipTitle">
+    🎤 <span id="leihu-state" data-i18n="dash.leihuOffline">Leihu offline</span>
+  </button>
 </div>
 
+<!-- Tabs: a button here and a .tab-page below (TABS in the script) -->
+<nav class="tabs" role="tablist" data-i18n-aria-label="dash.tabs" onkeydown="onTabKey(event)">
+  <button class="tab" role="tab" id="tabbtn-queue" data-tab="queue" aria-controls="tab-queue" onclick="showTab('queue')" data-i18n="dash.tab.queue">🎵 Song Queue</button>
+  <button class="tab" role="tab" id="tabbtn-leihu" data-tab="leihu" aria-controls="tab-leihu" onclick="showTab('leihu')" data-i18n="dash.tab.leihu">🎤 Leihu Singsing</button>
+  <button class="tab" role="tab" id="tabbtn-chat" data-tab="chat" aria-controls="tab-chat" onclick="showTab('chat')"><span data-i18n="dash.tab.chat">💬 Chat</span><span class="tab-count" id="chat-unread" hidden></span></button>
+  <button class="tab" role="tab" id="tabbtn-modes" data-tab="modes" aria-controls="tab-modes" onclick="showTab('modes')" data-i18n="dash.tab.modes">🎛 Modes</button>
+  <!-- The chat beside the other tabs: open / close (placeChat) -->
+  <button class="tab dock-btn" id="dock-btn" type="button" onclick="toggleChatDock()" aria-pressed="false">💬<span class="tab-count" id="dock-unread" hidden></span> <span id="dock-arrow">◂</span></button>
+</nav>
+
+<!-- Node.js lacks security fixes (server/node-check.js). Closing it hides it until the page is opened again. -->
+<div class="node-warn" id="node-warn" role="alert" hidden>
+  <span id="node-warn-text"></span>
+  <button class="btn" onclick="document.getElementById('node-warn').hidden = true" data-i18n="dash.nodeWarnClose">Close</button>
+</div>
+
+<span class="toast" id="toast"></span>
+
+<div class="workspace">
+<div class="tab-area">
+<div class="tab-page" id="tab-leihu" role="tabpanel" aria-labelledby="tabbtn-leihu" hidden>
+  <div class="leihu-page">
+   <!-- Leihu's own screen. Microphone and autoplay are passed on for its practice and recording. -->
+   <div class="leihu-view">
+    <div class="col-header">
+      <span class="col-title purple" data-i18n="dash.leihu.title">Leihu Singsing</span>
+      <button class="link-btn leihu-bulk" id="leihu-bulk-mini" onclick="toggleTabConfig('leihu', true)" hidden></button>
+      <button class="link-btn" id="leihu-obs-sound" onclick="showObsSound()" hidden data-i18n="dash.leihu.obsSound">🔊 Sound for OBS</button>
+      <span class="topbar-spacer"></span>
+      <button class="btn" id="leihu-reload" onclick="reloadLeihu()" hidden data-i18n="dash.leihu.reload">↻ Reload</button>
+      <a class="btn" id="leihu-window" target="_blank" rel="noopener" hidden data-i18n="dash.leihu.newWindow">↗ Open in its own window</a>
+      <button class="btn danger" id="leihu-close" onclick="launchLeihu('stop')" hidden data-i18n="dash.leihu.close">■ Close Leihu</button>
+      <button class="btn tab-config-btn" onclick="toggleTabConfig('leihu')" aria-expanded="false" aria-controls="config-leihu" data-i18n="dash.settings">⚙ Settings</button>
+    </div>
+    <div class="leihu-body">
+     <div class="leihu-placeholder" id="leihu-placeholder">
+       <p id="leihu-placeholder-text"></p>
+       <button class="btn add" id="leihu-start" onclick="launchLeihu('start')" hidden data-i18n="dash.leihu.start">▶ Start Leihu</button>
+     </div>
+     <iframe class="leihu-frame" id="leihu-frame" hidden data-i18n-title="dash.leihu.title"
+             allow="microphone; autoplay; fullscreen; clipboard-write"></iframe>
+    </div>
+   </div>
+  </div>
+  <!-- Leihu settings and the "get your song list ready" steps, over Leihu's screen -->
+  <div class="tab-config" id="config-leihu" hidden>
+      <button class="btn tab-config-close" onclick="toggleTabConfig('leihu', false)" data-i18n-aria-label="dash.closeSettings">✕</button>
+      <section id="settings-leihu">
+        <h3 data-i18n="dash.set.leihuTitle">Leihu Singsing</h3>
+        <p class="setting-hint" id="leihu-detail"></p>
+        <label class="setting">
+          <input type="checkbox" id="leihu-auto" onchange="saveLeihuAuto()" />
+          <span data-i18n="dash.set.autoPrepare">Auto-prepare queued songs</span>
+        </label>
+        <p class="setting-hint" data-i18n="dash.set.autoPrepareHint">Imports queued songs from the sheet's YouTube link and renders their key ahead of time. Uses the GPU during stream.</p>
+        <label class="setting">
+          <input type="checkbox" id="leihu-autostart" onchange="saveLeihuAutoStart()" />
+          <span data-i18n="dash.set.autoStart">Start Leihu with the song queue</span>
+        </label>
+        <p class="setting-hint" data-i18n="dash.set.autoStartHint">Leihu then runs without its own window and shows only in this tab. It closes when the song queue closes.</p>
+      </section>
+      <!-- Leihu's sound on its own in OBS: the dashboard in a separate copy of the browser (stream-window.js) -->
+      <section id="settings-obs-sound">
+        <h3 data-i18n="dash.set.obsSoundTitle">Leihu's sound as its own OBS source</h3>
+        <p class="setting-hint" id="obs-sound-hint"></p>
+        <div class="step-buttons">
+          <button class="btn" id="obs-sound-open" onclick="openStreamWindow()" data-i18n="dash.set.obsSoundOpen">🔊 Open the stream window</button>
+        </div>
+      </section>
+      <section id="settings-ready">
+        <h3 data-i18n="dash.set.readyTitle">Get your song list ready in Leihu</h3>
+        <p class="setting-hint" data-i18n="dash.set.readyIntro">Leihu Singsing makes a backing track and timed lyrics from each song's YouTube video. Do these two steps once (and again after adding songs to the sheet), so requested songs are ready to sing right away.</p>
+        <div class="step">
+          <div class="step-title" data-i18n="dash.set.step1Title">① Find a YouTube link for each song</div>
+          <div class="step-status" id="step1-status" hidden></div>
+          <p class="setting-hint" data-i18n="dash.set.step1Hint">On that page press “Search songs without a link”: it finds the right video for each song that has no link yet, lets you check the picks, and saves them in the sheet's YTLink column. Songs that already have a link are left as they are.</p>
+          <div class="step-buttons">
+            <a class="btn" style="text-decoration:none" href="/dashboard/links.html" data-i18n="dash.set.links">🔗 Find YouTube links</a>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-title" data-i18n="dash.set.step2Title">② Prepare the songs in Leihu</div>
+          <div class="step-status" id="step2-status" hidden></div>
+          <p class="setting-hint" data-i18n="dash.set.bulkHint">Downloads each linked song Leihu doesn't have yet and makes its backing track and lyrics. Songs without a link are skipped, so do step ① first. It takes a few minutes per song and uses the GPU, so it's best started when you're not streaming.</p>
+          <div class="step-buttons">
+            <button class="btn" id="bulk-start" onclick="bulkAction('start')" data-i18n="dash.set.bulkStart">⬇ Prepare songs in Leihu</button>
+            <button class="btn" id="bulk-stop" onclick="bulkAction('stop')" hidden data-i18n="dash.set.bulkStop">■ Stop</button>
+          </div>
+          <p class="setting-hint" id="bulk-progress" hidden></p>
+          <p class="setting-hint" data-i18n="dash.set.bulkSafe">Safe to leave running: one song at a time and only while Leihu is idle, so requested songs go first. If YouTube starts limiting downloads it stops by itself; press the button again a few hours later to continue.</p>
+        </div>
+      </section>
+  </div>
+</div>
+
+<!-- Chat: live chat and earlier days' logs (server/chat-log.js), filtered here -->
+<div class="tab-page" id="tab-chat" role="tabpanel" aria-labelledby="tabbtn-chat" hidden>
+  <div class="chat-page">
+    <div class="chat-view" id="chat-view">
+      <div class="chat-tools">
+        <input type="search" id="chat-search" oninput="onChatSearch()" data-i18n-placeholder="dash.chat.search" placeholder="Search messages or names…" />
+        <select class="lang-select" id="chat-day" onchange="onChatDay()" data-i18n-aria-label="dash.chat.day"></select>
+        <label class="setting">
+          <input type="checkbox" id="chat-hide-bots" onchange="onChatHideBots()" />
+          <span data-i18n="dash.chat.hideBots">Hide bots</span>
+        </label>
+        <span class="chat-count" id="chat-count"></span>
+        <button class="btn" type="button" id="chat-mod-btn" onclick="openModMenu(null, this)" data-i18n="dash.chat.mod.open">🛡 Moderate</button>
+        <a class="btn" id="chat-popout" target="_blank" rel="noopener" hidden data-i18n="dash.chat.popout">↗ Twitch chat</a>
+        <button class="btn tab-config-btn" onclick="toggleTabConfig('chat')" aria-expanded="false" aria-controls="config-chat" data-i18n="dash.settings">⚙ Settings</button>
+      </div>
+      <div class="chat-filters" id="chat-filters" role="group" data-i18n-aria-label="dash.chat.filters"></div>
+      <div class="chat-banners" id="chat-banners"></div>
+      <div class="chat-list" id="chat-list" onscroll="onChatScroll()"></div>
+      <button class="chat-more" id="chat-more" onclick="chatToBottom()" hidden></button>
+      <form class="chat-compose" id="chat-compose" onsubmit="sendChatMessage(event)" hidden>
+        <div class="chat-replying" id="chat-replying" hidden>
+          <span id="chat-replying-text"></span>
+          <button type="button" class="chat-act" onclick="setChatReply(null)" data-i18n-aria-label="dash.chat.cancelReply" aria-label="Cancel reply">✕</button>
+        </div>
+        <div class="chat-compose-row">
+          <input type="text" id="chat-input" autocomplete="off" oninput="paintChatLeft()" onkeydown="if (event.key === 'Escape') setChatReply(null)"
+            data-i18n-placeholder="dash.chat.sendPlaceholder" placeholder="Message the chat…" />
+          <span class="chat-left" id="chat-left" hidden></span>
+          <button class="btn" type="submit" id="chat-send" data-i18n="dash.chat.send">Send</button>
+        </div>
+        <div class="chat-compose-note" id="chat-compose-note" hidden></div>
+      </form>
+    </div>
+  </div>
+  <!-- Chat settings -->
+  <div class="tab-config" id="config-chat" hidden>
+    <button class="btn tab-config-close" onclick="toggleTabConfig('chat', false)" data-i18n-aria-label="dash.closeSettings">✕</button>
+    <section>
+      <h3 data-i18n="dash.chat.notesTitle">Song notes on the stream overlay</h3>
+      <label class="setting">
+        <input type="checkbox" id="chat-song-notes" checked onchange="saveSongNotes()" />
+        <span data-i18n="dash.chat.songNotes">📺 Song notes on overlay</span>
+      </label>
+      <p class="setting-hint" data-i18n="dash.chat.songNotesHint">When chat names a song from the sheet, the song overlay briefly shows when it was last sung.</p>
+    </section>
+    <!-- !endingtk (server/ending-credits.js) -->
+    <section>
+      <h3 data-i18n="dash.chat.creditsTitle">Ending roll (!endingtk)</h3>
+      <p class="setting-hint" data-i18n="dash.chat.creditsHint"></p>
+      <p class="setting-hint" id="credits-now"></p>
+      <p class="setting-hint" id="credits-follows"></p>
+    </section>
+    <!-- Channel-point rewards: which the app manages (✓ / ↩ in the chat), taking over ones made on Twitch (server/redemptions.js) -->
+    <section>
+      <h3 data-i18n="dash.chat.rewardsTitle">Channel-point rewards</h3>
+      <p class="setting-hint" data-i18n="dash.chat.rewardsHint"></p>
+      <div class="reward-rows" id="reward-rows"></div>
+    </section>
+  </div>
+</div>
+
+<div class="tab-page" id="tab-modes" role="tabpanel" aria-labelledby="tabbtn-modes" hidden>
+  <div class="modes-page">
+    <section class="modes-box" id="modes-connection"></section>
+    <div class="modes-head">
+      <span class="col-title purple" data-i18n="dash.modes.title">Modes</span>
+      <button class="btn" onclick="loadModes(true)" data-i18n="dash.modes.refresh">↻ Read again</button>
+      <button class="btn add" onclick="newMode()" data-i18n="dash.modes.new">＋ New mode from what's on now</button>
+    </div>
+    <p class="setting-hint" data-i18n="dash.modes.intro"></p>
+    <div class="modes-row" id="modes-presets" hidden></div>
+    <div class="modes-list" id="modes-list"></div>
+  </div>
+</div>
+
+<div class="tab-page" id="tab-queue" role="tabpanel" aria-labelledby="tabbtn-queue">
 <div class="request-bar">
-  <span class="request-label">+ Manual</span>
+  <span class="request-label" data-i18n="dash.manual.label">+ Manual</span>
   <div class="request-input-wrap">
-    <input type="text" id="song-input" placeholder="song title..." autocomplete="off"
+    <input type="text" id="song-input" placeholder="song title…" autocomplete="off" data-i18n-placeholder="dash.manual.songPlaceholder"
            oninput="onSongInput()" onkeydown="onSongKeydown(event)" onfocus="openSuggest()" />
     <div class="suggest-list" id="suggest-list"></div>
   </div>
-  <input class="requester-input" type="text" id="requester-input" placeholder="requester ID"
+  <input class="requester-input" type="text" id="requester-input" placeholder="requester ID" data-i18n-placeholder="dash.manual.requesterPlaceholder"
          onkeydown="if(event.key==='Enter') submitRequest()" />
-  <button class="btn add" id="add-btn" onclick="submitRequest()">+ Add to Queue</button>
-  <span class="toast" id="toast"></span>
+  <button class="btn add" id="add-btn" onclick="submitRequest()" data-i18n="dash.manual.add">+ Add to Queue</button>
+  <button class="btn tab-config-btn" onclick="toggleTabConfig('queue')" aria-expanded="false" aria-controls="config-queue" data-i18n="dash.settings">⚙ Settings</button>
 </div>
 
-<div class="columns">
+<!-- Song Queue settings. They save on their own: the number box on Enter or when leaving it, sliders when let go -->
+<div class="tab-config" id="config-queue" hidden>
+  <button class="btn tab-config-close" onclick="toggleTabConfig('queue', false)" data-i18n-aria-label="dash.closeSettings">✕</button>
+  <section>
+    <h3 data-i18n="dash.set.randomTitle">Random song reward</h3>
+    <label class="setting">
+      <span class="setting-name" data-i18n="dash.set.cooldown">Cooldown</span>
+      <input type="number" class="cooldown-input" id="cooldown-input" min="0" max="60" step="1" onchange="saveCooldown()" />
+      <span data-i18n="dash.set.days">days</span>
+    </label>
+    <p class="setting-hint" data-i18n="dash.set.cooldownHint">Days after a song is requested before the random reward can pick it again. 0 = no cooldown, at most 60.</p>
+  </section>
+  <section>
+    <h3 data-i18n="dash.set.overlayTitle">Overlay look</h3>
+    <label class="setting">
+      <span class="setting-name" data-i18n="dash.set.opacity">Panel opacity</span>
+      <input type="range" class="opacity-slider" id="opacity-input" min="0" max="1" step="0.01"
+             oninput="document.getElementById('opacity-value').textContent = this.value" onchange="saveOpacity()" />
+      <span class="opacity-value" id="opacity-value">0.92</span>
+    </label>
+    <label class="setting">
+      <span class="setting-name" data-i18n="dash.set.brightness">Brightness</span>
+      <input type="range" class="opacity-slider" id="brightness-input" min="0.5" max="2" step="0.05"
+             oninput="document.getElementById('brightness-value').textContent = this.value" onchange="saveBrightness()" />
+      <span class="opacity-value" id="brightness-value">1</span>
+    </label>
+    <p class="setting-hint" data-i18n="dash.set.overlayHint">Opacity: 0 = see-through, 1 = solid. Brightness: 1 = normal.</p>
+    <button class="link-btn" onclick="resetOverlay()" data-i18n="dash.set.reset">Reset to default (0.92 / 1)</button>
+    <label class="setting">
+      <span class="setting-name" data-i18n="dash.set.overlayLang">Overlay language</span>
+      <select class="lang-select" id="overlay-lang" onchange="saveOverlayLanguage()">
+        <option value="en">English</option>
+        <option value="zh-TW">繁體中文</option>
+      </select>
+    </label>
+    <p class="setting-hint" data-i18n="dash.set.overlayLangHint">Language viewers see on the song overlay and clip player in OBS.</p>
+  </section>
+  <section>
+    <h3 data-i18n="dash.set.clearTitle">Clear the queue</h3>
+    <p class="setting-hint" data-i18n="dash.set.clearHint">Removes Now Playing and every song in Up Next, e.g. to start a new stream fresh. Played and Pending Review stay. Nothing is recorded as sung.</p>
+    <div class="step-buttons">
+      <button class="btn danger" onclick="if(confirm(I18N.t('dash.clearConfirm'))) api('clear')" data-i18n="dash.clearAll">✕ Clear All</button>
+    </div>
+  </section>
+  <!-- This copy's version (package.json, /api/version) and what each release changed -->
+  <section>
+    <h3 data-i18n="dash.set.versionTitle">Version</h3>
+    <p class="setting-hint"><span id="app-version">…</span> ·
+      <a href="https://github.com/sheng7337/twitch-song-request-system/releases" target="_blank" rel="noopener" data-i18n="dash.set.releases">What's new in each release</a></p>
+  </section>
+</div>
+
+<div class="board">
+ <div class="stack">
   <!-- Now Playing -->
-  <div class="col-panel">
+  <div class="col-panel np-panel">
     <div class="col-header amber">
-      <span class="col-title amber">Now Playing</span>
+      <span class="col-title amber" data-i18n="dash.panel.nowPlaying">Now Playing</span>
       <span class="col-badge amber" id="np-badge">—</span>
     </div>
     <div class="drop-zone" id="zone-nowPlaying" data-zone="nowPlaying"
          ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,0)">
-      <p class="np-empty" id="np-empty">no song loaded</p>
+      <p class="np-empty" id="np-empty" data-i18n="dash.empty.nowPlaying">no song loaded</p>
       <div id="np-card-container"></div>
     </div>
   </div>
 
   <!-- Up Next -->
-  <div class="col-panel">
+  <div class="col-panel grow">
     <div class="col-header">
-      <span class="col-title purple">Up Next</span>
+      <span class="col-title purple" data-i18n="dash.panel.upNext">Up Next</span>
       <span class="col-badge purple" id="queue-badge">0</span>
     </div>
     <div class="drop-zone" id="zone-queue" data-zone="queue"
          ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, getDropIndex(event, 'zone-queue'))">
-      <p class="empty-state" id="queue-empty" style="display:none">no requests yet...</p>
+      <p class="empty-state" id="queue-empty" style="display:none" data-i18n-html="dash.empty.queue">no requests yet<br>drag songs between panels to move them</p>
       <div id="queue-list"></div>
     </div>
   </div>
+ </div>
 
-  <!-- Played -->
-  <div class="col-panel">
-    <div class="col-header green">
-      <span class="col-title green">Played</span>
-      <span class="col-badge green" id="played-badge">0</span>
-    </div>
-    <div class="drop-zone" id="zone-played" data-zone="played"
-         ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, getDropIndex(event, 'zone-played'))">
-      <p class="empty-state" id="played-empty" style="display:none">nothing played yet...</p>
-      <div id="played-list"></div>
-    </div>
-  </div>
-
+ <div class="stack">
   <!-- Pending -->
-  <div class="col-panel">
+  <div class="col-panel pending-panel">
     <div class="col-header orange">
-      <span class="col-title orange">Pending Review</span>
+      <span class="col-title orange" data-i18n="dash.panel.pending">Pending Review</span>
       <span class="col-badge orange" id="pending-badge">0</span>
     </div>
     <div class="drop-zone" id="zone-pending" data-zone="pending" style="overflow-y:auto;"
          ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,0)">
-      <p class="empty-state" id="pending-empty">no pending requests</p>
+      <p class="empty-state" id="pending-empty" data-i18n="dash.empty.pending">no pending requests</p>
       <div id="pending-list"></div>
     </div>
   </div>
 
+  <!-- Played -->
+  <div class="col-panel grow">
+    <div class="col-header green">
+      <span class="col-title green" data-i18n="dash.panel.played">Played</span>
+      <span class="col-badge green" id="played-badge">0</span>
+    </div>
+    <div class="drop-zone" id="zone-played" data-zone="played"
+         ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, getDropIndex(event, 'zone-played'))">
+      <p class="empty-state" id="played-empty" style="display:none" data-i18n="dash.empty.played">nothing played yet…</p>
+      <div id="played-list"></div>
+    </div>
+  </div>
+ </div>
 </div>
+</div>
+</div><!-- .tab-area -->
+
+<!-- The chat beside the other tabs: #chat-view moves in here (placeChat) -->
+<aside class="chat-dock" id="chat-dock" hidden>
+  <div class="chat-dock-resize" id="chat-dock-resize" data-i18n-title="dash.dock.resize"></div>
+  <div class="chat-dock-body" id="chat-dock-body">
+    <div class="chat-dock-filter" id="chat-dock-filter" hidden>
+      <span></span><button type="button" onclick="clearDockFilter()" data-i18n="dash.dock.showAll">Show all ✕</button>
+    </div>
+  </div>
+</aside>
+</div><!-- .workspace -->
 
 <script>
+const t = I18N.t, tHtml = I18N.tHtml;
 const WS_URL = `ws://${location.host}`;
 let ws, reconnectTimer, state = { nowPlaying: null, queue: [], playedSongs: [] };
 
@@ -532,9 +1201,26 @@ let dragging = { zone: null, index: null, el: null };
 // ── WebSocket ──────────────────────────────────────────────────────────────────
 function connect() {
   ws = new WebSocket(WS_URL);
-  ws.onopen  = () => { document.getElementById('dot').classList.remove('off'); clearTimeout(reconnectTimer); };
+  ws.onopen  = () => {
+    document.getElementById('dot').classList.remove('off'); clearTimeout(reconnectTimer);
+    ws.send(JSON.stringify({ type: 'chat-subscribe' }));
+    loadChat();   // fills in chat missed while disconnected
+    loadModes(currentTab === 'modes');
+  };
   ws.onclose = () => { document.getElementById('dot').classList.add('off'); reconnectTimer = setTimeout(connect, 3000); };
-  ws.onmessage = (e) => { try { const m = JSON.parse(e.data); if (m.type === 'state') { state = m; render(); } } catch(_){} };
+  ws.onmessage = (e) => {
+    try {
+      const m = JSON.parse(e.data);
+      if (m.type === 'state') { state = m; render(); pollLeihu(); }
+      else if (m.type === 'chat') onChatRecord(m.record);
+      else if (m.type === 'chat-delete') onChatDelete(m);
+      else if (m.type === 'chat-redeem') onChatRedeem(m);
+      else if (m.type === 'chat-first') onChatFirst(m);
+      else if (m.type === 'chat-announced') applyAnnounced(m.ids, m.done);
+      else if (m.type === 'chat-session') loadChatSession().then(() => { linkSession(); rerenderChat(); });
+      else if (m.type === 'modes') onModesMessage(m);
+    } catch(_){}
+  };
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────────
@@ -555,19 +1241,24 @@ function render() {
            ondragend="onDragEnd(event)">
         <div class="drag-handle"><span></span><span></span><span></span></div>
         <div class="song-info">
-          <div class="now-playing-label">NOW PLAYING</div>
           <div class="song-line1">
             <span class="song-title">${esc(nowPlaying.title)}</span>
             <span class="song-req">@${esc(nowPlaying.requester)}</span>
           </div>
-          ${nowPlaying.artist ? `<div class="song-artist" style="font-size:13px;color:var(--text-dim);margin-top:2px;">${esc(nowPlaying.artist)}</div>` : ''}
-          ${historyHtml(nowPlaying.title)}
+          <div class="song-meta">
+            ${nowPlaying.artist ? `<span class="song-artist">${esc(nowPlaying.artist)}</span>` : ''}
+            ${historyHtml(nowPlaying.title)}
+          </div>
+          <div class="song-meta">
+            <span class="bt-badge" data-zone="nowPlaying" data-index="0"></span>
+            <button class="sing-btn" hidden onclick="singInLeihu()" title="${esc(t('dash.card.singTitle'))}">${esc(t('dash.card.sing'))}</button>
+          </div>
         </div>
         ${nowPlaying.key != null && nowPlaying.key !== '' ? `<span class="key-badge">${nowPlaying.key >= 0 ? '+' : ''}${esc(nowPlaying.key)}</span>` : ''}
-        <button class="copy-btn" onclick="copyTitle('${esc(nowPlaying.title)}')" title="Copy title">⧉</button>
-        ${nowPlaying.isRandom ? `<button class="redraw-btn" onclick="callRedraw('nowPlaying',0)" title="Redraw random song">🎲</button>` : ''}
-        <button class="finish-btn" onclick="api('skip')" title="Mark as finished and move to Played">✓ Finished</button>
-        <button class="del-btn" onclick="deleteSong('nowPlaying',0)" title="Remove">✕</button>
+        <button class="copy-btn" onclick="copyTitle('${esc(nowPlaying.title)}')" title="${esc(t('dash.card.copy'))}">⧉</button>
+        ${nowPlaying.isRandom ? `<button class="redraw-btn" onclick="callRedraw('nowPlaying',0)" title="${esc(t('dash.card.redraw'))}">🎲</button>` : ''}
+        <button class="finish-btn" onclick="api('skip')" title="${esc(t('dash.card.finishedTitle'))}">${esc(t('dash.card.finished'))}</button>
+        <button class="del-btn" onclick="deleteSong('nowPlaying',0)" title="${esc(t('dash.card.remove'))}">✕</button>
       </div>`;
   } else {
     npEmpty.style.display = 'block';
@@ -588,15 +1279,18 @@ function render() {
       <div class="song-info">
         <div class="song-line1">
           <span class="song-title">${esc(item.title)}</span>
-          <span class="song-req" style="font-size:11px;color:var(--blue);margin-left:auto;">@${esc(item.requester)}</span>
+          <span class="song-req">@${esc(item.requester)}</span>
         </div>
-        ${item.artist ? `<div class="song-artist" style="font-size:11px;color:var(--text-dim);margin-top:2px;">${esc(item.artist)}</div>` : ''}
-        ${historyHtml(item.title)}
+        <div class="song-meta">
+          ${item.artist ? `<span class="song-artist">${esc(item.artist)}</span>` : ''}
+          ${historyHtml(item.title)}
+          <span class="bt-badge" data-zone="queue" data-index="${i}"></span>
+        </div>
       </div>
       ${item.key != null && item.key !== '' ? `<span class="key-badge">${item.key >= 0 ? '+' : ''}${esc(item.key)}</span>` : ''}
-      <button class="copy-btn" onclick="copyTitle('${esc(item.title)}')" title="Copy title">⧉</button>
-      ${item.isRandom ? `<button class="redraw-btn" onclick="callRedraw('queue',${i})" title="Redraw random song">🎲</button>` : ''}
-      <button class="del-btn" onclick="deleteSong('queue',${i})" title="Remove">✕</button>
+      <button class="copy-btn" onclick="copyTitle('${esc(item.title)}')" title="${esc(t('dash.card.copy'))}">⧉</button>
+      ${item.isRandom ? `<button class="redraw-btn" onclick="callRedraw('queue',${i})" title="${esc(t('dash.card.redraw'))}">🎲</button>` : ''}
+      <button class="del-btn" onclick="deleteSong('queue',${i})" title="${esc(t('dash.card.remove'))}">✕</button>
     </div>`).join('');
 
   // Played
@@ -612,14 +1306,16 @@ function render() {
       <div class="song-info">
         <div class="song-line1">
           <span class="song-title">${esc(item.title)}</span>
-          <span class="song-req" style="font-size:11px;color:var(--blue);margin-left:auto;">@${esc(item.requester)}</span>
+          <span class="song-req">@${esc(item.requester)}</span>
         </div>
-        ${item.artist ? `<div class="song-artist" style="font-size:11px;color:var(--text-dim);margin-top:2px;">${esc(item.artist)}</div>` : ''}
-        ${historyHtml(item.title)}
+        <div class="song-meta">
+          ${item.artist ? `<span class="song-artist">${esc(item.artist)}</span>` : ''}
+          ${historyHtml(item.title)}
+        </div>
       </div>
       ${item.key != null && item.key !== '' ? `<span class="key-badge">${item.key >= 0 ? '+' : ''}${esc(item.key)}</span>` : ''}
-      <button class="copy-btn" onclick="copyTitle('${esc(item.title)}')" title="Copy title">⧉</button>
-      <button class="del-btn" onclick="deleteSong('played',${i})" title="Remove">✕</button>
+      <button class="copy-btn" onclick="copyTitle('${esc(item.title)}')" title="${esc(t('dash.card.copy'))}">⧉</button>
+      <button class="del-btn" onclick="deleteSong('played',${i})" title="${esc(t('dash.card.remove'))}">✕</button>
     </div>`).join('');
 
   // Pending
@@ -629,7 +1325,7 @@ function render() {
   document.getElementById('pending-list').innerHTML = pendingList.map((item, i) => {
     const isDragged = !item.originalRequest;  // dragged manually — no viewer input
     const hasMatch = item.confidence !== null;
-    const confLabel = hasMatch ? `${item.confidence}% match` : 'no match';
+    const confLabel = hasMatch ? t('dash.pending.match', { n: item.confidence }) : t('dash.pending.noMatch');
     const confClass = hasMatch ? '' : 'no-match';
 
     if (!isDragged && item.candidates?.length > 1) {
@@ -646,15 +1342,15 @@ function render() {
       return `
       <div class="pending-card" id="pending-card-${i}">
         <div class="pending-top">
-          <span class="pending-original" title="Viewer typed: ${esc(item.originalRequest)}">
+          <span class="pending-original" title="${tHtml('dash.pending.viewerTyped', { text: item.originalRequest })}">
             ❝ ${esc(item.originalRequest)}
           </span>
-          <span class="pending-confidence">${item.candidates.length} matches</span>
+          <span class="pending-confidence">${esc(t('dash.pending.matches', { n: item.candidates.length }))}</span>
         </div>
         <div class="pending-req">@${esc(item.requester)}</div>
         <div class="pending-candidates">${candidatesHtml}</div>
         <div class="pending-actions">
-          <button class="pending-del" style="width:auto;padding:4px 10px;" onclick="deleteSong('pending',${i})" title="Dismiss">✕ Dismiss</button>
+          <button class="pending-del" style="width:auto;padding:4px 10px;" onclick="deleteSong('pending',${i})" title="${esc(t('dash.pending.dismissTitle'))}">${esc(t('dash.pending.dismiss'))}</button>
         </div>
       </div>`;
     }
@@ -662,24 +1358,29 @@ function render() {
     return `
     <div class="pending-card" id="pending-card-${i}">
       ${isDragged
-        ? `<div class="pending-top"><span class="pending-original" style="color:var(--text-muted);font-size:10px;">✎ dragged for editing</span></div>`
+        ? `<div class="pending-top"><span class="pending-original" style="color:var(--text-muted);font-size:12px;">${esc(t('dash.pending.dragged'))}</span></div>`
         : `<div class="pending-top">
-             <span class="pending-original" title="Viewer typed: ${esc(item.originalRequest)}">❝ ${esc(item.originalRequest)}</span>
+             <span class="pending-original" title="${tHtml('dash.pending.viewerTyped', { text: item.originalRequest })}">❝ ${esc(item.originalRequest)}</span>
              <span class="pending-confidence ${confClass}">${confLabel}</span>
            </div>`}
       <div class="pending-req">@${esc(item.requester)}</div>
       <div class="pending-fields">
-        <input class="pending-field" id="pending-title-${i}" placeholder="song title"
+        <input class="pending-field" id="pending-title-${i}" placeholder="${esc(t('dash.pending.titlePlaceholder'))}"
                value="${esc(item.title)}" />
-        <input class="pending-field" id="pending-artist-${i}" placeholder="artist (optional)"
+        <input class="pending-field" id="pending-artist-${i}" placeholder="${esc(t('dash.pending.artistPlaceholder'))}"
                value="${esc(item.artist)}" />
       </div>
+      ${foundHtml(item, i)}
       <div class="pending-actions">
-        <button class="accept-btn" onclick="acceptPending(${i})">✓ Accept → Queue</button>
-        <button class="pending-del" onclick="deleteSong('pending',${i})" title="Dismiss">✕</button>
+        <button class="accept-btn" onclick="acceptPending(${i})">${esc(t('dash.pending.accept'))}</button>
+        <button class="find-btn" onclick="findPending(${i})" title="${esc(t('dash.pending.findTitle'))}"
+                ${item.found && item.found.state === 'searching' ? 'disabled' : ''}>${esc(t('dash.pending.find'))}</button>
+        <button class="pending-del" onclick="deleteSong('pending',${i})" title="${esc(t('dash.pending.dismissTitle'))}">✕</button>
       </div>
     </div>`;
   }).join('');
+
+  paintBadges();
 }
 
 // ── Drag & Drop ────────────────────────────────────────────────────────────────
@@ -775,12 +1476,122 @@ function deleteSong(zone, index) {
 function acceptPending(index) {
   const title = document.getElementById(`pending-title-${index}`)?.value.trim();
   const artist = document.getElementById(`pending-artist-${index}`)?.value.trim();
-  if (!title) { showToast('enter a song title first', true); return; }
+  if (!title) { showToast(t('dash.toast.enterTitleFirst'), true); return; }
   api('accept-pending', { index, title, artist });
 }
 
 function pickCandidate(pendingIndex, candidateIndex) {
   api('accept-pending', { index: pendingIndex, candidateIndex });
+}
+
+// ── 🔍 Find: songs not on the sheet ────────────────────────────────────────────
+// The video picked (or link pasted) on each pending card, by the request's addedAt,
+// so a re-render (any queue change) keeps the streamer's choice.
+const foundPicks = {};
+
+function fmtDuration(s) {
+  if (!s) return '';
+  s = Math.round(s);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function foundHtml(item, i) {
+  const f = item.found;
+  if (!f) return '';
+  if (f.state === 'searching') return `<div class="found"><span class="found-note">${esc(t('dash.pending.searching'))}</span></div>`;
+  if (f.state === 'failed') return `<div class="found"><span class="found-note error">${esc(t('dash.toast.findFailed', { message: I18N.server(f) }))}</span></div>`;
+  const pick = foundPicks[item.addedAt] || (foundPicks[item.addedAt] = { vid: f.status !== 'none' && f.candidates[0] ? f.candidates[0].id : '', link: '' });
+  const videos = (f.candidates || []).map(c => {
+    const meta = [c.channel, fmtDuration(c.duration), c.tier ? t('dash.pending.tier.' + c.tier) : '', ...(c.reasons || [])].filter(Boolean).join(' · ');
+    return `
+      <label class="found-video">
+        <input type="radio" name="found-${i}" value="${esc(c.id)}" ${pick.vid === c.id ? 'checked' : ''}
+               onchange="foundPicks[${Number(item.addedAt)}].vid = this.value" />
+        <span class="found-video-info">
+          <a href="https://www.youtube.com/watch?v=${encodeURIComponent(c.id)}" target="_blank" rel="noopener" title="${esc(c.title)}">${esc(c.title)}</a>
+          <span class="found-video-meta">${esc(meta)}</span>
+        </span>
+      </label>`;
+  }).join('');
+  const tab = f.practiceTab;
+  return `
+    <div class="found">
+      <span class="found-status ${f.status === 'confident' ? 'confident' : ''}">${esc(t('dash.pending.status.' + f.status))}</span>
+      ${videos}
+      <input class="pending-field" id="found-link-${i}" placeholder="${esc(t('dash.pending.pasteLink'))}" value="${esc(pick.link)}"
+             oninput="foundPicks[${Number(item.addedAt)}].link = this.value.trim()" />
+      <div class="found-actions">
+        <button class="accept-btn" onclick="queueFound(${i})" title="${esc(t('dash.pending.queuePrepareTitle'))}">${esc(t('dash.pending.queuePrepare'))}</button>
+        ${tab ? `<button class="add-sheet-btn" onclick="addFoundToSheet(${i})" ${item.addedTo ? 'disabled' : ''}
+                  title="${esc(t('dash.pending.addToTitle', { tab }))}">${esc(t(item.addedTo ? 'dash.pending.addedTo' : 'dash.pending.addTo', { tab }))}</button>` : ''}
+      </div>
+    </div>`;
+}
+
+// What the card holds now: the request and its (maybe edited) title + artist fields
+function pendingFields(i) {
+  const item = (state.pending || [])[i];
+  const title = document.getElementById(`pending-title-${i}`)?.value.trim() || '';
+  const artist = document.getElementById(`pending-artist-${i}`)?.value.trim() || '';
+  return { item, title, artist };
+}
+
+async function postJson(endpoint, body) {
+  const res = await fetch(`/api/${endpoint}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(I18N.server(data, 'dash.toast.requestFailed'));
+  return data;
+}
+
+// Searches for the card's title + artist when the streamer edited them, else what the viewer typed
+async function findPending(i) {
+  const { item, title, artist } = pendingFields(i);
+  if (!item) return;
+  const edited = title && (title !== (item.title || '') || artist !== (item.artist || ''));
+  const text = edited || !item.originalRequest ? `${title} ${artist}`.trim() : item.originalRequest;
+  if (!text) { showToast(t('dash.toast.enterTitleFirst'), true); return; }
+  delete foundPicks[item.addedAt];
+  try {
+    await postJson('pending/identify', { index: i, addedAt: item.addedAt, text });
+  } catch (err) {
+    showToast(t('dash.toast.findFailed', { message: err.message }), true);
+  }
+}
+
+function foundVideo(item) {
+  const pick = foundPicks[item.addedAt] || {};
+  return pick.link || pick.vid || '';
+}
+
+async function queueFound(i) {
+  const { item, title, artist } = pendingFields(i);
+  if (!item) return;
+  if (!title) { showToast(t('dash.toast.enterTitleFirst'), true); return; }
+  const videoId = foundVideo(item);
+  if (!videoId) { showToast(t('dash.toast.pickVideo'), true); return; }
+  try {
+    const r = await postJson('pending/queue-found', { index: i, addedAt: item.addedAt, title, artist, videoId });
+    delete foundPicks[item.addedAt];
+    if (r.leihu) showToast(t('dash.toast.queuedPreparing', { title }));
+    else showToast(t('dash.toast.queuedNoLeihu', { title, message: I18N.server(r) }), true);
+    pollLeihu();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function addFoundToSheet(i) {
+  const { item, title, artist } = pendingFields(i);
+  if (!item) return;
+  if (!title) { showToast(t('dash.toast.enterTitleFirst'), true); return; }
+  try {
+    const r = await postJson('pending/add-to-sheet', { index: i, addedAt: item.addedAt, title, artist, videoId: foundVideo(item) });
+    showToast(t(r.added ? 'dash.toast.addedToTab' : 'dash.toast.alreadyInTab', { tab: r.tab, title }));
+  } catch (err) {
+    showToast(err.message, true);
+  }
 }
 
 // ── Manual Request ─────────────────────────────────────────────────────────────
@@ -800,25 +1611,96 @@ async function loadHistory() {
   } catch(_) {}
 }
 
+// This copy's version, in the Song Queue ⚙ and on the title's hover
+async function loadVersion() {
+  try {
+    const { version } = await (await fetch('/api/version')).json();
+    document.getElementById('app-version').textContent = version;
+    document.querySelector('.topbar-title').title = version;
+  } catch(_) {}
+}
+
+let nodeStatus = null;
+async function loadNodeStatus() {
+  try {
+    nodeStatus = await (await fetch('/api/node-status')).json();
+    paintNodeWarning();
+  } catch(_) {}
+}
+function paintNodeWarning() {
+  if (!nodeStatus || !nodeStatus.outdated) return;
+  document.getElementById('node-warn-text').innerHTML = tHtml('dash.nodeWarn', nodeStatus);
+  document.getElementById('node-warn').hidden = false;
+}
+
 const COOLDOWN_MAX_DAYS = 60; // ~2 months
+let cooldownDays = 7;          // random cooldown, also "sung recently" for songs named in chat
 
 async function loadSettings() {
   try {
     const res = await fetch('/api/settings');
     const settings = await res.json();
     document.getElementById('cooldown-input').value = settings.randomCooldownDays;
+    cooldownDays = settings.randomCooldownDays;
+    document.getElementById('chat-song-notes').checked = settings.songNotes !== false;
     document.getElementById('opacity-input').value = settings.panelBgAlpha;
     document.getElementById('opacity-value').textContent = settings.panelBgAlpha;
     document.getElementById('brightness-input').value = settings.textBrightness;
     document.getElementById('brightness-value').textContent = settings.textBrightness;
+    document.getElementById('leihu-auto').checked = settings.leihuAutoPrepare;
+  document.getElementById('leihu-autostart').checked = settings.leihuAutoStart;
+    document.getElementById('overlay-lang').value = settings.overlayLanguage || 'en';
   } catch(_) {}
+}
+
+// Each tab's settings panel (#config-<tab>), from ⚙ at the right end of the tab's top row.
+// `open` undefined toggles. ✕, Esc and switching tabs close it.
+function toggleTabConfig(tab, open) {
+  const panel = document.getElementById('config-' + tab);
+  if (!panel) return;   // a tab without settings
+  panel.hidden = open === undefined ? !panel.hidden : !open;
+  if (tab === 'chat' && !panel.hidden) { loadCredits(); loadRewards(); }
+  const btn = document.querySelector(`.tab-config-btn[aria-controls="config-${tab}"]`);
+  if (!btn) return;
+  btn.setAttribute('aria-expanded', String(!panel.hidden));
+  // Opens just under the tab's top row, so its ⚙ stays in view
+  if (!panel.hidden) panel.style.top = `${Math.max(0, btn.getBoundingClientRect().bottom - panel.parentElement.getBoundingClientRect().top + 8)}px`;
+}
+
+function closeTabConfigs() {
+  for (const tab of TABS) toggleTabConfig(tab, false);
+}
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTabConfigs(); });
+
+function resetOverlay() {
+  document.getElementById('opacity-input').value = 0.92;
+  document.getElementById('opacity-value').textContent = '0.92';
+  document.getElementById('brightness-input').value = 1;
+  document.getElementById('brightness-value').textContent = '1';
+  saveOpacity();
+  saveBrightness();
+}
+
+async function saveOverlayLanguage() {
+  const sel = document.getElementById('overlay-lang');
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ overlayLanguage: sel.value }),
+    });
+    if (!res.ok) throw new Error('save failed');
+    showToast(t('dash.toast.overlayLangSet', { name: sel.options[sel.selectedIndex].text }));
+  } catch(_) {
+    showToast(t('dash.toast.overlayLangFailed'), true);
+  }
 }
 
 async function saveCooldown() {
   const input = document.getElementById('cooldown-input');
   const days = Number(input.value);
   if (!Number.isFinite(days) || days < 0 || days > COOLDOWN_MAX_DAYS) {
-    showToast(`cooldown must be between 0 and ${COOLDOWN_MAX_DAYS} days`, true);
+    showToast(t('dash.toast.cooldownRange', { max: COOLDOWN_MAX_DAYS }), true);
     return;
   }
   try {
@@ -828,9 +1710,11 @@ async function saveCooldown() {
       body: JSON.stringify({ randomCooldownDays: days }),
     });
     if (!res.ok) throw new Error('save failed');
-    showToast(days > 0 ? `random cooldown set to ${days} day${days === 1 ? '' : 's'}` : 'random cooldown disabled');
+    cooldownDays = days;
+    renderChat();
+    showToast(days > 0 ? t('dash.toast.cooldownSet', { days }) : t('dash.toast.cooldownOff'));
   } catch(_) {
-    showToast('failed to save cooldown', true);
+    showToast(t('dash.toast.cooldownFailed'), true);
   }
 }
 
@@ -838,7 +1722,7 @@ async function saveOpacity() {
   const input = document.getElementById('opacity-input');
   const alpha = Number(input.value);
   if (!Number.isFinite(alpha) || alpha < 0 || alpha > 1) {
-    showToast('opacity must be between 0 and 1', true);
+    showToast(t('dash.toast.opacityRange'), true);
     return;
   }
   try {
@@ -848,9 +1732,9 @@ async function saveOpacity() {
       body: JSON.stringify({ panelBgAlpha: alpha }),
     });
     if (!res.ok) throw new Error('save failed');
-    showToast(`overlay panel opacity set to ${alpha}`);
+    showToast(t('dash.toast.opacitySet', { value: alpha }));
   } catch(_) {
-    showToast('failed to save opacity', true);
+    showToast(t('dash.toast.opacityFailed'), true);
   }
 }
 
@@ -858,7 +1742,7 @@ async function saveBrightness() {
   const input = document.getElementById('brightness-input');
   const brightness = Number(input.value);
   if (!Number.isFinite(brightness) || brightness < 0.5 || brightness > 2) {
-    showToast('brightness must be between 0.5 and 2', true);
+    showToast(t('dash.toast.brightnessRange'), true);
     return;
   }
   try {
@@ -868,9 +1752,9 @@ async function saveBrightness() {
       body: JSON.stringify({ textBrightness: brightness }),
     });
     if (!res.ok) throw new Error('save failed');
-    showToast(`overlay brightness set to ${brightness}`);
+    showToast(t('dash.toast.brightnessSet', { value: brightness }));
   } catch(_) {
-    showToast('failed to save brightness', true);
+    showToast(t('dash.toast.brightnessFailed'), true);
   }
 }
 
@@ -879,20 +1763,18 @@ function daysAgo(dateStr) {
   const then = new Date(dateStr.replace(' ', 'T') + 'Z');
   if (isNaN(then)) return null;
   const diff = Math.floor((Date.now() - then.getTime()) / 86400000);
-  if (diff === 0) return 'today';
-  if (diff === 1) return '1 day ago';
-  return `${diff} days ago`;
+  return t('dash.history.ago', { n: diff });
 }
 
 function historyHtml(title) {
   const rec = historyData[title.toLowerCase().trim()];
   if (!rec || !rec.last_requested_at) {
-    return `<div class="song-history"><span class="h-days">⏱ Never requested</span></div>`;
+    return `<div class="song-history"><span class="h-days">${esc(t('dash.history.never'))}</span></div>`;
   }
   const ago = daysAgo(rec.last_requested_at);
   return `<div class="song-history">
     ${ago ? `<span class="h-days">⏱ ${ago}</span>` : ''}
-    <span class="h-req">by @${esc(rec.last_requester)}</span>
+    <span class="h-req">${tHtml('dash.history.by', { name: rec.last_requester })}</span>
   </div>`;
 }
 
@@ -916,7 +1798,7 @@ function onSongInput() {
 
 function renderSuggest() {
   const list = document.getElementById('suggest-list');
-  if (filteredSongs.length === 0) { list.innerHTML = '<div class="suggest-item" style="color:var(--text-muted)">no matches</div>'; return; }
+  if (filteredSongs.length === 0) { list.innerHTML = '<div class="suggest-item" style="color:var(--text-dim)">' + esc(t('dash.manual.noMatches')) + '</div>'; return; }
   list.innerHTML = filteredSongs.map((s, i) => `
     <div class="suggest-item${i === suggestActive ? ' active' : ''}"
          onmousedown="pickSong(${i})" data-idx="${i}">
@@ -974,7 +1856,7 @@ async function submitRequest() {
   const key = selectedSong?.key || '';
   const requester = requesterInput.value.trim() || 'manual';
 
-  if (!title) { showToast('enter a song title', true); return; }
+  if (!title) { showToast(t('dash.toast.enterTitleFirst'), true); return; }
 
   await api('add', { title, artist, key, requester });
 
@@ -983,25 +1865,25 @@ async function submitRequest() {
   selectedSong = null;
   filteredSongs = [];
   closeSuggest();
-  showToast(`added: ${title}`);
+  showToast(t('dash.toast.added', { title }));
   titleInput.focus();
 }
 
-function showToast(msg, isError = false) {
+function showToast(msg, isError = false, ms = 2500) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast' + (isError ? ' error' : '') + ' show';
+  t.className = 'toast' + (isError ? ' error' : '') + (msg.length > 80 ? ' long' : '') + ' show';
   clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+  t._timer = setTimeout(() => t.classList.remove('show'), ms);
 }
 
 
 async function copyTitle(title) {
   try {
     await navigator.clipboard.writeText(title);
-    showToast(`copied: ${title}`);
+    showToast(t('dash.toast.copied', { title }));
   } catch(_) {
-    showToast('copy failed', true);
+    showToast(t('dash.toast.copyFailed'), true);
   }
 }
 
@@ -1014,10 +1896,10 @@ async function callRedraw(zone, index) {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      showToast(err.error || 'redraw failed', true);
+      showToast(I18N.server(err, 'dash.toast.redrawFailed'), true);
     }
   } catch(_) {
-    showToast('redraw failed', true);
+    showToast(t('dash.toast.redrawFailed'), true);
   }
 }
 
@@ -1033,14 +1915,1933 @@ async function api(endpoint, body = {}) {
   }
 }
 
+// ── Leihu Singsing badges ─────────────────────────────────────────────────────
+// Server reports each queued song's state in Leihu, keyed by "title|artist".
+// Badges are patched in place (not via render()) so polling never interrupts a drag.
+let leihuStatus = { online: false, songs: {} };
+
+
+function songKey(title, artist) {
+  return `${(title || '').trim().toLowerCase()}|${(artist || '').trim().toLowerCase()}`;
+}
+
+function entryAt(zone, index) {
+  return zone === 'nowPlaying' ? state.nowPlaying : (state.queue || [])[index];
+}
+
+function paintBadges() {
+  document.getElementById('leihu-state').textContent = t(leihuStatus.online ? 'dash.leihuOnline' : 'dash.leihuOffline');
+  document.getElementById('leihu-chip').classList.toggle('on', !!leihuStatus.online);
+  document.getElementById('leihu-detail').textContent = leihuStatus.online
+    ? t('dash.set.leihuOn') + (leihuStatus.canOpen ? t('dash.set.leihuCanOpen') : '')
+    : t('dash.set.leihuOff');
+  for (const el of document.querySelectorAll('.bt-badge')) {
+    const entry = entryAt(el.dataset.zone, Number(el.dataset.index));
+    const st = entry && leihuStatus.songs[songKey(entry.title, entry.artist)];
+    const s = st && st.state !== 'offline' ? st.state : null;
+    const linked = s === 'ready' || s === 'nolyrics' || s === 'processing';
+    const clickable = s && (!linked || st.manual);
+    el.className = 'bt-badge' + (s ? ' ' + s : '') + (clickable ? ' click' : '');
+    // A download Leihu paused for a YouTube limit, and YouTube refusing downloads, get their own
+    // label and explanation; other failures show Leihu's reason
+    const paused = s === 'failed' && st.failure && st.failure.paused;
+    const blocked = !paused && s === 'failed' && st.failure && st.failure.blocked;
+    const special = paused ? 'paused' : blocked ? 'blocked' : null;
+    el.textContent = s ? t(special ? 'dash.bt.label.' + special : 'dash.bt.label.' + s) : '';
+    el.title = !s ? '' : (special ? t('dash.bt.' + special) : t('dash.bt.hint.' + s))
+      + (s === 'failed' && st.failure && st.failure.reason && !blocked ? '\n' + t('dash.bt.reason', { reason: st.failure.reason }) : '')
+      + (st.leihuTitle ? '\n' + t('dash.bt.leihuTitle', { title: st.leihuTitle }) : '') + (st.manual ? '\n' + t('dash.bt.manual') : '');
+    el.onclick = clickable ? () => onBadgeClick(entry, st) : null;
+  }
+  // Sing needs Leihu 1.5.2+ (remote open) and a ready backing track
+  const np = state.nowPlaying;
+  const npSt = np && leihuStatus.songs[songKey(np.title, np.artist)];
+  for (const btn of document.querySelectorAll('.sing-btn')) {
+    btn.hidden = !(leihuStatus.canOpen && npSt && (npSt.state === 'ready' || npSt.state === 'nolyrics'));
+  }
+}
+
+async function singInLeihu() {
+  const np = state.nowPlaying;
+  if (!np) return;
+  try {
+    const res = await fetch('/api/leihu/open', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: np.title, artist: np.artist, key: np.key }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(I18N.server(data, 'dash.toast.openFailed'));
+    showToast(t('dash.toast.opening', { title: np.title, key: (data.key > 0 ? '+' : '') + data.key }));
+  } catch (err) {
+    showToast(t('dash.toast.leihuError', { message: err.message }), true);
+  }
+}
+
+async function pollLeihu() {
+  try {
+    const res = await fetch('/api/leihu/status');
+    leihuStatus = await res.json();
+  } catch(_) {
+    leihuStatus = { online: false, songs: {} };
+  }
+  paintBadges();
+  paintBulk();
+  paintLeihuView();
+}
+
+// ── Tabs ── Each tab is a button in .tabs and a .tab-page; #leihu in the address keeps the tab
+// on reload. Planned: chat room, rewards, OBS / Streamlabs control — add them here and in the markup.
+const TABS = ['queue', 'leihu', 'chat', 'modes'];
+let currentTab = 'queue';
+
+function showTab(name) {
+  if (!TABS.includes(name)) name = 'queue';
+  currentTab = name;
+  for (const tab of TABS) {
+    document.getElementById('tab-' + tab).hidden = tab !== name;
+    const btn = document.getElementById('tabbtn-' + tab);
+    btn.setAttribute('aria-selected', String(tab === name));
+    btn.tabIndex = tab === name ? 0 : -1;
+  }
+  const hash = name === 'queue' ? '' : '#' + name;
+  if (location.hash !== hash) history.replaceState(null, '', location.pathname + location.search + hash);
+  closeTabConfigs();
+  paintLeihuView();
+  placeChat();
+  if (name === 'chat') loadChatDays();
+  if (name === 'modes') loadModes(true);
+}
+
+// Arrow keys move between tabs (the usual tab-list keys)
+function onTabKey(e) {
+  const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+  if (!step) return;
+  const next = TABS[(TABS.indexOf(currentTab) + step + TABS.length) % TABS.length];
+  showTab(next);
+  document.getElementById('tabbtn-' + next).focus();
+}
+
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+
+// Leihu's own screen in the Leihu tab: loaded the first time the tab is shown while Leihu runs,
+// and again when Leihu comes back after being closed. Leihu only listens on its own PC, so a
+// dashboard opened from another device (phone, second PC) can't show it.
+const isLoopback = (host) => ['localhost', '127.0.0.1', '[::1]', '::1'].includes(host);
+// The stream window (🔊 in the Leihu settings) is the dashboard in a separate copy of Chrome/Edge, so
+// OBS's Application Audio Capture gets Leihu's sound alone. OBS finds it by this title: not translated.
+const IS_STREAM_WINDOW = new URLSearchParams(location.search).get('window') === 'stream';
+const STREAM_WINDOW_TITLE = '點歌控制台 Song Queue (OBS)';
+const pageTitle = () => IS_STREAM_WINDOW ? STREAM_WINDOW_TITLE : t('dash.pageTitle');
+// The stream window has no Twitch login: setup (authorize again) and Twitch links open in the usual browser
+if (IS_STREAM_WINDOW) {
+  document.addEventListener('click', async (e) => {
+    const a = e.target.closest && e.target.closest('a[href]');
+    if (!a) return;
+    const u = new URL(a.href);
+    const forUsual = (u.origin === location.origin && u.pathname.startsWith('/setup'))
+      || (u.protocol === 'https:' && ['twitch.tv', 'www.twitch.tv', 'dashboard.twitch.tv'].includes(u.hostname));
+    if (!forUsual) return;
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/open-in-browser', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: a.href }) });
+      if (!res.ok) throw new Error(I18N.server(await res.json(), 'dash.toast.requestFailed'));
+      showToast(t('dash.toast.openedInBrowser'));
+    } catch (err) {
+      showToast(t('dash.toast.streamWindowFailed', { message: err.message }), true);
+    }
+  });
+}
+let leihuViewOnline = false;
+
+function paintLeihuView() {
+  const frame = document.getElementById('leihu-frame');
+  const msg = document.getElementById('leihu-placeholder');
+  const url = leihuStatus.url;
+  let otherDevice = false;
+  try { otherDevice = !!url && isLoopback(new URL(url).hostname) && !isLoopback(location.hostname); } catch(_) {}
+  const online = !!leihuStatus.online && !!url && !otherDevice;
+  if (online && currentTab === 'leihu' && (!frame.getAttribute('src') || !leihuViewOnline)) frame.src = url;
+  if (online) leihuViewOnline = !!frame.getAttribute('src');
+  else leihuViewOnline = false;
+  frame.hidden = !leihuViewOnline;
+  msg.hidden = leihuViewOnline;
+  const starting = leihuStarting || !!leihuStatus.starting;
+  document.getElementById('leihu-placeholder-text').textContent = !url ? '' : t(otherDevice ? 'dash.leihu.otherDevice'
+    : online ? 'dash.leihu.loading' : starting ? 'dash.leihu.starting' : 'dash.leihu.notRunning');
+  const startBtn = document.getElementById('leihu-start');
+  startBtn.hidden = !url || online || otherDevice;
+  startBtn.disabled = starting;
+  document.getElementById('leihu-reload').hidden = !leihuViewOnline;
+  // Close only a Leihu the song queue started; one opened from its own shortcut closes with its window
+  document.getElementById('leihu-close').hidden = !(online && leihuStatus.launched);
+  const win = document.getElementById('leihu-window');
+  win.hidden = !online;
+  if (url) win.href = url;
+  paintObsSound(online);
+}
+
+// Until the stream window has been opened once, the Leihu header points to it
+function paintObsSound(online) {
+  const onPc = isLoopback(location.hostname);
+  let opened = false;
+  try { opened = localStorage.getItem('streamWindowOpened') === '1'; } catch(_) {}
+  document.getElementById('leihu-obs-sound').hidden = !online || !onPc || IS_STREAM_WINDOW || opened;
+  document.getElementById('settings-obs-sound').hidden = !onPc;
+  document.getElementById('obs-sound-open').hidden = IS_STREAM_WINDOW;
+  document.getElementById('obs-sound-hint').textContent =
+    t(IS_STREAM_WINDOW ? 'dash.set.obsSoundHere' : 'dash.set.obsSoundHint', { title: STREAM_WINDOW_TITLE });
+}
+
+function showObsSound() {
+  toggleTabConfig('leihu', true);
+  document.getElementById('settings-obs-sound').scrollIntoView({ block: 'nearest' });
+}
+
+async function openStreamWindow() {
+  try {
+    const res = await fetch('/api/stream-window', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(I18N.server(data, 'dash.toast.requestFailed'));
+    try { localStorage.setItem('streamWindowOpened', '1'); } catch(_) {}
+    showToast(t('dash.toast.streamWindowOpened'));
+    paintLeihuView();
+  } catch (err) {
+    showToast(t('dash.toast.streamWindowFailed', { message: err.message }), true);
+  }
+}
+
+function reloadLeihu() {
+  const frame = document.getElementById('leihu-frame');
+  frame.src = leihuStatus.url;
+}
+
+// Start Leihu without its own window (the server runs it, leihu-launcher.js), or close it
+let leihuStarting = false;
+async function launchLeihu(action) {
+  if (action === 'stop' && !confirm(t('dash.leihu.closeConfirm'))) return;
+  if (action === 'start') { leihuStarting = true; paintLeihuView(); }
+  try {
+    const res = await fetch('/api/leihu/launch', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(I18N.server(data, 'dash.toast.requestFailed'));
+  } catch (err) {
+    showToast(t('dash.toast.leihuError', { message: err.message }), true);
+  }
+  leihuStarting = false;
+  pollLeihu();
+}
+
+async function saveLeihuAutoStart() {
+  const on = document.getElementById('leihu-autostart').checked;
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leihuAutoStart: on }),
+    });
+    if (!res.ok) throw new Error('save failed');
+    showToast(t(on ? 'dash.toast.autoStartOn' : 'dash.toast.autoStartOff'));
+  } catch(_) {
+    showToast(t('dash.toast.autoFailed'), true);
+  }
+}
+
+// "Get your song list ready" steps: sheet counts (leihu.js sheetCounts) and progress (bulkStatus)
+function paintBulk() {
+  const b = leihuStatus.bulk || { state: 'idle' };
+  const c = leihuStatus.sheet || null;
+  const running = b.state === 'running';
+  const step = (id, key, p, ok) => {
+    const el = document.getElementById(id);
+    el.hidden = !key;
+    el.textContent = key ? t(key, p) : '';
+    el.classList.toggle('ok', !!ok);
+  };
+  if (!c || !c.songs) step('step1-status', c ? 'dash.set.step1.empty' : null, {});
+  else if (c.linked < c.songs) step('step1-status', 'dash.set.step1.some', { linked: c.linked, songs: c.songs, missing: c.songs - c.linked });
+  else step('step1-status', 'dash.set.step1.all', { songs: c.songs }, true);
+  if (!leihuStatus.online) step('step2-status', 'dash.set.step2.offline', {});
+  else if (!c || c.todo == null) step('step2-status', null, {});
+  else if (!c.linked) step('step2-status', 'dash.set.step2.noLinks', {});
+  else if (c.todo) step('step2-status', 'dash.set.step2.todo', { todo: c.todo, ready: c.linked - c.todo, linked: c.linked });
+  else step('step2-status', 'dash.set.step2.all', { linked: c.linked }, true);
+  document.getElementById('bulk-start').hidden = running;
+  document.getElementById('bulk-start').disabled = !leihuStatus.online || !(c && c.todo);
+  document.getElementById('bulk-stop').hidden = !running;
+  const el = document.getElementById('bulk-progress');
+  const p = { done: b.done, failed: b.failed, total: b.total, current: b.current, reason: b.reason };
+  const key = running ? (b.current ? 'running' : 'waiting')
+    : b.state === 'done' ? (b.total ? 'done' : 'nothing')
+    : b.state === 'paused' || b.state === 'stopped' ? b.state : null;
+  el.hidden = !key;
+  el.textContent = key ? t('dash.set.bulk.' + key, p) : '';
+  // While preparing runs (or stopped for YouTube), its progress also shows in the Leihu tab's header
+  const mini = document.getElementById('leihu-bulk-mini');
+  mini.hidden = !(running || b.state === 'paused');
+  mini.textContent = mini.hidden ? '' : el.textContent;
+  mini.title = mini.textContent;
+}
+
+
+async function bulkAction(action) {
+  try {
+    const res = await fetch('/api/leihu/bulk', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(I18N.server(data, 'dash.toast.requestFailed'));
+    if (action === 'start' && data.state === 'running') showToast(t('dash.toast.bulkStarted', { total: data.total }));
+  } catch (err) {
+    showToast(t('dash.toast.leihuError', { message: err.message }), true);
+  }
+  pollLeihu();
+}
+
+async function onBadgeClick(entry, st) {
+  if (st.state === 'missing' || (st.state === 'failed' && !st.manual)) {
+    await fetch('/api/leihu/prepare', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: entry.title, artist: entry.artist, key: entry.key }),
+    });
+    showToast(t('dash.toast.preparing', { title: entry.title }));
+    pollLeihu();
+  } else {
+    openPicker(entry, st);
+  }
+}
+
+async function saveLeihuAuto() {
+  const on = document.getElementById('leihu-auto').checked;
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leihuAutoPrepare: on }),
+    });
+    if (!res.ok) throw new Error('save failed');
+    showToast(t(on ? 'dash.toast.autoOn' : 'dash.toast.autoOff'));
+  } catch(_) {
+    showToast(t('dash.toast.autoFailed'), true);
+  }
+}
+
+// One-time manual link for songs imported into Leihu as audio files
+async function openPicker(entry, st) {
+  let library = [];
+  try { library = await (await fetch('/api/leihu/library')).json(); } catch(_) {}
+  const back = document.createElement('div');
+  back.className = 'picker-backdrop';
+  back.innerHTML = `
+    <div class="picker">
+      <div class="picker-title">${tHtml('dash.picker.title', { title: entry.title })}</div>
+      <input type="text" placeholder="${esc(t('dash.picker.filter'))}" />
+      <div class="picker-list"></div>
+      <div class="picker-actions">
+        ${st.manual ? `<button class="btn danger" data-act="unlink">${esc(t('dash.picker.unlink'))}</button>` : ''}
+        <button class="btn" data-act="close">${esc(t('dash.picker.cancel'))}</button>
+      </div>
+    </div>`;
+  const input = back.querySelector('input');
+  const list = back.querySelector('.picker-list');
+  const close = () => back.remove();
+  const link = async (id) => {
+    await fetch('/api/leihu/link', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: entry.title, artist: entry.artist, id }),
+    });
+    close();
+    showToast(t(id ? 'dash.toast.linked' : 'dash.toast.unlinked', { title: entry.title }));
+    pollLeihu();
+  };
+  const draw = () => {
+    const q = input.value.trim().toLowerCase();
+    const items = library.filter(s => !q || s.title.toLowerCase().includes(q));
+    list.innerHTML = items.length
+      ? items.map(s => `<div class="picker-item${s.id === st.id ? ' cur' : ''}" data-id="${esc(s.id)}"><span>${esc(s.title)}</span><span class="st">${esc(I18N.has('dash.picker.state.' + s.state) ? t('dash.picker.state.' + s.state) : s.state)}</span></div>`).join('')
+      : `<div class="picker-item"><span class="st">${esc(t('dash.picker.noSongs'))}</span></div>`;
+  };
+  list.onclick = (e) => { const item = e.target.closest('[data-id]'); if (item) link(item.dataset.id); };
+  back.onclick = (e) => {
+    if (e.target === back || e.target.dataset.act === 'close') close();
+    if (e.target.dataset.act === 'unlink') link(null);
+  };
+  input.oninput = draw;
+  // Start filtered by the song title; fall back to the full list if nothing matches
+  input.value = entry.title;
+  draw();
+  if (!list.querySelector('[data-id]')) { input.value = ''; draw(); }
+  document.body.appendChild(back);
+  input.focus();
+}
+
+// ── Chat tab ── Live chat comes over the WebSocket (server/chat-log.js); earlier days load from
+// their log. Every filter runs here, on the records in memory.
+const CHAT_FILTERS = ['all', 'songs', 'commands', 'mods', 'subs', 'mentions', 'first', 'highlight', 'redeems', 'waiting', 'events'];
+// Common chat bots (logins), hidden while "Hide bots" is on
+const CHAT_BOTS = ['nightbot', 'streamelements', 'moobot', 'fossabot', 'wizebot', 'streamlabs', 'soundalerts',
+  'sery_bot', 'botrixoficial', 'kofistreambot', 'commanderroot', 'streamstickers', 'pokemoncommunitygame'];
+const CHAT_SHOWN_MAX = 1500;   // rows drawn at once; the count says when more matched
+const chat = {
+  live: [], day: '', dayRecords: null, days: [], channel: null, filter: 'all', user: null, query: '',
+  hideBots: true, unread: 0, newCount: 0, atBottom: true,
+  manageable: new Set(),   // rewards whose redemptions ✓ / ↩ can change (the app made them)
+  session: { since: null, records: [], seen: new Set() },   // this stream session, for "to announce"
+  canSend: false, sendMax: 500, replyTo: null,   // the message box (needs user:write:chat); the message it answers
+  mod: { can: {}, pinned: null, raid: null },   // moderation buttons allowed, the pinned message, a raid on its way
+};
+try { chat.hideBots = localStorage.getItem('chatHideBots') !== '0'; } catch(_) {}
+
+async function loadChat() {
+  await Promise.all([loadManageable(), loadChatSend(), loadChatSession(), loadChatMod()]);
+  try {
+    const data = await (await fetch('/api/chat/recent')).json();
+    chat.live = data.records || [];
+    chat.channel = data.channel || chat.channel;
+  } catch(_) {}
+  linkSession();
+  if (!chat.day) renderChat();
+}
+
+// Rewards the app made: their waiting redemptions get ✓ / ↩; the rest link to Twitch's own reward queue
+async function loadManageable() {
+  try {
+    const m = await (await fetch('/api/redemptions/manageable')).json();
+    chat.manageable = new Set(m.ids || []);
+    chat.channel = chat.channel || m.channel || null;
+  } catch(_) {}
+}
+
+async function loadChatDays() {
+  try { chat.days = await (await fetch('/api/chat/days')).json(); } catch(_) {}
+  paintChatDays();
+}
+
+function paintChatDays() {
+  const sel = document.getElementById('chat-day');
+  sel.innerHTML = `<option value="">${esc(t('dash.chat.live'))}</option>`
+    + chat.days.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  sel.value = chat.day;
+}
+
+// ── The chat beside every tab ── The Chat tab's .chat-view (one chat, not a copy) moves into the
+// panel at the right of the other tabs. There it shows the live chat without search, filters and
+// days, which stay in the Chat tab; a strip says when a filter is on. Open / closed and the width
+// are remembered; it starts closed in narrow windows and in the stream window. Under 900px: no panel.
+const DOCK_MIN = 260, DOCK_MAX = 640;
+const dock = { open: !IS_STREAM_WINDOW && innerWidth >= 1100, width: 340 };
+try { Object.assign(dock, JSON.parse(localStorage.getItem('chatDock')) || {}); } catch(_) {}
+const dockRoom = matchMedia('(min-width: 901px)');
+
+const chatDocked = () => currentTab !== 'chat' && dock.open && dockRoom.matches;
+const chatOnScreen = () => currentTab === 'chat' || chatDocked();
+
+function saveChatDock() {
+  try { localStorage.setItem('chatDock', JSON.stringify(dock)); } catch(_) {}
+}
+
+// Puts the chat where it's seen now, and draws it if it is
+function placeChat() {
+  const docked = chatDocked();
+  const view = document.getElementById('chat-view');
+  const host = docked ? document.getElementById('chat-dock-body') : document.querySelector('#tab-chat .chat-page');
+  if (view.parentElement !== host) host.appendChild(view);
+  view.classList.toggle('docked', docked);
+  const panel = document.getElementById('chat-dock');
+  panel.hidden = !docked;
+  panel.style.width = `${dockWidth()}px`;
+  const btn = document.getElementById('dock-btn');
+  btn.hidden = currentTab === 'chat';
+  btn.setAttribute('aria-pressed', String(dock.open));
+  btn.title = t(dock.open ? 'dash.dock.hide' : 'dash.dock.show');
+  btn.setAttribute('aria-label', btn.title);
+  document.getElementById('dock-arrow').textContent = dock.open ? '▸' : '◂';
+  if (!chatOnScreen()) return;
+  chat.unread = 0;
+  paintChatUnread();
+  // The panel is for the chat going on now: back to live from an earlier day
+  if (docked && chat.day) { document.getElementById('chat-day').value = ''; onChatDay(); }
+  else renderChat();
+  paintDockFilter();
+}
+
+function toggleChatDock() {
+  dock.open = !dock.open;
+  saveChatDock();
+  placeChat();
+}
+
+const dockWidth = () => Math.round(Math.min(Math.max(dock.width, DOCK_MIN), DOCK_MAX, innerWidth * 0.5));
+
+// In the panel, a filter, search or one viewer's messages could pass for a quiet chat: say so
+function paintDockFilter() {
+  const strip = document.getElementById('chat-dock-filter');
+  const what = [chat.filter !== 'all' ? t('dash.chat.f.' + chat.filter) : '', chat.user ? '👤 ' + (chat.userName || chat.user) : '',
+    chat.query ? `🔍 "${chat.query}"` : ''].filter(Boolean).join(' · ');
+  strip.hidden = !chatDocked() || !what;
+  strip.querySelector('span').textContent = t('dash.dock.showing', { what });
+}
+
+function clearDockFilter() {
+  chat.filter = 'all';
+  chat.user = null;
+  chat.query = '';
+  document.getElementById('chat-search').value = '';
+  renderChat();
+  paintDockFilter();
+}
+
+// Drag the panel's left edge to make it wider or narrower
+document.getElementById('chat-dock-resize').addEventListener('pointerdown', (e) => {
+  if (e.button > 0) return;
+  e.preventDefault();
+  const panel = document.getElementById('chat-dock');
+  const startX = e.clientX, startW = panel.offsetWidth;
+  document.body.classList.add('dock-resizing');
+  const move = (ev) => {
+    dock.width = startW + startX - ev.clientX;
+    panel.style.width = `${dockWidth()}px`;
+  };
+  const end = () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', end);
+    document.removeEventListener('pointercancel', end);
+    document.body.classList.remove('dock-resizing');
+    dock.width = dockWidth();
+    saveChatDock();
+    if (chat.atBottom) chatToBottom();
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', end);
+  document.addEventListener('pointercancel', end);
+});
+
+dockRoom.addEventListener('change', placeChat);
+window.addEventListener('resize', () => {
+  if (chatDocked()) document.getElementById('chat-dock').style.width = `${dockWidth()}px`;
+});
+
+function isBot(rec) {
+  return CHAT_BOTS.includes((rec.user.login || '').toLowerCase());
+}
+
+function mentionsMe(rec) {
+  const me = (chat.channel || '').toLowerCase();
+  return !!me && rec.kind === 'chat' && (rec.parts || []).some(p => p.t === 'mention' && (p.login || '').toLowerCase() === me);
+}
+
+function chatWords() {
+  return chat.query.toLowerCase().split(/\s+/).filter(Boolean);
+}
+
+function chatMatches(rec) {
+  if (chat.hideBots && isBot(rec)) return false;
+  if (chat.user && rec.user.login !== chat.user) return false;
+  const words = chatWords();
+  if (words.length) {
+    const hay = `${rec.user.name} ${rec.user.login} ${rec.text} ${rec.reward || ''} ${rec.system || ''}`.toLowerCase();
+    if (!words.every(w => hay.includes(w))) return false;
+  }
+  const badges = rec.user.badges || [];
+  switch (chat.filter) {
+    case 'songs': return !!(rec.songs && rec.songs.length);
+    case 'commands': return rec.kind === 'chat' && rec.text.startsWith('!');
+    case 'mods': return badges.some(b => b === 'broadcaster' || b === 'moderator' || b === 'vip');
+    case 'subs': return badges.some(b => b === 'subscriber' || b === 'founder');
+    case 'mentions': return mentionsMe(rec);
+    case 'first': return isFirstChat(rec);
+    case 'highlight': return rec.type === 'channel_points_highlighted' || !!rec.bits;
+    case 'redeems': return rec.kind === 'redeem';
+    case 'waiting': return rec.kind === 'redeem' && rec.status === 'unfulfilled';
+    case 'events': return rec.kind === 'notice' || rec.kind === 'follow';
+    default: return true;
+  }
+}
+
+// Text with the search words marked
+function markWords(text, words) {
+  if (!words.length) return esc(text);
+  const re = new RegExp(`(${words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+  return String(text).split(re).map((s, i) => i % 2 ? `<mark>${esc(s)}</mark>` : esc(s)).join('');
+}
+
+function chatTime(at) {
+  const d = new Date(at);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+const CHAT_BADGE_LABELS = { broadcaster: 'B', moderator: 'M', vip: 'V', subscriber: 'S', founder: 'F' };
+
+function chatRowHtml(rec) {
+  const words = chatWords();
+  const color = /^#[0-9a-f]{6}$/i.test(rec.user.color || '') ? rec.user.color : 'var(--purple)';
+  const name = `<span class="chat-name" data-login="${esc(rec.user.login)}" style="color:${color}">${esc(rec.user.name)}</span>`;
+  const time = `<span class="chat-time">${chatTime(rec.at)}</span>`;
+  const mark = announceClass(rec);
+  if (rec.kind === 'notice' || rec.kind === 'follow') {
+    const what = rec.kind === 'follow' ? t('dash.chat.followed', { name: rec.user.name }) : (rec.system || rec.notice);
+    return `<div class="chat-msg event${mark}" data-id="${esc(rec.id)}">${time}${markWords(what, words)}`
+      + `${rec.text ? `: <span class="chat-text">${markWords(rec.text, words)}</span>` : ''}${announceMark(rec)}</div>`;
+  }
+  if (rec.kind === 'redeem') {
+    return `<div class="chat-msg redeem${rec.status === 'unfulfilled' ? ' waiting' : ''}${mark}" data-id="${esc(rec.id)}">${time}${esc(t('dash.chat.redeemed', { name: rec.user.name, reward: rec.reward }))}`
+      + `${rec.text ? `: <span class="chat-text">${markWords(rec.text, words)}</span>` : ''}${announceMark(rec)}${redeemActions(rec)}</div>`;
+  }
+  const badges = (rec.user.badges || []).filter(b => CHAT_BADGE_LABELS[b])
+    .map(b => `<span class="chat-badge ${b}" title="${esc(t('dash.chat.badge.' + b))}">${CHAT_BADGE_LABELS[b]}</span>`).join('');
+  const parts = (rec.parts && rec.parts.length ? rec.parts : [{ t: 'text', text: rec.text }]).map(p => {
+    if (p.t === 'emote') return `<img src="https://static-cdn.jtvnw.net/emoticons/v2/${encodeURIComponent(p.id)}/default/dark/1.0" alt="${esc(p.text)}" title="${esc(p.text)}">`;
+    if (p.t === 'mention') return `<span class="mention">${markWords(p.text, words)}</span>`;
+    return markWords(p.text, words);
+  }).join('');
+  const cls = ['chat-msg', mentionsMe(rec) && 'me-mention', rec.type === 'channel_points_highlighted' && 'highlight',
+    isFirstChat(rec) && 'intro', rec.deleted && 'deleted', mark.trim()].filter(Boolean).join(' ');
+  const reply = rec.reply ? `<span class="chat-reply">↪ ${esc(rec.reply.name)}: ${esc(rec.reply.text)}</span>` : '';
+  const tags = (isFirstChat(rec) ? `<span class="chat-tag">${esc(t('dash.chat.tag.first'))}</span>` : '')
+    + (rec.greet && !isFirstChat(rec) && mark ? `<span class="chat-tag">${esc(t('dash.chat.tag.greet'))}</span>` : '')
+    + (rec.bits ? `<span class="chat-tag">${esc(t('dash.chat.tag.bits', { bits: rec.bits }))}</span>` : '')
+    + (rec.deleted ? `<span class="chat-tag">${esc(t('dash.chat.tag.deleted'))}</span>` : '');
+  const songs = (rec.songs || []).map((s, i) => {
+    const sung = chatSungInfo(rec, s);
+    const tip = [t('dash.chat.addSong', { title: s.title }), sung.recent && t('dash.chat.sungRecently', { days: cooldownDays }),
+      s.onStream && t('dash.chat.shownOnStream')].filter(Boolean).join('\n');
+    return `<button class="chat-song${sung.recent ? ' recent' : ''}" data-id="${esc(rec.id)}" data-song="${i}" title="${esc(tip)}">`
+      + `♪ ${esc(s.title)}${sung.label ? ` · ${esc(sung.label)}` : ''}${s.onStream ? ' 📺' : ''}</button>`;
+  }).join('');
+  const answer = (chat.canSend && !chat.day && !rec.deleted
+    ? `<button class="chat-reply-btn" data-reply="${esc(rec.id)}">${esc(t('dash.chat.reply'))}</button>` : '')
+    + (chat.mod.can.pin && !chat.day && !rec.deleted
+      ? `<button class="chat-reply-btn" data-pin="${esc(rec.id)}" title="${esc(t('dash.chat.mod.pin'))}">📌</button>` : '');
+  return `<div class="${cls}" data-id="${esc(rec.id)}">${reply}${time}${badges}${name}: <span class="chat-text">${parts}</span>${tags}${songs}${announceMark(rec)}${answer}</div>`;
+}
+
+// A redemption's state: waiting ones get ✓ done / ↩ refund (rewards the app made) or a link to Twitch's
+// reward queue (rewards made on Twitch). Older logs have no status: nothing shown.
+function redeemActions(rec) {
+  if (rec.status === 'fulfilled') return `<span class="chat-tag">${esc(t('dash.chat.redeemDone'))}</span>`;
+  if (rec.status === 'canceled') return `<span class="chat-tag">${esc(t('dash.chat.redeemRefunded'))}</span>`;
+  if (rec.status !== 'unfulfilled') return '';
+  if (chat.manageable.has(rec.rewardId)) {
+    return `<button class="chat-act done" data-redeem="done" data-id="${esc(rec.id)}">${esc(t('dash.chat.redeemMarkDone'))}</button>`
+      + `<button class="chat-act" data-redeem="refund" data-id="${esc(rec.id)}">${esc(t('dash.chat.redeemRefund'))}</button>`;
+  }
+  if (!chat.channel) return '';
+  return `<a class="chat-act" href="https://www.twitch.tv/popout/${encodeURIComponent(chat.channel)}/reward-queue" target="_blank" rel="noopener"`
+    + ` title="${esc(t('dash.chat.redeemQueueTip'))}">${esc(t('dash.chat.redeemQueue'))}</a>`;
+}
+
+// When a song named in chat was last sung, as of the message: { label, recent }. lastAt is left
+// out while the request history isn't loaded (no label then). recent = within the random cooldown.
+function chatSungInfo(rec, s) {
+  if (s.lastAt === undefined) return { label: '', recent: false };
+  if (s.lastAt === null) return { label: t('dash.chat.neverSung'), recent: false };
+  const days = Math.max(0, Math.floor((rec.at - s.lastAt) / 86400000));
+  return { label: t('dash.history.ago', { n: days }), recent: !!s.recent || (cooldownDays > 0 && rec.at - s.lastAt < cooldownDays * 86400000) };
+}
+
+function chatSource() {
+  return chat.day ? chat.dayRecords || [] : chat.live;
+}
+
+function renderChat() {
+  if (!chatOnScreen()) return;
+  const list = document.getElementById('chat-list');
+  const all = chatSource();
+  const shown = all.filter(chatMatches);
+  const rows = shown.slice(-CHAT_SHOWN_MAX);
+  list.innerHTML = rows.length ? rows.map(chatRowHtml).join('')
+    : `<div class="chat-empty">${esc(t(all.length ? 'dash.chat.noMatch' : chat.day ? 'dash.chat.emptyDay' : 'dash.chat.emptyLive'))}</div>`;
+  document.getElementById('chat-count').textContent = t(shown.length > rows.length ? 'dash.chat.countMore' : 'dash.chat.count',
+    { shown: shown.length, total: all.length, max: rows.length });
+  paintChatFilters();
+  const pop = document.getElementById('chat-popout');
+  pop.hidden = !chat.channel;
+  if (chat.channel) pop.href = `https://www.twitch.tv/popout/${encodeURIComponent(chat.channel)}/chat?popout=`;
+  document.getElementById('chat-hide-bots').checked = chat.hideBots;
+  chatToBottom();
+}
+
+function paintChatFilters() {
+  const box = document.getElementById('chat-filters');
+  box.innerHTML = CHAT_FILTERS.map(f =>
+    `<button class="chip${chat.filter === f ? ' on' : ''}" data-filter="${f}" aria-pressed="${chat.filter === f}">${esc(t('dash.chat.f.' + f))}</button>`
+  ).join('')
+    + (chat.user ? `<button class="chip user" data-clear-user="1" title="${esc(t('dash.chat.clearUser'))}">👤 ${esc(chat.userName || chat.user)} ✕</button>` : '')
+    + announceTools();
+}
+
+document.getElementById('chat-filters').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.announceAll) { markAnnounced(announceLeft(), true); return; }
+  if (b.dataset.announceNext) { showNextAnnounce(); return; }
+  if (b.dataset.filter) chat.filter = b.dataset.filter;
+  if (b.dataset.clearUser) chat.user = null;
+  renderChat();
+});
+
+// Click a name: its menu (only that viewer, Shoutout, raid, timeout, ban). ♪: add the song to the queue.
+document.getElementById('chat-list').addEventListener('click', (e) => {
+  const name = e.target.closest('.chat-name');
+  if (name) {
+    openModMenu({ login: name.dataset.login, name: name.textContent, color: name.style.color }, name);
+    return;
+  }
+  const pinBtn = e.target.closest('[data-pin]');
+  if (pinBtn) {
+    const rec = chatSource().find(r => r.id === pinBtn.dataset.pin);
+    if (rec) openPinMenu(rec, pinBtn);
+    return;
+  }
+  const act = e.target.closest('[data-redeem]');
+  if (act) { setRedeemStatus(act); return; }
+  const mark = e.target.closest('[data-announce]');
+  if (mark) {
+    const rec = chatSource().find(r => r.id === mark.dataset.announce);
+    if (rec) markAnnounced([rec], mark.dataset.done === '1');
+    return;
+  }
+  const answer = e.target.closest('[data-reply]');
+  if (answer) { setChatReply(chatSource().find(r => r.id === answer.dataset.reply)); return; }
+  const song = e.target.closest('.chat-song');
+  if (song) {
+    const rec = chatSource().find(r => r.id === song.dataset.id);
+    if (rec) addChatSong(rec, rec.songs[Number(song.dataset.song)]);
+  }
+});
+
+async function addChatSong(rec, s) {
+  if (!s) return;
+  const sheet = songList.find(x => x.title === s.title && (x.artist || '') === (s.artist || ''));
+  await api('add', { title: s.title, artist: s.artist, key: sheet?.key || '', requester: rec.user.name });
+  showToast(t('dash.toast.added', { title: s.title }));
+}
+
+// ✓ / ↩ on a waiting redemption. ↩ asks once more: the points go back and Twitch can't undo it.
+async function setRedeemStatus(btn) {
+  const rec = chatSource().find(r => r.kind === 'redeem' && r.id === btn.dataset.id);
+  if (!rec) return;
+  const action = btn.dataset.redeem;
+  if (action === 'refund' && !btn.classList.contains('sure')) {
+    btn.classList.add('sure');
+    btn.textContent = t('dash.chat.redeemRefundSure');
+    setTimeout(() => { btn.classList.remove('sure'); btn.textContent = t('dash.chat.redeemRefund'); }, 4000);
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/redemptions/status', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: rec.id, rewardId: rec.rewardId, action }),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(I18N.server(body, 'dash.toast.requestFailed'));
+    onChatRedeem({ id: rec.id, status: body.status });
+    showToast(t(action === 'done' ? 'dash.toast.redeemDone' : 'dash.toast.redeemRefunded', { name: rec.user.name }));
+  } catch (err) {
+    btn.disabled = false;
+    showToast(t('dash.toast.redeemFailed', { message: err.message }), true);
+  }
+}
+
+let chatSearchTimer;
+function onChatSearch() {
+  clearTimeout(chatSearchTimer);
+  chatSearchTimer = setTimeout(() => { chat.query = document.getElementById('chat-search').value.trim(); renderChat(); }, 150);
+}
+
+async function onChatDay() {
+  chat.day = document.getElementById('chat-day').value;
+  chat.dayRecords = null;
+  if (chat.day) {
+    try { chat.dayRecords = await (await fetch(`/api/chat/log?day=${encodeURIComponent(chat.day)}`)).json(); }
+    catch(_) { chat.dayRecords = []; }
+    markGreets(chat.dayRecords);
+  }
+  renderChat();
+  paintChatCompose();
+}
+
+// The message box under the live chat: posts as the authorized account (server/chat-send.js). Setups
+// from before it have no permission yet: the box is off, with the link to authorize again.
+async function loadChatSend() {
+  try {
+    const s = await (await fetch('/api/chat/send')).json();
+    chat.canSend = !!s.canSend;
+    chat.sendMax = s.max || chat.sendMax;
+  } catch(_) {}
+  paintChatCompose();
+}
+
+function paintChatCompose() {
+  const form = document.getElementById('chat-compose');
+  form.hidden = !!chat.day;
+  document.getElementById('chat-input').disabled = !chat.canSend;
+  document.getElementById('chat-send').disabled = !chat.canSend;
+  const note = document.getElementById('chat-compose-note');
+  note.hidden = chat.canSend;
+  note.innerHTML = chat.canSend ? '' : `${esc(t('dash.chat.sendNoPermission'))} <a href="/setup?reauth=1">${esc(t('dash.chat.followsAuthorize'))}</a>`;
+  if (chat.day) chat.replyTo = null;
+  paintChatReply();
+  paintChatLeft();
+  paintChatMore();
+}
+
+// ↪ Reply on a message: the next message answers it (a Twitch reply). ✕ or Esc stops.
+function setChatReply(rec) {
+  chat.replyTo = rec && rec.kind === 'chat' ? { id: rec.id, name: rec.user.name, text: rec.text } : null;
+  paintChatReply();
+  if (chat.replyTo) document.getElementById('chat-input').focus();
+}
+
+function paintChatReply() {
+  const r = chat.replyTo;
+  document.getElementById('chat-replying').hidden = !r;
+  document.getElementById('chat-replying-text').textContent = r ? t('dash.chat.replyingTo', { name: r.name, text: r.text }) : '';
+}
+
+// Characters left, shown near Twitch's limit
+function paintChatLeft() {
+  const left = chat.sendMax - [...document.getElementById('chat-input').value.trim()].length;
+  const el = document.getElementById('chat-left');
+  el.hidden = left > 50;
+  el.textContent = t('dash.chat.charsLeft', { n: left });
+  el.classList.toggle('over', left < 0);
+}
+
+async function sendChatMessage(e) {
+  e.preventDefault();
+  const input = document.getElementById('chat-input');
+  const btn = document.getElementById('chat-send');
+  const text = input.value.trim();
+  if (!text || btn.disabled) return;
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/chat/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, replyTo: chat.replyTo?.id }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      if (body.code === 'chatNoPermission') { chat.canSend = false; paintChatCompose(); renderChat(); }
+      throw new Error(I18N.server(body, 'dash.toast.requestFailed'));
+    }
+    input.value = '';
+    setChatReply(null);
+    paintChatLeft();
+    chatToBottom();
+  } catch (err) {
+    showToast(t('dash.toast.chatFailed', { message: err.message }), true);
+  } finally {
+    btn.disabled = !chat.canSend;
+    if (chat.canSend) input.focus();
+  }
+}
+
+// !endingtk: who it would thank now, and whether new followers come in (they need a Twitch
+// permission that setup asks for since !endingtk; older setups authorize again)
+async function loadCredits() {
+  const now = document.getElementById('credits-now');
+  const follows = document.getElementById('credits-follows');
+  try {
+    const c = await (await fetch('/api/credits')).json();
+    now.textContent = c.groups.length
+      ? t('dash.chat.creditsNow', { list: c.groups.map(g => t('dash.chat.creditsGroup.' + g.key, { n: g.count })).join(t('dash.chat.creditsSep')) })
+      : t('dash.chat.creditsNone');
+    follows.innerHTML = c.follows === 'on' ? esc(t('dash.chat.followsOn'))
+      : c.follows === 'no-permission' ? `${esc(t('dash.chat.followsNoPermission'))} <a href="/setup?reauth=1">${esc(t('dash.chat.followsAuthorize'))}</a>`
+      : c.follows === 'failed' ? esc(t('dash.chat.followsFailed')) : '';
+  } catch(_) {
+    now.textContent = '';
+    follows.textContent = '';
+  }
+}
+
+// Chat ⚙ → Channel-point rewards. Taking over one made on Twitch (server/redemptions.js): the app makes
+// a hidden copy, the streamer deletes the original on Twitch, the copy takes its place (by itself when
+// Twitch reports the delete; "I've deleted it" checks at once).
+let rewardsView = null;
+async function loadRewards() {
+  const box = document.getElementById('reward-rows');
+  if (!rewardsView) box.textContent = t('dash.chat.rewardsLoading');
+  try {
+    const res = await fetch('/api/rewards');
+    const body = await res.json();
+    if (!res.ok) throw new Error(I18N.server(body, 'dash.toast.requestFailed'));
+    rewardsView = body;
+  } catch (err) {
+    rewardsView = null;
+    box.textContent = t('dash.chat.rewardsFailed', { message: err.message });
+    return;
+  }
+  paintRewards();
+  const ids = rewardsView.rewards.filter(r => r.manageable).map(r => r.id);
+  chat.channel = chat.channel || rewardsView.channel || null;
+  if (ids.length !== chat.manageable.size || ids.some(id => !chat.manageable.has(id))) {
+    chat.manageable = new Set(ids);
+    rerenderChat();
+  }
+}
+
+function paintRewards() {
+  if (!rewardsView) return;
+  const ch = rewardsView.channel;
+  const page = `https://dashboard.twitch.tv/${ch ? `u/${encodeURIComponent(ch)}/` : ''}viewer-rewards/channel-points/rewards`;
+  document.getElementById('reward-rows').innerHTML = rewardsView.rewards.map(r => {
+    const tags = (r.role ? `<span class="chat-tag">${esc(t('dash.chat.rewardRole.' + r.role))}</span>` : '')
+      + (r.enabled ? '' : `<span class="chat-tag">${esc(t('dash.chat.rewardOff'))}</span>`);
+    const btn = (act, label) => `<button class="btn" data-takeover="${act}" data-id="${esc(r.id)}">${esc(t(label))}</button>`;
+    let rest;
+    if (r.manageable) rest = `<span class="reward-state ok">${esc(t('dash.chat.rewardManaged'))}</span>`;
+    else if (r.skipsQueue) rest = `<span class="reward-state">${esc(t('dash.chat.rewardSkipsQueue'))}</span>`;
+    else if (r.takeover) {
+      rest = `<span class="reward-state">${esc(t('dash.chat.rewardCopyReady'))}</span>`
+        + `<div class="reward-steps">${esc(t('dash.chat.rewardDeleteStep', { title: r.title }))}</div>`
+        + `<a class="btn" href="${esc(page)}" target="_blank" rel="noopener">${esc(t('dash.chat.rewardOpenTwitch'))}</a>`
+        + btn('finish', 'dash.chat.rewardFinish') + btn('cancel', 'dash.chat.rewardCancel');
+    } else {
+      rest = `<span class="reward-state">${esc(t('dash.chat.rewardOnTwitch'))}</span>` + btn('start', 'dash.chat.rewardTakeOver');
+    }
+    return `<div class="reward-row"><span class="reward-name">${esc(r.title)}</span>${tags}${rest}</div>`;
+  }).join('') || esc(t('dash.chat.rewardsNone'));
+}
+
+document.getElementById('reward-rows').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-takeover]');
+  if (!b) return;
+  b.disabled = true;
+  try {
+    const res = await fetch('/api/rewards/takeover', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: b.dataset.id, action: b.dataset.takeover }),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(I18N.server(body, 'dash.toast.requestFailed'));
+    if (b.dataset.takeover === 'finish') showToast(t('dash.toast.rewardTakenOver'));
+  } catch (err) {
+    showToast(err.message, true);
+  }
+  await loadRewards();
+});
+
+// Song notes on the stream overlay (server/song-notes.js, SONG_NOTES); saved for everyone
+async function saveSongNotes() {
+  const box = document.getElementById('chat-song-notes');
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ songNotes: box.checked }),
+    });
+    if (!res.ok) throw new Error('save failed');
+    showToast(t(box.checked ? 'dash.toast.songNotesOn' : 'dash.toast.songNotesOff'));
+  } catch(_) {
+    box.checked = !box.checked;
+    showToast(t('dash.toast.songNotesFailed'), true);
+  }
+}
+
+function onChatHideBots() {
+  chat.hideBots = document.getElementById('chat-hide-bots').checked;
+  try { localStorage.setItem('chatHideBots', chat.hideBots ? '1' : '0'); } catch(_) {}
+  renderChat();
+}
+
+function onChatScroll() {
+  const list = document.getElementById('chat-list');
+  chat.atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+  if (chat.atBottom && chat.newCount) { chat.newCount = 0; paintChatMore(); }
+}
+
+function chatToBottom() {
+  const list = document.getElementById('chat-list');
+  list.scrollTop = list.scrollHeight;
+  chat.atBottom = true;
+  chat.newCount = 0;
+  paintChatMore();
+}
+
+function paintChatMore() {
+  const more = document.getElementById('chat-more');
+  more.hidden = !chat.newCount;
+  const compose = document.getElementById('chat-compose');
+  more.style.bottom = `${14 + (compose.hidden ? 0 : compose.offsetHeight)}px`;
+  more.textContent = chat.newCount ? t('dash.chat.newMessages', { n: chat.newCount }) : '';
+}
+
+function paintChatUnread() {
+  for (const id of ['chat-unread', 'dock-unread']) {
+    const el = document.getElementById(id);
+    el.hidden = !chat.unread;
+    el.textContent = chat.unread > 99 ? '99+' : String(chat.unread);
+  }
+}
+
+// A new message or redemption from the server
+function onChatRecord(rec) {
+  chat.live.push(rec);
+  if (chat.live.length > 1000) chat.live = chat.live.slice(-1000);
+  if (chat.session.since !== null && rec.at >= chat.session.since) {
+    markGreet(rec, chat.session.seen);
+    chat.session.records.push(rec);
+  }
+  if (chat.day === '' && chatOnScreen() && chatMatches(rec)) {
+    const list = document.getElementById('chat-list');
+    const empty = list.querySelector('.chat-empty');
+    if (empty) empty.remove();
+    const stick = chat.atBottom;
+    list.insertAdjacentHTML('beforeend', chatRowHtml(rec));
+    while (list.children.length > CHAT_SHOWN_MAX) list.firstElementChild.remove();
+    if (stick) list.scrollTop = list.scrollHeight;
+    else { chat.newCount++; paintChatMore(); }
+    const shown = chat.live.filter(chatMatches).length;
+    document.getElementById('chat-count').textContent = t('dash.chat.count', { shown, total: chat.live.length });
+  }
+  if (chatOnScreen() && chat.day === '' && isAnnounce(rec)) paintChatFilters();
+  if (!chatOnScreen() && rec.kind === 'chat' && !isBot(rec)) { chat.unread++; paintChatUnread(); }
+}
+
+// ── Moderation (server/chat-mod.js): a name's menu, 🛡 for anyone not in the chat, 📌 on a message.
+// The pinned message and a raid on its way show above the chat. Buttons the token isn't allowed
+// (setups from before these scopes) stay off, with a link to authorize again.
+const MOD_TIMEOUTS = [60, 600, 3600, 86400];
+const MOD_UNITS = { s: 1, m: 60, h: 3600, d: 86400 };
+const PIN_TIMES = [60, 300, 1800, 0];   // 0 = until the stream ends
+const RAID_COUNTDOWN_MS = 90000;        // Twitch's, before the raid goes
+
+async function loadChatMod() {
+  try {
+    const m = await (await fetch('/api/chat/mod')).json();
+    chat.mod.can = m.can || {};
+    chat.mod.pinned = m.pinned || null;
+  } catch(_) {}
+  paintChatBanners();
+}
+
+async function modPost(path, body) {
+  const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const data = await res.json();
+  if (!res.ok) throw Object.assign(new Error(I18N.server(data, 'dash.toast.requestFailed')), { code: data.code });
+  return data;
+}
+
+// 600 → "10m" / "10 分"
+function modDuration(s) {
+  const unit = ['d', 'h', 'm'].find(u => s % MOD_UNITS[u] === 0) || 's';
+  return t('dash.chat.mod.dur.' + unit, { n: s / MOD_UNITS[unit] });
+}
+
+function modClock(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function closeModMenu() {
+  const menu = document.getElementById('mod-menu');
+  if (menu) menu.remove();
+}
+
+// Below the button or name it opened from, kept inside the window
+function placeModMenu(menu, anchor) {
+  document.body.appendChild(menu);
+  const r = anchor.getBoundingClientRect();
+  const w = menu.offsetWidth, h = menu.offsetHeight;
+  let top = r.bottom + 4;
+  if (top + h > innerHeight - 8) top = Math.max(8, r.top - h - 4);
+  menu.style.left = `${Math.max(8, Math.min(r.left, innerWidth - w - 8))}px`;
+  menu.style.top = `${top}px`;
+}
+
+// First click: the button asks to be sure (4 s); second click: go
+function modArmed(btn, label, ms = 4000) {
+  if (btn.classList.contains('sure')) return true;
+  btn.dataset.label = btn.textContent;
+  btn.classList.add('sure');
+  btn.textContent = label;
+  setTimeout(() => { if (btn.isConnected) { btn.classList.remove('sure'); btn.textContent = btn.dataset.label; } }, ms);
+  return false;
+}
+
+// user = { login, name, color } from a message, or null: a box for the channel name
+function openModMenu(user, anchor) {
+  closeModMenu();
+  const can = chat.mod.can;
+  const off = (k) => can[k] ? '' : ' disabled';
+  const menu = document.createElement('div');
+  menu.id = 'mod-menu';
+  menu.className = 'mod-menu';
+  menu.setAttribute('role', 'dialog');
+  const head = user
+    ? `<div class="mod-head"><b style="color:${esc(user.color || 'var(--purple)')}">${esc(user.name)}</b><span class="mod-login">${esc(user.login)}</span></div>`
+      + `<button class="mod-item" data-mod="filter">${esc(t(chat.user === user.login ? 'dash.chat.mod.showAll' : 'dash.chat.mod.onlyThis'))}</button>`
+    : `<input type="text" class="mod-who" autocomplete="off" placeholder="${esc(t('dash.chat.mod.who'))}" aria-label="${esc(t('dash.chat.mod.who'))}" />`;
+  const units = Object.keys(MOD_UNITS).map(u => `<option value="${u}"${u === 'm' ? ' selected' : ''}>${esc(t('dash.chat.mod.unit.' + u))}</option>`).join('');
+  menu.innerHTML = head
+    + `<div class="mod-row"><button class="chat-act" data-mod="shoutout"${off('shoutout')}>📣 Shoutout</button>`
+    + `<button class="chat-act" data-mod="raid"${off('raid')}>🚀 ${esc(t('dash.chat.mod.raid'))}</button></div>`
+    + `<div class="mod-label">${esc(t('dash.chat.mod.timeout'))}</div>`
+    + `<div class="mod-row">${MOD_TIMEOUTS.map(s => `<button class="chat-act" data-mod="timeout" data-s="${s}"${off('ban')}>${esc(modDuration(s))}</button>`).join('')}</div>`
+    + `<div class="mod-row"><input type="number" class="mod-n" min="1" step="1"${off('ban')} aria-label="${esc(t('dash.chat.mod.timeout'))}" />`
+    + `<select class="mod-unit"${off('ban')}>${units}</select>`
+    + `<button class="chat-act" data-mod="timeout"${off('ban')}>${esc(t('dash.chat.mod.timeoutGo'))}</button></div>`
+    + `<input type="text" class="mod-reason" maxlength="500" placeholder="${esc(t('dash.chat.mod.reason'))}"${off('ban')} />`
+    + `<div class="mod-row"><button class="chat-act done" data-mod="unban"${off('ban')}>${esc(t('dash.chat.mod.unban'))}</button>`
+    + `<button class="chat-act danger" data-mod="ban"${off('ban')}>🚫 ${esc(t('dash.chat.mod.ban'))}</button></div>`
+    + (['ban', 'shoutout', 'raid'].some(k => !can[k])
+      ? `<div class="mod-note">${esc(t('dash.chat.mod.needAuth'))} <a href="/setup?reauth=1">${esc(t('dash.chat.followsAuthorize'))}</a></div>` : '');
+  placeModMenu(menu, anchor);
+  menu.addEventListener('click', (e) => onModMenuClick(e, user, menu));
+  menu.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.classList.contains('mod-n')) { e.preventDefault(); menu.querySelector('.mod-unit + [data-mod]').click(); }
+  });
+  (menu.querySelector('.mod-who') || menu.querySelector('button:not(:disabled)'))?.focus();
+}
+
+async function onModMenuClick(e, user, menu) {
+  const b = e.target.closest('[data-mod]');
+  if (!b || b.disabled) return;
+  const act = b.dataset.mod;
+  if (act === 'filter') {
+    chat.user = chat.user === user.login ? null : user.login;
+    chat.userName = user.name;
+    closeModMenu();
+    renderChat();
+    return;
+  }
+  const login = user ? user.login : menu.querySelector('.mod-who').value.trim().replace(/^@/, '');
+  if (!login) { showToast(t('dash.chat.mod.whoFirst'), true); menu.querySelector('.mod-who').focus(); return; }
+  const shown = user ? user.name : login;
+  let seconds;
+  if (act === 'timeout') {
+    seconds = b.dataset.s ? Number(b.dataset.s)
+      : Math.round(Number(menu.querySelector('.mod-n').value) * MOD_UNITS[menu.querySelector('.mod-unit').value]);
+    if (!(seconds > 0)) { showToast(t('dash.chat.mod.howLong'), true); menu.querySelector('.mod-n').focus(); return; }
+  }
+  if (act === 'ban' && !modArmed(b, t('dash.chat.mod.banSure', { name: shown }))) return;
+  if (act === 'raid' && !b.classList.contains('sure')) {
+    // Say where the viewers would go before they go
+    b.disabled = true;
+    try {
+      const res = await fetch(`/api/chat/mod/channel?login=${encodeURIComponent(login)}`);
+      const ch = await res.json();
+      if (!res.ok) throw new Error(I18N.server(ch, 'dash.toast.requestFailed'));
+      b.disabled = false;
+      modArmed(b, t(ch.live ? 'dash.chat.mod.raidSureLive' : 'dash.chat.mod.raidSureOffline', { name: ch.name, n: ch.viewers }), 8000);
+    } catch (err) {
+      b.disabled = false;
+      showToast(err.message, true);
+    }
+    return;
+  }
+  b.disabled = true;
+  try {
+    if (act === 'ban' || act === 'timeout') {
+      const reason = menu.querySelector('.mod-reason').value.trim();
+      const r = await modPost('/api/chat/mod/ban', { login, seconds, reason });
+      showToast(seconds ? t('dash.chat.mod.timedOut', { name: r.name, time: modDuration(seconds) }) : t('dash.chat.mod.banned', { name: r.name }));
+    } else if (act === 'unban') {
+      const r = await modPost('/api/chat/mod/unban', { login });
+      showToast(t('dash.chat.mod.unbanned', { name: r.name }));
+    } else if (act === 'shoutout') {
+      const r = await modPost('/api/chat/mod/shoutout', { login });
+      const reason = r.twitch ? I18N.server(r.twitch, 'dash.toast.requestFailed') : '';
+      const key = r.twitch ? (r.clip ? 'shoutoutClipOnly' : 'shoutoutNothing') : (r.clip ? 'shoutoutBoth' : 'shoutoutNoClip');
+      showToast(t('dash.chat.mod.' + key, { name: r.name, reason }), !!r.twitch && !r.clip);
+    } else if (act === 'raid') {
+      const r = await modPost('/api/chat/mod/raid', { login });
+      chat.mod.raid = { name: r.name, until: Date.now() + RAID_COUNTDOWN_MS };
+      paintChatBanners();
+      showToast(t('dash.chat.mod.raidStarted', { name: r.name }));
+    }
+    closeModMenu();
+  } catch (err) {
+    b.disabled = false;
+    if (b.classList.contains('sure')) { b.classList.remove('sure'); b.textContent = b.dataset.label; }
+    showToast(err.message, true);
+  }
+}
+
+// 📌 on a message: how long it stays pinned
+function openPinMenu(rec, anchor) {
+  closeModMenu();
+  const menu = document.createElement('div');
+  menu.id = 'mod-menu';
+  menu.className = 'mod-menu';
+  menu.setAttribute('role', 'dialog');
+  menu.innerHTML = `<div class="mod-label">${esc(t('dash.chat.mod.pinFor'))}</div><div class="mod-row">`
+    + PIN_TIMES.map(s => `<button class="chat-act" data-pin-s="${s}">${esc(s ? modDuration(s) : t('dash.chat.mod.pinStream'))}</button>`).join('') + '</div>';
+  placeModMenu(menu, anchor);
+  menu.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-pin-s]');
+    if (!b) return;
+    const seconds = Number(b.dataset.pinS);
+    b.disabled = true;
+    try {
+      const r = await modPost('/api/chat/mod/pin', { id: rec.id, ...(seconds ? { seconds } : {}) });
+      // Twitch may not list it straight away: show it from the message meanwhile
+      chat.mod.pinned = r && r.id ? r : { id: rec.id, name: rec.user.name, text: rec.text, endsAt: seconds ? Date.now() + seconds * 1000 : null };
+      paintChatBanners();
+      closeModMenu();
+      showToast(t('dash.chat.mod.pinned', { name: rec.user.name }));
+    } catch (err) {
+      b.disabled = false;
+      showToast(err.message, true);
+    }
+  });
+  menu.querySelector('button').focus();
+}
+
+document.addEventListener('mousedown', (e) => {
+  const menu = document.getElementById('mod-menu');
+  if (menu && !menu.contains(e.target)) closeModMenu();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModMenu(); });
+
+// The pinned message and a raid on its way; their countdowns tick in place
+let chatBannerTick = null;
+function paintChatBanners() {
+  const box = document.getElementById('chat-banners');
+  const p = chat.mod.pinned, raid = chat.mod.raid;
+  box.innerHTML = (p
+    ? `<div class="chat-banner pinned">📌 <span class="what"><b>${esc(p.name)}</b>: ${esc(p.text)}</span>`
+      + `<span class="when"${p.endsAt ? ` data-ends="${p.endsAt}" data-key="dash.chat.mod.pinLeft"` : ''}>${esc(p.endsAt ? '' : t('dash.chat.mod.pinUntilEnd'))}</span>`
+      + (chat.mod.can.pin ? `<button class="chat-act" data-unpin="${esc(p.id)}">${esc(t('dash.chat.mod.unpin'))}</button>` : '') + '</div>'
+    : '')
+    + (raid
+      ? `<div class="chat-banner raid">🚀 <span class="what" data-ends="${raid.until}" data-key="dash.chat.mod.raiding" data-name="${esc(raid.name)}"></span>`
+        + `<button class="chat-act" data-cancel-raid="1">${esc(t('dash.chat.mod.cancelRaid'))}</button></div>`
+      : '');
+  clearInterval(chatBannerTick);
+  chatBannerTick = box.querySelector('[data-ends]') ? setInterval(tickChatBanners, 1000) : null;
+  tickChatBanners();
+}
+
+function tickChatBanners() {
+  const now = Date.now();
+  let ended = false;
+  for (const el of document.querySelectorAll('#chat-banners [data-ends]')) {
+    const left = Number(el.dataset.ends) - now;
+    if (left <= 0) ended = true;
+    el.textContent = t(el.dataset.key, { time: modClock(left), name: el.dataset.name || '' });
+  }
+  if (!ended) return;
+  if (chat.mod.pinned && chat.mod.pinned.endsAt && chat.mod.pinned.endsAt <= now) chat.mod.pinned = null;
+  if (chat.mod.raid && chat.mod.raid.until <= now) chat.mod.raid = null;
+  paintChatBanners();
+}
+
+document.getElementById('chat-banners').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-unpin], [data-cancel-raid]');
+  if (!b) return;
+  b.disabled = true;
+  try {
+    if (b.dataset.unpin) {
+      await modPost('/api/chat/mod/unpin', { id: b.dataset.unpin }).catch(err => { if (err.code !== 'pinGone') throw err; });
+      chat.mod.pinned = null;
+      showToast(t('dash.chat.mod.unpinned'));
+    } else {
+      await modPost('/api/chat/mod/raid/cancel');
+      chat.mod.raid = null;
+      showToast(t('dash.chat.mod.raidCanceled'));
+    }
+  } catch (err) {
+    b.disabled = false;
+    showToast(err.message, true);
+    if (err.code === 'modNoRaid') chat.mod.raid = null;   // nothing left to cancel
+  }
+  paintChatBanners();
+});
+
+// "To announce": support to thank on stream (redemptions too), and viewers to greet — a first message in the channel,
+// or a viewer's first words this stream (greet, worked out here: per session live, per day otherwise).
+// They're highlighted in the chat until ✓ marks them announced (kept in the chat log); the session is
+// from server/stream-session.js.
+const ANNOUNCE_NOTICES = ['sub', 'resub', 'sub_gift', 'community_sub_gift', 'gift_paid_upgrade', 'prime_paid_upgrade',
+  'pay_it_forward', 'raid', 'watch_streak', 'bits_badge_tier', 'charity_donation'];
+
+function isAnnounce(rec) {
+  if (rec.kind === 'follow' || rec.kind === 'redeem') return true;
+  // A gift of several subs: the one community_sub_gift line, not each viewer's
+  if (rec.kind === 'notice') return ANNOUNCE_NOTICES.includes(rec.notice) && !(rec.notice === 'sub_gift' && rec.communityGift);
+  if (rec.kind !== 'chat' || rec.deleted) return false;
+  return !!rec.bits || rec.type === 'channel_points_highlighted' || isFirstChat(rec) || !!rec.greet;
+}
+
+// Live: only this session's; an earlier day: that day's
+function toAnnounce(rec) {
+  if (!isAnnounce(rec)) return false;
+  return !!chat.day || (chat.session.since !== null && rec.at >= chat.session.since);
+}
+
+function announceClass(rec) {
+  return toAnnounce(rec) && !rec.announced ? ' to-announce' : '';
+}
+
+function isMe(rec) {
+  return (rec.user.badges || []).includes('broadcaster') || (!!chat.channel && rec.user.login === chat.channel);
+}
+
+// Each viewer's first message (bots and the streamer left out)
+function markGreet(rec, seen) {
+  if (rec.kind !== 'chat' || isBot(rec) || isMe(rec)) return;
+  const who = rec.user.id || rec.user.login;
+  if (seen.has(who)) return;
+  seen.add(who);
+  rec.greet = true;
+}
+
+function markGreets(records) {
+  const seen = new Set();
+  for (const rec of records) markGreet(rec, seen);
+  return seen;
+}
+
+async function loadChatSession() {
+  try {
+    const s = await (await fetch('/api/chat/session')).json();
+    const records = s.records || [];
+    chat.session = { since: s.since, records, seen: markGreets(records) };
+  } catch(_) {}
+}
+
+// The live list and the session share records, so marks (greet, first, announced) reach both
+function linkSession() {
+  const byId = new Map(chat.session.records.map(r => [r.id, r]));
+  chat.live = chat.live.map(r => byId.get(r.id) || r);
+}
+
+// Still to announce: this session's, or the day's when looking at an earlier day
+function announceLeft() {
+  return (chat.day ? chat.dayRecords || [] : chat.session.records)
+    .filter(r => isAnnounce(r) && !r.announced && !(chat.hideBots && isBot(r)));
+}
+
+// The count jumps to the oldest one still to announce; ✓ marks them all
+function announceTools() {
+  const left = announceLeft().length;
+  if (!left) return '';
+  return `<button class="chip announce-next" data-announce-next="1" title="${esc(t('dash.chat.announceNextTip'))}">${esc(t('dash.chat.announceNext', { n: left }))}</button>`
+    + `<button class="chip announce-all" data-announce-all="1">${esc(t('dash.chat.announceAll', { n: left }))}</button>`;
+}
+
+// Scrolls to the oldest one still to announce, showing all chat first if a filter hides it
+function showNextAnnounce() {
+  const rec = announceLeft()[0];
+  if (!rec) return;
+  const list = document.getElementById('chat-list');
+  const find = () => list.querySelector(`.chat-msg[data-id="${CSS.escape(rec.id)}"]`);
+  if (!find()) {
+    chat.filter = 'all';
+    chat.user = null;
+    chat.query = '';
+    document.getElementById('chat-search').value = '';
+    renderChat();
+  }
+  const row = find();
+  if (!row) return;
+  row.scrollIntoView({ block: 'center' });
+  row.classList.remove('flash');
+  void row.offsetWidth;
+  row.classList.add('flash');
+}
+
+// ✓ on what's still to announce (worded on redemptions, beside their ✓ Done); once announced, a hover
+// button brings it back
+function announceMark(rec) {
+  if (!toAnnounce(rec)) return '';
+  return rec.announced
+    ? `<button class="chat-act undo" data-announce="${esc(rec.id)}" data-done="0" title="${esc(t('dash.chat.unannounceTip'))}">${esc(t('dash.chat.announced'))}</button>`
+    : `<button class="chat-act done" data-announce="${esc(rec.id)}" data-done="1" title="${esc(t('dash.chat.announceTip'))}">${rec.kind === 'redeem' ? esc(t('dash.chat.announceRedeem')) : '✓'}</button>`;
+}
+
+// Shown at once; the server tells every open dashboard (chat-announced)
+async function markAnnounced(recs, done) {
+  if (!recs.length) return;
+  const ids = recs.map(r => r.id);
+  applyAnnounced(ids, done);
+  try {
+    const res = await fetch('/api/chat/announced', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: recs.map(r => ({ id: r.id, at: r.at })), done }),
+    });
+    if (!res.ok) throw new Error(I18N.server(await res.json(), 'dash.toast.requestFailed'));
+  } catch (err) {
+    applyAnnounced(ids, !done);
+    showToast(t('dash.toast.announceFailed', { message: err.message }), true);
+  }
+}
+
+function applyAnnounced(ids, done) {
+  const set = new Set(ids);
+  for (const list of [chat.live, chat.session.records, chat.dayRecords || []]) {
+    for (const r of list) {
+      if (!set.has(r.id)) continue;
+      if (done) r.announced = true;
+      else delete r.announced;
+    }
+  }
+  rerenderChat();
+}
+
+// Draws the chat again where it was (at the bottom only if it was there)
+function rerenderChat() {
+  if (!chatOnScreen()) return;
+  const keep = chat.atBottom;
+  const list = document.getElementById('chat-list');
+  const top = list.scrollTop;
+  renderChat();
+  if (!keep) list.scrollTop = top;
+}
+
+// A viewer's first message in the channel: Twitch's flag (rec.first), or its "introduce yourself" prompt
+function isFirstChat(rec) {
+  return rec.kind === 'chat' && (rec.first || rec.type === 'user_intro');
+}
+
+function onChatFirst(m) {
+  for (const list of [chat.live, chat.dayRecords || []]) {
+    for (const r of list) if (r.kind === 'chat' && r.id === m.id) r.first = true;
+  }
+  rerenderChat();
+}
+
+// A redemption done or refunded, here or on Twitch
+function onChatRedeem(m) {
+  for (const list of [chat.live, chat.dayRecords || []]) {
+    for (const r of list) if (r.kind === 'redeem' && r.id === m.id) r.status = m.status;
+  }
+  rerenderChat();
+}
+
+// Mods deleted a message, or a timeout / ban / clear removed messages
+function onChatDelete(del) {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  for (const list of [chat.live, chat.day === todayKey ? chat.dayRecords || [] : []]) {
+    for (const r of list) {
+      if (r.kind === 'chat' && (del.all || (del.ids && del.ids.includes(r.id)) || (del.user && r.user.id === del.user))) r.deleted = true;
+    }
+  }
+  rerenderChat();
+}
+
 function esc(s) {
   return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+I18N.init();
+document.title = pageTitle();
+I18N.onChange(() => {
+  document.title = pageTitle();
+  render();
+  paintBadges();
+  paintBulk();
+  paintLeihuView();
+  paintChatDays();
+  placeChat();   // draws the chat, and the panel button's words
+  paintChatMore();
+  paintRewards();
+  if (filteredSongs.length) renderSuggest();
+  if (!document.getElementById('node-warn').hidden) paintNodeWarning();
+  paintModeBar();
+  if (currentTab === 'modes') paintModes();
+});
+
+// ── Modes (server/modes.js, stream-app.js) ─────────────────────────────────────
+// The top bar's buttons switch; the 🎛 Modes tab connects Streamlabs / OBS and edits modes, saved as
+// they're made. view = GET /api/modes: live = what the streaming app shows (read when the tab opens,
+// or ↻), issues = what each mode no longer finds and what's new in its scenes.
+const modes = { view: null, open: new Set(), busy: false, dragging: false };
+const MODE_PRESETS = [['🎤', 'sing', { holdClips: true, tab: 'queue' }], ['💬', 'talk', { tab: 'chat' }], ['☕', 'break', {}]];
+const appName = app => ({ streamlabs: 'Streamlabs Desktop', obs: 'OBS Studio' })[app] || app;
+const modeById = id => modes.view && modes.view.modes.find(m => m.id === id);
+const modeUnit = m => m.app === 'obs' ? 'dB' : '%';
+
+async function loadModes(live) {
+  try {
+    const v = await (await fetch('/api/modes' + (live ? '' : '?live=0'))).json();
+    if (live || !modes.view) modes.view = v;
+    else Object.assign(modes.view, { modes: v.modes, active: v.active, held: v.held });
+    paintModeBar();
+    // Not while editing there: a repaint would take the cursor out of the field
+    if (currentTab === 'modes' && (live || !document.getElementById('modes-list').contains(document.activeElement))) paintModes();
+  } catch (_) {}
+}
+
+// Another dashboard (or this one) switched or edited a mode
+function onModesMessage(m) {
+  if (m.switched && m.switched.tab && TABS.includes(m.switched.tab)) showTab(m.switched.tab);
+  loadModes(false);
+}
+
+// Why a mode can't fully apply now (from the last read), or ''
+function modeIssue(m) {
+  const is = modes.view && modes.view.issues && modes.view.issues[m.id];
+  if (!is) return '';
+  if (is.otherApp) return t('dash.modes.otherApp', { app: appName(is.otherApp) });
+  return is.missing.length ? t('dash.modes.missingTip', { list: is.missing.map(x => x.name).join(', ') }) : '';
+}
+
+function paintModeBar() {
+  const bar = document.getElementById('mode-bar');
+  const v = modes.view;
+  const list = v ? v.modes : [];
+  document.getElementById('mode-box').hidden = !list.length;
+  bar.innerHTML = list.map((m) => {
+    const on = v.active === m.id;
+    const issue = modeIssue(m);
+    const tip = [on ? t('dash.modes.activeTip') : t('dash.modes.switchTip', { name: m.name }), on && v.held ? t('dash.modes.heldTip') : '', issue].filter(Boolean).join('\n');
+    return `<button class="chip mode-chip${on ? ' on' : ''}" data-mode="${esc(m.id)}" aria-pressed="${on}" title="${esc(tip)}">${esc(m.icon)} ${esc(m.name)}${issue ? ' ⚠' : ''}${on && v.held ? ' ⏸' : ''}</button>`;
+  }).join('');
+}
+
+document.getElementById('mode-bar').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-mode]');
+  if (btn) switchMode(btn.dataset.mode);
+});
+
+async function switchMode(id) {
+  if (modes.busy) return;
+  const bar = document.getElementById('mode-bar');
+  modes.busy = true;
+  bar.classList.add('busy');
+  try {
+    const r = await modPost('/api/modes/switch', { id });
+    const m = modeById(id);
+    const name = `${m && m.icon ? m.icon + ' ' : ''}${r.name}`;
+    const problems = [];
+    if (r.appError) problems.push(I18N.server(r.appError, 'dash.toast.requestFailed'));
+    if (r.skipped.length) problems.push(t('dash.modes.skipped', { list: r.skipped.join(', ') }));
+    if (r.failed.length) problems.push(t('dash.modes.failed', { list: r.failed.join(', ') }));
+    if (r.canvasChanged) problems.push(t('dash.modes.canvasChanged'));
+    if (r.chat) problems.push(t('dash.modes.chatFailed', { message: I18N.server(r.chat, 'dash.toast.requestFailed') }));
+    if (problems.length) {
+      showToast(`${name} — ${problems.join(' · ')}`, true, 8000);
+      loadModes(true);
+    } else {
+      showToast(t('dash.modes.switched', { name }));
+    }
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    modes.busy = false;
+    bar.classList.remove('busy');
+  }
+}
+
+// ── The 🎛 Modes tab ──
+
+function paintModes() {
+  if (modes.dragging) return;   // painted when the drag ends
+  paintModeConnection();
+  const v = modes.view;
+  const list = document.getElementById('modes-list');
+  const presets = document.getElementById('modes-presets');
+  if (!v) { list.innerHTML = ''; presets.hidden = true; return; }
+  presets.hidden = v.modes.length > 0;
+  presets.innerHTML = `<span class="setting-hint">${esc(t('dash.modes.presets'))}</span>` + MODE_PRESETS.map(([icon, key]) =>
+    `<button class="btn add" onclick="newMode('${key}')">＋ ${icon} ${esc(t('dash.modes.preset.' + key))}</button>`).join('');
+  list.innerHTML = v.modes.map(modeCard).join('');
+}
+
+// Connected (or no app on purpose): one line with Change…. The form shows while changing it, and
+// when the connection fails.
+function paintModeConnection() {
+  const box = document.getElementById('modes-connection');
+  const c = modes.view ? modes.view.connection : { app: null, hasSecret: false };
+  const editing = box.dataset.edit === '1' || box.dataset.app != null;
+  box.classList.toggle('compact', !editing && !c.error);
+  if (!editing && !c.error) {
+    const secret = !c.hasSecret ? (c.app === 'obs' ? t('dash.modes.conn.noPassword') : '')
+      : t(c.app === 'obs' ? 'dash.modes.conn.passwordSaved' : 'dash.modes.conn.tokenSaved');
+    const state = !c.app ? ['', t('dash.modes.conn.off')]
+      : c.connected ? ['ok', '● ' + t('dash.modes.conn.ok', { app: appName(c.app) })]
+      : ['', t('dash.modes.conn.connecting', { app: appName(c.app) })];
+    box.innerHTML = `
+      <div class="modes-row">
+        <h3>${esc(t('dash.modes.conn.title'))}</h3>
+        <span class="modes-status ${state[0]}">${esc(state[1])}</span>
+        ${c.app ? `<span class="setting-hint">${esc([t('dash.modes.conn.portIs', { port: c.port }), secret].filter(Boolean).join(' · '))}</span>` : ''}
+        <span class="topbar-spacer"></span>
+        <button class="btn" onclick="editModeConnection(true)">${esc(t(c.app ? 'dash.modes.conn.change' : 'dash.modes.conn.connectOne'))}</button>
+      </div>
+      ${c.app ? '' : `<p class="setting-hint">${esc(t('dash.modes.conn.notSet'))}</p>`}`;
+    return;
+  }
+  const app = box.dataset.app != null ? box.dataset.app : (c.app || '');
+  const same = app === (c.app || '');
+  const status = !same ? ['', '']
+    : !app ? ['', t('dash.modes.conn.notSet')]
+    : c.error ? ['err', I18N.server(c.error, 'dash.toast.requestFailed')]
+    : c.connected ? ['ok', t('dash.modes.conn.ok', { app: appName(c.app) })] : ['', ''];
+  const secretName = t(app === 'obs' ? 'dash.modes.conn.password' : 'dash.modes.conn.token');
+  box.innerHTML = `
+    <h3>${esc(t('dash.modes.conn.title'))}</h3>
+    <div class="modes-row">
+      <select class="lang-select" id="mc-app" onchange="onModeAppPick(this.value)" aria-label="${esc(t('dash.modes.conn.title'))}">
+        <option value="">${esc(t('dash.modes.conn.none'))}</option>
+        <option value="streamlabs"${app === 'streamlabs' ? ' selected' : ''}>Streamlabs Desktop</option>
+        <option value="obs"${app === 'obs' ? ' selected' : ''}>OBS Studio</option>
+      </select>
+      ${app ? `
+      <label>${esc(t('dash.modes.conn.port'))} <input class="modes-input" id="mc-port" type="number" min="1" max="65535" style="width:90px"
+        value="${same && c.port ? c.port : (app === 'obs' ? 4455 : 59650)}"></label>
+      <input class="modes-input" id="mc-secret" type="password" autocomplete="off" style="width:min(280px,100%)" aria-label="${esc(secretName)}"
+        placeholder="${esc(same && c.hasSecret ? t('dash.modes.conn.saved') : secretName)}">` : ''}
+      <button class="btn" onclick="saveModeConnection()">${esc(t(app ? 'dash.modes.conn.save' : 'dash.modes.conn.saveNone'))}</button>
+      ${c.error ? '' : `<button class="btn" onclick="editModeConnection(false)">${esc(t('dash.modes.conn.cancel'))}</button>`}
+    </div>
+    ${app ? `<p class="setting-hint">${esc(t(app === 'obs' ? 'dash.modes.conn.helpObs' : 'dash.modes.conn.helpStreamlabs'))}</p>` : ''}
+    <p class="modes-status ${status[0]}">${esc(status[1])}</p>`;
+}
+
+// Change… opens the form; Cancel puts back the line as it was
+function editModeConnection(on) {
+  const box = document.getElementById('modes-connection');
+  if (on) box.dataset.edit = '1'; else delete box.dataset.edit;
+  delete box.dataset.app;
+  paintModeConnection();
+}
+
+// Picking another app only changes the form; Connect saves it
+function onModeAppPick(app) {
+  document.getElementById('modes-connection').dataset.app = app;
+  paintModeConnection();
+}
+
+async function saveModeConnection() {
+  const box = document.getElementById('modes-connection');
+  const app = document.getElementById('mc-app').value;
+  const body = { app };
+  if (app) {
+    body.port = document.getElementById('mc-port').value;
+    const secret = document.getElementById('mc-secret').value;
+    if (secret) body.secret = secret;
+  }
+  box.querySelector('.modes-status').textContent = '…';
+  try {
+    modes.view = await modPost('/api/modes/connection', body);
+    delete box.dataset.app;
+    delete box.dataset.edit;
+    paintModeBar();
+    paintModes();
+  } catch (err) {
+    showToast(err.message, true);
+    paintModeConnection();
+  }
+}
+
+function modeCard(m, i) {
+  const v = modes.view;
+  const is = (v.issues && v.issues[m.id]) || { missing: [], extra: [] };
+  const open = modes.open.has(m.id);
+  const issue = modeIssue(m);
+  const sum = m.app
+    ? t('dash.modes.summary', { scene: m.scene ? m.scene.name : t('dash.modes.noScene'), items: m.items.length, audio: m.audio.length })
+    : t('dash.modes.appOnly');
+  return `
+  <div class="mode-card${v.active === m.id ? ' active' : ''}" data-id="${esc(m.id)}">
+    <div class="mode-card-head">
+      ${v.modes.length > 1 ? `<div class="mode-move">
+        <span class="mode-grip" title="${esc(t('dash.modes.drag'))}" aria-hidden="true">⠿</span>
+        <div class="mode-arrows">
+          <button class="btn" data-act="up"${i === 0 ? ' disabled' : ''} title="${esc(t('dash.modes.up'))}" aria-label="${esc(t('dash.modes.up'))}">▲</button>
+          <button class="btn" data-act="down"${i === v.modes.length - 1 ? ' disabled' : ''} title="${esc(t('dash.modes.down'))}" aria-label="${esc(t('dash.modes.down'))}">▼</button>
+        </div>
+      </div>` : ''}
+      <input class="modes-input mode-icon" data-f="icon" maxlength="8" value="${esc(m.icon)}" aria-label="${esc(t('dash.modes.iconLabel'))}">
+      <input class="modes-input mode-name" data-f="name" maxlength="30" value="${esc(m.name)}" aria-label="${esc(t('dash.modes.nameLabel'))}">
+      <span class="mode-sum">${esc(sum)}${issue ? ` <span class="mode-warn">⚠ ${esc(issue)}</span>` : ''}</span>
+      <button class="btn" data-act="switch">${esc(t('dash.modes.switch'))}</button>
+      <button class="btn" data-act="toggle" aria-expanded="${open}">${esc(t(open ? 'dash.modes.close' : 'dash.modes.edit'))}</button>
+    </div>
+    ${open ? `<div class="mode-body">${modeStreamPart(m, is)}${modeAppPart(m)}
+      <div class="mode-foot">
+        <span class="topbar-spacer"></span>
+        <button class="btn danger" data-act="delete">${esc(t('dash.modes.delete'))}</button>
+      </div></div>` : ''}
+  </div>`;
+}
+
+// Dual Output: which canvas an item is on ('' without it)
+const canvasTag = i => i.display ? t('dash.modes.display.' + i.display) : '';
+const sameCanvas = (a, b) => (a.display || '') === (b.display || '');
+// An item as a mode names it
+const modeItemRef = i => ({ id: i.id, sourceId: i.sourceId, name: i.name, ...(i.display ? { display: i.display } : {}) });
+
+// What the streaming app shows now, as <option>s by scene (and canvas), to replace a missing item
+function liveItemOptions() {
+  return modes.view.live.scenes.filter(s => s.items.length).map(s => `<optgroup label="${esc(s.name)}">${s.items.map(i =>
+    `<option value="${esc(s.id)}|${esc(i.id)}">${esc(i.name)}${i.display ? ' · ' + esc(canvasTag(i)) : ''}</option>`).join('')}</optgroup>`).join('');
+}
+
+const dropBtn = () => `<button class="mode-drop" data-act="drop" title="${esc(t('dash.modes.drop'))}" aria-label="${esc(t('dash.modes.drop'))}">✕</button>`;
+
+function modeStreamPart(m, is) {
+  const { live, connection: conn } = modes.view;
+  const recapture = conn.app
+    ? `<div><button class="btn" data-act="recapture" title="${esc(t('dash.modes.recaptureTip'))}">${esc(t('dash.modes.recapture', { app: appName(conn.app) }))}</button></div>` : '';
+  if (!m.app || is.otherApp) {
+    const why = is.otherApp ? t('dash.modes.otherApp', { app: appName(is.otherApp) }) : t(conn.app ? 'dash.modes.noStreamPart' : 'dash.modes.conn.notSet');
+    return `<div class="mode-section"><h4>${esc(conn.app ? appName(conn.app) : t('dash.modes.conn.title'))}</h4>
+      <p class="setting-hint">${esc(why)}</p>${recapture}</div>`;
+  }
+  const missingItem = new Set(is.missing.filter(x => x.kind === 'item').map(x => `${x.sceneId}/${x.itemId}`));
+  const missingAudio = new Set(is.missing.filter(x => x.kind === 'audio').map(x => x.id));
+  const sceneMissing = is.missing.some(x => x.kind === 'scene');
+  const pick = `<option value="">${esc(t('dash.modes.pick'))}</option>`;
+  const notFound = name => `${esc(name)} <small>(${esc(t('dash.modes.notFound'))})</small>`;
+
+  let html = `<div class="mode-section"><h4>${esc(t('dash.modes.streamPart', { app: appName(m.app) }))}</h4>
+    <div class="modes-row">${esc(t('dash.modes.scene'))}
+      ${m.scene ? `<b class="${sceneMissing ? 'mode-warn' : ''}">${sceneMissing ? '⚠ ' + notFound(m.scene.name) : esc(m.scene.name)}</b>` : esc(t('dash.modes.noScene'))}
+      ${live && (sceneMissing || !m.scene) ? `<select class="lang-select" data-fix="scene">${pick}${live.scenes.filter(s => !s.group).map(s =>
+        `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select>` : ''}</div>`;
+
+  // Items, under the scene (or group) they're in, and the canvas with Dual Output
+  html += '<table class="mode-table"><tbody>';
+  let lastGroup = null;
+  const group = it => `${it.scene.id}/${it.item.display || ''}`;
+  const groups = [...new Set(m.items.map(group))].sort((a, b) => a.endsWith('/vertical') - b.endsWith('/vertical'));
+  const order = m.items.map((it, n) => n).sort((a, b) => groups.indexOf(group(m.items[a])) - groups.indexOf(group(m.items[b])) || a - b);
+  order.forEach((n) => {
+    const it = m.items[n];
+    if (`${it.scene.id}/${it.item.display || ''}` !== lastGroup) {
+      lastGroup = `${it.scene.id}/${it.item.display || ''}`;
+      html += `<tr class="scene-row"><td colspan="5">${esc(t('dash.modes.inScene', { scene: it.scene.name }))}${it.item.display ? ` · ${esc(canvasTag(it.item))}` : ''}</td></tr>`;
+    }
+    html += missingItem.has(`${it.scene.id}/${it.item.id}`)
+      ? `<tr class="missing" data-i="${n}"><td colspan="2">⚠</td><td class="name">${notFound(it.item.name)}
+          ${live ? `<select class="lang-select" data-fix="item">${pick}${liveItemOptions()}</select>` : ''}</td><td></td><td>${dropBtn()}</td></tr>`
+      : `<tr data-i="${n}"><td>${modeToggle('show', it.visible)}</td><td>${modeToggle('move', it.move, !it.place)}</td>
+          <td class="name">${esc(it.item.name)}</td><td></td><td>${dropBtn()}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  const extraItems = live ? is.extra.filter(x => x.itemId) : [];
+  html += extraRow(extraItems.map((x) => {
+    const s = live.scenes.find(sc => sc.id === x.sceneId);
+    const i = s && s.items.find(it => it.id === x.itemId);
+    return i && `<button class="btn add" data-act="add-item" data-scene="${esc(s.id)}" data-item="${esc(i.id)}" title="${esc(t('dash.modes.add', { name: i.name }))}">＋ ${esc(i.name)} <small>(${esc(s.name)}${i.display ? ' · ' + esc(canvasTag(i)) : ''})</small></button>`;
+  }));
+
+  // Sounds
+  const unit = modeUnit(m);
+  html += `<h4>${esc(t('dash.modes.sounds'))}</h4><table class="mode-table"><tbody>`;
+  m.audio.forEach((a, n) => {
+    html += missingAudio.has(a.id)
+      ? `<tr class="missing" data-a="${n}"><td colspan="2">⚠</td><td class="name">${notFound(a.name)}
+          ${live ? `<select class="lang-select" data-fix="audio">${pick}${live.audio.map(x =>
+            `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select>` : ''}</td><td></td><td>${dropBtn()}</td></tr>`
+      : `<tr data-a="${n}"><td>${modeToggle('sound', !a.muted)}</td><td><span class="mode-tog-blank"></span></td>
+          <td class="name">${esc(a.name)}</td>
+          <td class="vol"><input class="modes-input mode-vol" type="number" data-f="volume" value="${a.volume == null ? '' : a.volume}"
+            ${unit === 'dB' ? 'min="-100" max="26" step="0.5"' : 'min="0" max="100" step="1"'} aria-label="${esc(t('dash.modes.volume', { unit }))}"> ${unit}</td>
+          <td>${dropBtn()}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  const extraAudio = live ? is.extra.filter(x => x.audioId) : [];
+  html += extraRow(extraAudio.map((x) => {
+    const a = live.audio.find(s => s.id === x.audioId);
+    return a && `<button class="btn add" data-act="add-audio" data-audio="${esc(a.id)}" title="${esc(t('dash.modes.add', { name: a.name }))}">＋ ${esc(a.name)}</button>`;
+  }));
+  return html + recapture + '</div>';
+}
+
+function extraRow(buttons) {
+  buttons = buttons.filter(Boolean);
+  return buttons.length ? `<div class="mode-extra">${esc(t('dash.modes.extra'))} ${buttons.join('')}</div>` : '';
+}
+
+function modeAppPart(m) {
+  return `<div class="mode-section"><h4>${esc(t('dash.modes.appPart'))}</h4>
+    <div class="modes-row"><span>${esc(t('dash.modes.chat'))}</span>
+      <input class="modes-input mode-chat" data-f="chat" maxlength="500" value="${esc(m.chat)}" placeholder="${esc(t('dash.modes.chatPlaceholder'))}"></div>
+    <label class="setting"><input type="checkbox" data-f="holdClips"${m.holdClips ? ' checked' : ''}> <span>${esc(t('dash.modes.hold'))}</span></label>
+    <p class="setting-hint">${esc(t('dash.modes.holdHint'))}</p>
+    <div class="modes-row"><span>${esc(t('dash.modes.tab'))}</span>
+      <select class="lang-select" data-f="tab">${['', 'queue', 'leihu', 'chat'].map(tab =>
+        `<option value="${tab}"${m.tab === tab ? ' selected' : ''}>${esc(tab ? t('dash.tab.' + tab) : t('dash.modes.tabNone'))}</option>`).join('')}</select></div>
+  </div>`;
+}
+
+// 👁 / 🔊 / 📍 when on, 🚫 / 🔇 / 📍 dimmed when off, like the streaming app's own buttons; a click flips it.
+// 📍 can't be on for an item saved without a position.
+function modeToggle(kind, on, disabled) {
+  const tip = t(`dash.modes.${kind}.${disabled ? 'none' : on ? 'on' : 'off'}`);
+  const icon = kind === 'show' ? (on ? '👁' : '🚫') : kind === 'sound' ? (on ? '🔊' : '🔇') : '📍';
+  return `<button type="button" class="mode-tog${on ? ' on' : ''}" data-act="flip" data-kind="${kind}" aria-pressed="${on}" title="${esc(tip)}" aria-label="${esc(tip)}"${disabled ? ' disabled' : ''}>${icon}</button>`;
+}
+
+// Saves a mode; `reread` reads the streaming app again (what's missing or new may have changed)
+async function saveMode(m, reread) {
+  try {
+    Object.assign(m, await modPost('/api/modes/save', { mode: m }));
+    paintModeBar();
+    if (reread) await loadModes(true);
+  } catch (err) {
+    showToast(err.message, true);
+    loadModes(true);
+  }
+}
+
+async function newMode(preset) {
+  const p = MODE_PRESETS.find(x => x[1] === preset);
+  const n = modes.view ? modes.view.modes.length + 1 : 1;
+  try {
+    const m = await modPost('/api/modes/new', p ? { icon: p[0], name: t('dash.modes.preset.' + p[1]) } : { icon: '⭐', name: t('dash.modes.newName', { n }) });
+    if (p) await modPost('/api/modes/save', { mode: { ...m, ...p[2] } });
+    modes.open.add(m.id);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+  await loadModes(true);
+}
+
+const modesList = document.getElementById('modes-list');
+
+async function orderModes(ids) {
+  try { await modPost('/api/modes/order', { ids }); } catch (err) { showToast(err.message, true); }
+  loadModes(true);
+}
+
+// Drag a mode by its ⠿ handle, with the mouse or a finger. The card moves as it's dragged;
+// the new order is saved on letting go. Listened for on the document: moving the card in the page
+// would drop a pointer capture on its handle.
+modesList.addEventListener('pointerdown', (e) => {
+  const grip = e.target.closest('.mode-grip');
+  if (!grip || e.button > 0) return;
+  e.preventDefault();
+  const card = grip.closest('.mode-card');
+  const before = [...modesList.children].map(c => c.dataset.id).join();
+  const page = modesList.closest('.modes-page');
+  grip.setPointerCapture(e.pointerId);
+  modes.dragging = true;
+  card.classList.add('dragging');
+  document.body.classList.add('mode-dragging');
+  const move = (ev) => {
+    // Near the top or bottom edge, scroll the page
+    const box = page.getBoundingClientRect();
+    if (ev.clientY < box.top + 40) page.scrollTop -= 12;
+    else if (ev.clientY > box.bottom - 40) page.scrollTop += 12;
+    // Before the first card whose middle is below the pointer
+    const next = [...modesList.children].find(c => c !== card && ev.clientY < c.getBoundingClientRect().top + c.offsetHeight / 2);
+    if (next !== card.nextElementSibling) modesList.insertBefore(card, next || null);
+  };
+  const end = () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', end);
+    document.removeEventListener('pointercancel', end);
+    modes.dragging = false;
+    card.classList.remove('dragging');
+    document.body.classList.remove('mode-dragging');
+    const ids = [...modesList.children].map(c => c.dataset.id);
+    if (ids.join() !== before) orderModes(ids); else paintModes();
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', end);
+  document.addEventListener('pointercancel', end);
+});
+
+modesList.addEventListener('change', (e) => {
+  const card = e.target.closest('.mode-card');
+  const m = card && modeById(card.dataset.id);
+  if (!m) return;
+  const el = e.target;
+  const row = el.closest('tr');
+  const live = modes.view.live;
+  if (el.dataset.fix) {
+    if (!el.value) return;
+    if (el.dataset.fix === 'scene') {
+      const s = live.scenes.find(x => x.id === el.value);
+      m.scene = { id: s.id, name: s.name };
+    } else if (el.dataset.fix === 'item') {
+      const [sceneId, itemId] = el.value.split('|');
+      const s = live.scenes.find(x => x.id === sceneId);
+      const li = s.items.find(x => x.id === itemId);
+      Object.assign(m.items[row.dataset.i], { scene: { id: s.id, name: s.name }, item: modeItemRef(li), place: li.place || null });
+    } else {
+      const la = live.audio.find(x => x.id === el.value);
+      Object.assign(m.audio[row.dataset.a], { id: la.id, name: la.name });
+    }
+    return saveMode(m, true);
+  }
+  const f = el.dataset.f;
+  if (!f) return;
+  if (row && row.dataset.i != null) m.items[row.dataset.i][f] = el.checked;
+  else if (row && row.dataset.a != null) m.audio[row.dataset.a][f] = f === 'volume' ? (el.value === '' ? null : Number(el.value)) : el.checked;
+  else m[f] = el.type === 'checkbox' ? el.checked : el.value;
+  saveMode(m, false);
+});
+
+modesList.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-act]');
+  const card = btn && btn.closest('.mode-card');
+  const m = card && modeById(card.dataset.id);
+  if (!m) return;
+  const act = btn.dataset.act;
+  const live = modes.view.live;
+  const row = btn.closest('tr');
+  if (act === 'switch') return switchMode(m.id);
+  if (act === 'toggle') {
+    if (modes.open.has(m.id)) modes.open.delete(m.id); else modes.open.add(m.id);
+    return paintModes();
+  }
+  if (act === 'flip') {
+    const kind = btn.dataset.kind;
+    let on;
+    if (kind === 'show') { const it = m.items[row.dataset.i]; on = it.visible = !it.visible; }
+    else if (kind === 'move') { const it = m.items[row.dataset.i]; on = it.move = !it.move; }
+    else { const a = m.audio[row.dataset.a]; a.muted = !a.muted; on = !a.muted; }
+    btn.outerHTML = modeToggle(kind, on);
+    return saveMode(m, false);
+  }
+  if (act === 'drop') {
+    if (row.dataset.i != null) m.items.splice(row.dataset.i, 1); else m.audio.splice(row.dataset.a, 1);
+    return saveMode(m, true);
+  }
+  if (act === 'add-item') {
+    const s = live.scenes.find(x => x.id === btn.dataset.scene);
+    const li = s && s.items.find(x => x.id === btn.dataset.item);
+    if (!li) return;
+    const at = m.items.map(x => x.scene.id === s.id && sameCanvas(x.item, li)).lastIndexOf(true);   // next to the others from its scene and canvas
+    m.items.splice(at < 0 ? m.items.length : at + 1, 0, { scene: { id: s.id, name: s.name }, item: modeItemRef(li), visible: li.visible, place: li.place || null, move: false });
+    return saveMode(m, true);
+  }
+  if (act === 'add-audio') {
+    const la = live.audio.find(x => x.id === btn.dataset.audio);
+    if (la) m.audio.push({ id: la.id, name: la.name, muted: la.muted, volume: la.volume });
+    return saveMode(m, true);
+  }
+  if (act === 'recapture') {
+    try {
+      await modPost('/api/modes/recapture', { id: m.id });
+      showToast(t('dash.modes.recaptured', { name: `${m.icon} ${m.name}`.trim(), app: appName(modes.view.connection.app) }));
+    } catch (err) { showToast(err.message, true); }
+    return loadModes(true);
+  }
+  if (act === 'up' || act === 'down') {
+    const ids = modes.view.modes.map(x => x.id);
+    const i = ids.indexOf(m.id), j = i + (act === 'up' ? -1 : 1);
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    return orderModes(ids);
+  }
+  if (act === 'delete') {
+    if (!modArmed(btn, t('dash.modes.deleteConfirm'))) return;
+    try { await modPost('/api/modes/delete', { id: m.id }); } catch (err) { showToast(err.message, true); }
+    modes.open.delete(m.id);
+    return loadModes(true);
+  }
+});
+
+showTab(location.hash.slice(1));
 connect();
 loadSongList();
 loadHistory();
 loadSettings();
+loadNodeStatus();
+loadVersion();
+pollLeihu();
+setInterval(pollLeihu, 5000);
 </script>
 </body>
 </html>

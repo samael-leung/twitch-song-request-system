@@ -1,19 +1,11 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
 const express = require('express');
 const install = require('../server/leihu-selection-compat');
-const source = fs.readFileSync(path.join(__dirname, '../server/queue.js'), 'utf8');
-function fixtureQueue() {
-  const module = { exports: {} };
-  vm.runInNewContext(source, { module, exports: module.exports, console, Date, Set, require });
-  return module.exports;
-}
+const { loadQueue } = require('./helpers');
 async function server(t) {
-  const queue = fixtureQueue(), links = [];
+  const { queue, file, reload } = loadQueue(t), links = [];
   const app = express(); app.use(express.json());
   app.get('/api/leihu/status', (req, res) => res.json({ native: true }));
   install(app, { queue, leihu: { setLink: (...args) => links.push(args) } });
@@ -26,7 +18,7 @@ async function server(t) {
     return fetch(url + '/api/integrations/leihu/selection', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ song, action, expectedRevision: expectedRevision ?? (await get()).revision }) });
   }
-  return { queue, links, url, get, post };
+  return { queue, file, reload, links, url, get, post };
 }
 test('new endpoint preserves native API, links without replacing requester, and rejects stale writes', async t => {
   const s = await server(t);

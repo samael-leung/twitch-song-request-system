@@ -1,14 +1,28 @@
 node_modules/
 .env
+# .env backups and editor swap files hold real credentials too
+.env.*
+!.env.example
+*~
+*.swp
+*.un~
 google-credentials.json
 song-cache.json
 setup-progress.json
+queue-state.json
+song-links.json
+leihu-home.json
+link-search.json
 clip-player/sponsor-voice.wav
 clip-player/sponsor-voice.mp3
-twitch-session.json
-twitch-session.json.tmp
+chat-logs/
+ending-credits.json
+reward-takeovers.json
+stream-session.json
+stream-modes.json
 
-# Local compatibility repair backups and machine-specific state
+# Local sync repair and previous integration state
 .leihu-sync-repair.json
 backups/leihu-sync-*/
-song-links.json
+twitch-session.json
+twitch-session.json.tmp

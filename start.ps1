@@ -25,7 +25,20 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-OK "Node.js: $nodeVer"
 
-# Ensure packages are installed
+Set-Location $PSScriptRoot
+
+# Security fixes: the minimum per Node.js line is secureNode in package.json.
+# Only tells the user -- installing Node.js is left to them.
+$nodeCheck = node server/node-check.js 2>$null
+if ($nodeCheck -like "outdated *") {
+    $parts = $nodeCheck -split " "
+    Write-Warn ("Node.js " + $parts[1] + " is missing security fixes. Install " + $parts[2] + " or newer:")
+    Write-Warn "    https://nodejs.org  (or run: winget upgrade OpenJS.NodeJS.LTS)"
+    Write-Warn "    then start the song queue again. Starting anyway for now."
+}
+
+# Ensure packages are installed. Raised minimum versions in package.json
+# (security fixes) are installed here too.
 Write-Step "Checking npm packages..."
 npm install --silent
 Write-OK "npm packages ready"
@@ -43,11 +56,8 @@ Write-Host "  Press Ctrl+C to stop the server when done streaming." -ForegroundC
 Write-Host "  Reminder: make sure your OBS Browser Source is visible in your scene." -ForegroundColor DarkGray
 Write-Host ""
 
-Set-Location $PSScriptRoot
-
-# Poll until the server is ready, then open the browser.
-# The server itself decides the correct page (setup wizard or dashboard)
-# and redirects accordingly -- so we always open the root URL.
+# Poll until the server is ready, then open the dashboard (its own window, see below).
+# Until setup is done the server sends the root URL to the setup wizard.
 $openUrl = "http://localhost:3000/"
 Write-Host "  Waiting for server, then opening browser..." -ForegroundColor DarkGray
 Start-Job -ScriptBlock {
@@ -61,7 +71,13 @@ Start-Job -ScriptBlock {
             break
         } catch {}
     }
-    if ($ready) { Start-Process $u }
+    if ($ready) {
+        # The dashboard opens in its own Chrome/Edge window, so OBS can capture Leihu's sound alone.
+        # The setup wizard, or a PC without Chrome/Edge, opens in the default browser.
+        try {
+            Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/stream-window" -ContentType "application/json" -Body '{"tab":"queue"}' -TimeoutSec 5 | Out-Null
+        } catch { Start-Process $u }
+    }
 } -ArgumentList $openUrl | Out-Null
 
 npm start

@@ -12,7 +12,9 @@ test('merged server preserves setup, dashboard, new upstream routes and Leihu se
   const child = spawn(process.execPath, [path.resolve(__dirname, '../server/index.js')], {
     cwd: dir, env: { ...process.env, PORT: '0', TWITCH_TRANSPORT: 'websocket',
       TWITCH_CLIENT_ID: 'startup-test-client', TWITCH_USER_ACCESS_TOKEN: '',
-      GOOGLE_SHEET_ID: '', HISTORY_SHEET_ID: '' }, stdio: ['ignore', 'pipe', 'pipe'],
+      GOOGLE_SHEET_ID: '', HISTORY_SHEET_ID: '', LEIHU_AUTOSTART: '0',
+      LEIHU_LINKS_FILE: path.join(dir, 'song-links.json'), QUEUE_STATE_FILE: path.join(dir, 'queue-state.json'),
+      CHAT_LOG_DIR: path.join(dir, 'chat-logs'), LEIHU_HOME_FILE: path.join(dir, 'leihu-home.json') }, stdio: ['ignore', 'pipe', 'pipe'],
   });
   let ws;
   t.after(async () => {
@@ -25,7 +27,7 @@ test('merged server preserves setup, dashboard, new upstream routes and Leihu se
     const timeout = setTimeout(() => reject(new Error('Server startup timed out')), 10000);
     child.stdout.on('data', value => {
       output += value;
-      const match = output.match(/Server running at http:\/\/localhost:(\d+)/);
+      const match = output.match(/Song Queue .* running at http:\/\/localhost:(\d+)/);
       if (match) { clearTimeout(timeout); resolve(match[1]); }
     });
     child.once('exit', code => { clearTimeout(timeout); reject(new Error(`Server exited: ${code}`)); });
@@ -47,6 +49,7 @@ test('merged server preserves setup, dashboard, new upstream routes and Leihu se
   const [raw] = await once(ws, 'message');
   assert.equal(JSON.parse(raw).type, 'state');
   const selection = await (await fetch(base + '/api/integrations/leihu/selection')).json();
+  assert.equal((await fetch(base + '/api/leihu/status')).status, 200);
   const broadcast = once(ws, 'message');
   const response = await fetch(base + '/api/integrations/leihu/selection', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },

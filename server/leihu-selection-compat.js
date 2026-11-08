@@ -60,7 +60,10 @@ module.exports = function installSelection(app, dependencies = {}) {
     if (current.leihuId !== song.id && typeof leihu.setLink === 'function') leihu.setLink(current.title, current.artist || '', song.id);
     current.leihuId = song.id;
     if (queue.getState().nowPlaying?.leihuId !== song.id) throw new Error('Queue does not expose live song entries');
-    queue.broadcastRaw({ type: 'state', ...queue.getState() });
+    // A self-move preserves the current entry and queue order, while using the
+    // native mutation path to persist queue-state.json and broadcast the final
+    // metadata. broadcastRaw alone would lose this link/candidate after restart.
+    if (!queue.moveSong('nowPlaying', 0, 'nowPlaying', 0)) throw new Error('Could not save selected song');
   }
   function select(song) {
     const found = locate(song);

@@ -1,5 +1,8 @@
 # 🎵 VTuber Song Queue — Setup Guide
 
+> **New here, with no song list yet?** Start with the [Starter Guide](docs/STARTER_GUIDE.md): every step from
+> scratch, including making your song list. This page is the full reference.
+
 ## How it works
 
 ```
@@ -46,8 +49,9 @@ no terminal commands, no manual `.env` editing:
 2. Connect your Twitch account (enter a short code at twitch.tv/activate — no copy-pasting tokens)
 3. Create the 🎵 Song Request and 🎲 Random Song Channel Points rewards automatically
 4. Upload your Google **service account** key and pick your song-list sheet from a live preview
-5. (Optional) Connect a history sheet to track requesters and request dates
-6. Add the OBS overlay to your scene
+5. (Optional) Create random-song rewards limited to one sheet tab (e.g. a random 日語 song)
+6. (Optional) Connect a history sheet to track requesters and request dates
+7. Add the OBS overlay and clip player to your scene
 
 The wizard validates each step as you go and explains exactly what to do and why.
 If you're interrupted partway through, it picks up where you left off.
@@ -62,33 +66,49 @@ If you're interrupted partway through, it picks up where you left off.
 **Double-click `start.bat`** (English) or **`start_zh.bat`** (Traditional Chinese / 繁體中文).
 
 That's it — no ngrok, no URLs to copy, no `.env` to update. The script starts the
-server and opens your browser straight to **http://localhost:3000/dashboard**.
+server and opens the dashboard in a window of its own: a separate copy of Chrome (or Edge), so OBS
+can take Leihu Singsing's sound from it alone (see Leihu Singsing below). Logins and bookmarks of your
+usual browser aren't in it; the dashboard needs none. Until setup is done, and on a PC without
+Chrome or Edge, it opens your usual browser instead.
 
 ---
 
 ## OBS / Streamlabs Browser Source
 
+### Song overlay
+
 Add the overlay to your scene — do this once:
 
 1. In OBS/Streamlabs, add a new source → **Browser**
 2. URL: `http://localhost:3000/overlay/index.html`
-3. Width: `960`, Height: `1362` (the overlay renders at 2× for sharpness)
+3. Width: `960`, Height: `1470` (the overlay renders at 2× for sharpness)
 4. Paste this into the **Custom CSS** field:
    ```css
    body { background-color: rgba(0, 0, 0, 0) !important; margin: 0px auto; overflow: hidden; }
    ```
 5. Uncheck **"Shutdown source when not visible"**
-6. In your scene, select the source and resize it down to `480 x 681` (50%) —
+6. In your scene, select the source and resize it down to `480 x 735` (50%) —
    this is what makes the 2× render look sharper instead of just bigger
 
 The overlay connects automatically when the server is running and updates live.
+Its language (English or 繁體中文) is set in the dashboard: Song Queue tab ⚙ → **Overlay language**.
+
+### Clip player (shoutouts / sponsor roll)
+
+1. Add a new source → **Browser**
+2. URL: `http://localhost:3000/clip-player/index.html`
+3. Width: `1920`, Height: `1080`
+4. Put it at the top of the scene, covering the whole screen
+5. It stays fully transparent, and shows content only for `!so`, `!watch`, `!tk` and `!endingtk`
 
 ---
 
 ## Google Sheets setup
 
 ### Song list sheet
-Your existing sheet with songs. All tabs are included except those in `EXCLUDED_TABS` (`server/config.js`).
+Your existing sheet with songs. All tabs are included except those in `EXCLUDED_TABS` in `.env` (comma-separated; `待練勿點` when not set).
+Share it with the service account email → **Viewer** is enough. The YouTube link finder needs
+**Editor** to save links (see [YouTube link finder](#youtube-link-finder)).
 
 Header row must have at minimum:
 
@@ -111,8 +131,27 @@ Share with service account email → **Editor** access.
 | File | What to change |
 |---|---|
 | `.env` | Credentials, IDs, URLs — see `.env.example` for descriptions |
-| `server/config.js` | Matching thresholds, excluded tabs, scroll speed, random weights |
-| `overlay/index.html` | CSS variables at top — font sizes, list height |
+| `server/config.js` | Matching thresholds, random weights, Leihu recognition language per tab |
+| `overlay/index.html` | CSS variables at top — font sizes, list height; `SCROLL_PX_PER_SEC` — scroll speed |
+
+---
+
+## Chat commands
+
+Mods and the broadcaster only — viewers can't trigger them.
+
+| Command | Description |
+|---|---|
+| `!so <user>` | Sends Twitch's Shoutout (while you're live), plays a random clip of that channel and adds it to the sponsor roll |
+| `!tk` | Japanese-TV-style sponsor roll of every channel `!so`'d this stream, then clears the list |
+| `!endingtk` | The same roll for everyone who supported this stream, one heading each: raiders, subscribers (gifters and gifted viewers), cheers, new followers, channel-point redeemers, song requesters and the 8 most active chatters — since the last `!endingtk`. Who it would thank now: Chat tab ⚙ |
+| `!watch <url>` | Plays a Twitch clip, a YouTube video or a video file link (mp4/webm) |
+| `!replay` | Replays the last `!so` / `!watch` |
+| `!stop` | Stops what's playing and clears the waiting clips |
+
+**`!tk` / `!endingtk` backgrounds:** put images (jpg / png / gif / webp) in `clip-player/sponsor-bgs/` and restart
+the server — one is picked at random each time. With no images the background is dark.
+The Japanese voice line is generated on first start (local VoiceVox if running, else Google TTS).
 
 ---
 
@@ -122,13 +161,122 @@ Open `http://localhost:3000/dashboard` during streams.
 
 | Feature | Description |
 |---|---|
-| 4 columns | Now Playing · Up Next · Played · Pending Review |
-| Drag & drop | Move songs between columns or reorder within |
+| 💬 Chat | Live chat with filters, highlighted messages to announce, a message box and redemption buttons — see [Chat tab](#chat-tab) below |
+| Tabs | 🎵 Song Queue (the panels below) and 🎤 Leihu Singsing — Leihu's own screen inside the dashboard. **⚙ Settings** at the right end of its top row opens Leihu's settings and the two steps that get your song list ready; while those run, their progress shows in the header. `#leihu` in the address opens that tab. Leihu only shows on the PC it runs on. **▶ Start Leihu** there (or "Start Leihu with the song queue") runs Leihu without its own window, so it shows only in this tab |
+| 4 panels (2×2) | Left: Now Playing above Up Next · Right: Pending Review above Played |
+| Drag & drop | Move songs between panels or reorder within |
+| ⚙ Settings | Each tab has its own ⚙ at the right end of its top row: Song Queue — random cooldown, overlay opacity / brightness / language; Leihu Singsing — its settings and the two steps; Chat — song notes on the overlay, who `!endingtk` would thank now, channel-point rewards. Each saves on its own |
+| EN / 中文 | Switches the dashboard, links page and setup wizard together; the overlay and clip player follow the ⚙ "Overlay language" setting |
 | ✓ Finished | Moves Now Playing → Played, pulls next song |
 | Pending column | Weak/unmatched requests — edit and accept manually |
+| 🔍 Find (Pending) | For a song that isn't on your sheet: searches lyric sites and YouTube (needs Leihu Singsing running), then **▶ Queue + prepare** or **＋ Add to** your first excluded tab with its link |
 | Manual request bar | Add songs without Channel Points |
 | History info | Each card shows last request date and requester |
 | Key circle | Shows transposition value (+3, -2, etc.) |
+| ♫ badge · 🎤 Sing | Leihu Singsing status of each song — see below |
+
+---
+
+## Chat tab
+
+The 💬 Chat tab shows your Twitch chat live, together with channel-point redemptions, subs, raids and
+follows. It's kept on this PC for `CHAT_LOG_DAYS` days (default 30): pick an earlier day from the date
+list. Messages mods delete show struck through.
+
+- **Chat on every tab:** on the other tabs the live chat also shows in a panel on the right, so you can
+  follow it while working with songs, Leihu or modes. Drag its left edge to resize it; **💬** at the right
+  of the tabs hides or shows it (both remembered). The panel is the live chat only: search, filters and
+  earlier days are here in the Chat tab, and while a filter is on the panel says so (**Show all ✕**). It starts
+  hidden in narrow windows; under 900px wide there is no panel, only this tab.
+
+- **Filters:** songs mentioned, commands, mods & VIPs, subscribers, @mentions, first-time
+  chatters, highlighted messages & bits, redemptions, waiting redemptions, and subs, raids & follows.
+  The search box looks in messages and names. Bots are hidden while **Hide bots** is ticked.
+- **To announce:** what to thank or greet on stream is highlighted in amber, right in the chat — subs,
+  resubs and gifted subs (a gift of several subs as one line), raids, cheers, new followers, watch
+  streaks, channel-point redemptions, highlighted messages, first-time chatters, and each viewer's first message this stream
+  (tagged *first words this stream*; bots and you are left out). **✓** on one removes its highlight
+  (on a redemption it's **✓ Announce**, apart from its **✓ Done**).
+  Changed your mind? Point at the row and click **✓ announced** to highlight it again. In the filter
+  row, **To announce: N ↓** jumps to the oldest one still highlighted (showing all chat if a filter
+  hides it), and **✓ Mark all announced** clears them all. A new session starts when your stream goes
+  live; until then, anything not checked off stays highlighted.
+- **First-time chatters** are the viewers Twitch itself highlights: their first message in your channel ever.
+- **Songs mentioned:** **♪** on a sheet song named in chat adds it to the queue with the viewer as
+  requester. It shows when the song was last sung: amber within the random cooldown, 📺 when it was
+  shown on the overlay. The song overlay briefly lists such songs as "title - 99 days ago", coming up
+  from its bottom over the Played list (up to 4 at a time; amber within the cooldown). Turn this off in
+  Chat ⚙ → **📺 Song notes on overlay**.
+- **Posting in chat:** type in the box at the bottom and press Enter — it posts as your Twitch account.
+  **↪ Reply** (shown when you point at a message) answers that message; ✕ or Esc cancels. When Twitch
+  holds a message back (AutoMod, slow mode…), your text stays in the box and the reason is shown.
+  **↗ Twitch chat** still opens Twitch's own chat window.
+- **Moderating:** click a name for its menu: **👤 Only this viewer's messages** (click again to show
+  everyone), **📣 Shoutout**, **🚀 Raid**, **Timeout** (1m / 10m / 1h / 1d, or type a length), **✅ Unban /
+  end timeout** and **🚫 Ban** (asks once more). The reason box is optional and goes with a ban or timeout.
+  **🛡 Moderate** at the top opens the same menu for anyone, by channel name — e.g. to unban someone who
+  isn't in the chat. **Shoutout** sends Twitch's own Shoutout (the follow pop-up) and plays one of their
+  clips, like `!so`; Twitch only allows it while you're live, every 2 minutes (once an hour for the same
+  channel), so outside that the clip still plays and you're told why. **Raid** first shows whether that
+  channel is live and how many viewers it has; click again to go. Twitch then counts down 90 seconds
+  (shown above the chat, with **Cancel raid**). **📌** (shown when you point at a message) pins it to the
+  top of your Twitch chat for 1, 5 or 30 minutes or until the stream ends; the pinned message shows above
+  the chat with **Unpin**. Setups from before these buttons need to authorize again once: the menu links to it.
+- **Redemptions:** a waiting redemption of a reward this app made gets **✓ Done** and **↩ Refund**
+  (Refund asks once more: Twitch can't undo it). Song requests settle themselves: done when you press
+  ✓ Finished (or drag the song to Played), refunded when you remove it from the queue or Pending.
+  **✕ Clear All** leaves them waiting, so the *Waiting redemptions* filter finds them. Twitch lets an
+  app change only the redemptions of rewards it made, so a reward made on Twitch gets **↗ Twitch queue**
+  instead, which opens Twitch's own reward queue.
+- **Chat ⚙:** song notes on the overlay; who `!endingtk` would thank right now, and whether new
+  followers are included; **Channel-point rewards**, which hands a reward made on Twitch over to the
+  app. Click **Let the app manage it**: the app makes a hidden copy with the same settings. Delete the original on
+  Twitch (clear its queue first), and the copy takes its name and place, also as the song request or
+  a random reward. Only a custom icon has to be uploaded again.
+
+**Updating from an earlier version:** new followers (for `!endingtk`) and posting in chat need Twitch
+permissions that older setups didn't ask for. The Chat tab then shows **Authorize again →**, which
+takes you to the wizard's authorization step once; nothing else changes.
+
+---
+
+## Modes (🎛 Modes tab)
+
+Buttons at the top of the dashboard, e.g. **🎤 Singing**, **💬 Talking** and **☕ Break**. One click puts
+Streamlabs Desktop or OBS Studio back the way you saved the mode and does this app's part.
+
+- **Connect once** (🎛 Modes → Streaming app):
+  - **Streamlabs Desktop:** Settings → Remote Control → click the QR code → **Show details**, and copy the
+    token into the dashboard. Never show that QR code on stream.
+  - **OBS Studio 30 or newer:** Tools → WebSocket Server Settings → tick **Enable WebSocket server**. If
+    authentication is on, copy the password from **Show Connect Info**.
+  - Both only work on this PC. The token or password is kept in `.env`.
+- **Making a mode:** set the streaming app up by hand the way it should look, then press **＋ New mode from
+  what's on now** (or one of the 🎤 / 💬 / ☕ starters). The mode saves:
+  - the scene;
+  - which items show in it and in the scenes and groups inside it;
+  - the mute and volume of the sounds heard in those scenes: their sources, plus devices that are in no
+    scene, like Desktop Audio and the mic (% in Streamlabs, dB in OBS, as their mixers show them). Other
+    scenes' sounds are left alone; add one with **＋** if a mode should set it too.
+- **Changing a mode:** **✎ Edit** shows its contents. Click **👁 / 🚫** to show or hide an item and
+  **🔊 / 🔇** to turn a sound on or off (dimmed = off), or set a volume. **✕** leaves an item out, so the mode doesn't touch it.
+  **📥 Save what … shows now into this mode** takes it all again from the streaming app.
+- **Dual Output (Streamlabs):** each item is there once per canvas, listed under "horizontal canvas" and
+  "vertical canvas". Each canvas has its own 👁 and 📍.
+- **📍 Position** (next to 👁; dimmed = off): items with it on are also put back where they were saved
+  (position, size, rotation, crop). Off (the default), they stay where you placed them. A mode never moves
+  anything if the canvas size changed since it was saved; save it again.
+- **This app's part:** a chat message posted when switching to the mode; **⏸ Hold clips**, where clips
+  from `!so`, `!watch` and `!tk` wait (up to 10) until you switch to another mode, and one already
+  playing finishes; and a dashboard tab to open.
+- **When things change in the streaming app:**
+  - Renamed items, scenes and sounds are still found.
+  - An item deleted and made again with the same name is found by its name.
+  - Missing ones are skipped while everything else is applied. The notice names them, and the mode's
+    button and editor show ⚠ with **Pick a replacement…** or **✕**.
+  - Items added later aren't touched. The editor lists them under "Not in this mode" with **＋** to add one.
+- **Studio Mode:** in OBS, a mode changes the program scene. In Streamlabs Desktop it may only change the
+  preview; press Transition.
 
 ---
 
@@ -150,7 +298,45 @@ Set `RANDOM_PICK_MODE` in `.env`:
 - `weighted` — favors songs not played recently (recommended)
 - `pure` — truly random
 
-Songs already in queue/Now Playing are always excluded.
+Songs already in queue/Now Playing/Played, and songs requested within the cooldown
+(⚙ on the dashboard), are always excluded.
+
+---
+
+## Leihu Singsing (optional)
+
+[Leihu Singsing](https://github.com/LeihuTW/Leihu-singsing) (雷虎練唱台) is a separate free app that
+turns a YouTube video into a backing track with lyrics, in any key. When it runs on the same PC, the
+dashboard connects to it by itself — nothing to set up. When it isn't running, everything works as before.
+
+- Each queued song gets a **♫ badge**: ready / no lyrics / preparing / failed / prepare / link.
+  **♫ prepare** imports the song from the sheet's YouTube link (column `YTLink`, see below);
+  **♫ link** lets you pick a song you already have in Leihu.
+- Leihu tab ⚙ → **Auto-prepare queued songs** imports songs as they are queued and renders their sheet key
+  ahead of time. It uses the GPU during the stream.
+- **🎤 Sing** (Now Playing) opens the song in Leihu's practice window at its sheet key. Needs Leihu 1.5.2 or newer.
+- When Leihu leaves a sheet song's lyrics blank, or flags that online lyrics fit better than what it
+  recognized, an online lyric is applied — only an exact fit: same title, same artist, same length.
+  Lyrics you picked in Leihu are never replaced.
+- **Leihu's sound as its own OBS source**: in the dashboard's Leihu tab, Leihu plays through the browser,
+  so OBS hears it mixed with every other tab. `start.bat` opens the dashboard in a separate copy of Chrome
+  (or Edge) for this; opened some other way, Leihu tab ⚙ → **🔊 Open the stream window** does the same. In OBS add **Application Audio Capture**, pick the
+  window **點歌控制台 Song Queue (OBS)** and set Window Match Priority to **Window title must match**.
+
+---
+
+## YouTube link finder
+
+Leihu finds your songs by the YouTube link in the sheet's **YTLink** column. Leihu tab ⚙ →
+**① Find a YouTube link for each song** → **🔗 Find YouTube links** fills that column for you (Leihu Singsing must be running —
+the search uses its lyric sites and YouTube tools):
+
+1. **Step 1 — Editor access:** share the song sheet with the service-account email shown on the page as
+   **Editor**, then click **Check access**. Only saving needs it; searching and reviewing work without it.
+2. **Search songs without a link:** about 8 seconds per song. Stop and resume any time.
+3. **Review:** picks are grouped into *Confident*, *Needs a look* and *Nothing found*. Accept, skip,
+   choose another video or paste a link.
+4. **Save:** writes accepted links into **empty** YTLink cells only. A tab without the column gets one.
 
 ---
 
@@ -159,27 +345,31 @@ Songs already in queue/Now Playing are always excluded.
 ```
 vtuber-song-queue/
 ├── setup/                    ← browser-based setup wizard (served at /setup)
-├── setup.ps1                 ← optional terminal setup wizard
-├── start.ps1                 ← run every stream
-├── start.bat / setup.bat     ← double-click launchers (avoid PowerShell execution policy issues)
+├── setup.ps1 / setup_zh.ps1  ← optional terminal setup wizard
+├── start.ps1 / start_zh.ps1  ← run every stream
+├── *.bat                     ← double-click launchers (avoid PowerShell execution policy issues)
 ├── .env                      ← secrets (never commit!)
 ├── .env.example              ← template with descriptions
 ├── google-credentials.json   ← service account key (never commit!)
 ├── song-cache.json           ← auto-generated, safe to delete
-├── server/
-│   ├── index.js              ← main server
-│   ├── config.js             ← tuneable behaviour settings
-│   ├── sheets.js             ← song list reader
-│   ├── matcher.js            ← fuzzy matching
-│   ├── queue.js              ← queue state + WebSocket
-│   ├── twitch.js             ← EventSub WebSocket client + Device Auth token handling
-│   ├── setup-routes.js       ← API endpoints behind the setup wizard
-│   ├── history.js            ← request history writer
-│   └── random.js             ← random song picker
-├── overlay/
-│   └── index.html            ← OBS browser source
-└── dashboard/
-    └── index.html            ← streamer control panel
+├── queue-state.json          ← current queue, restored after a restart within 6 hours
+├── song-links.json           ← songs linked to Leihu by hand
+├── link-search.json          ← link finder progress and decisions
+├── chat-logs/                ← Chat tab log, one file per day (kept CHAT_LOG_DAYS days)
+├── ending-credits.json       ← when !endingtk last ran
+├── reward-takeovers.json     ← rewards handed over to the app (Chat ⚙)
+├── stream-session.json       ← when the stream last went live (Chat tab, what to announce)
+├── server/                   ← the server (see CLAUDE.md for every file)
+│   └── commands/             ← chat commands (!so, !watch, !replay, !stop, !tk, !endingtk)
+├── shared/                   ← English / 繁體中文 strings shared by the pages
+├── overlay/index.html        ← OBS song overlay
+├── clip-player/
+│   ├── index.html            ← OBS clip player (shoutouts, !watch, sponsor roll)
+│   └── sponsor-bgs/          ← !tk background images
+├── dashboard/
+│   ├── index.html            ← streamer control panel
+│   └── links.html            ← YouTube link finder
+└── tools/find-videos.py      ← link finder search helper (runs with Leihu's Python)
 ```
 
 ---
@@ -189,4 +379,21 @@ vtuber-song-queue/
 - Song list **auto-refreshes every 5 minutes** — no restart needed after adding songs
 - History sheet **updates within ~2 seconds** of each request
 - Your Twitch connection **renews itself automatically** — no token to babysit, no tunnel to restart
-- Want it running 24/7 without your PC on? Deploy to Railway or Render
+- When an update needs a new Twitch permission, the dashboard says so with an **Authorize again →** link
+
+---
+
+## YouTube blocks downloads
+
+Leihu Singsing downloads songs with yt-dlp. Sometimes YouTube refuses with *"Sign in to confirm you're
+not a bot"*: the dashboard badge shows **♫ YouTube blocked**.
+It's a temporary block on your internet connection (often after many YouTube requests from one PC),
+not a problem with the song.
+
+1. **Wait.** It usually clears within a few hours to a day.
+2. **If it keeps happening**, let yt-dlp use your browser's YouTube login. Nothing in Leihu Singsing changes:
+   - Sign in to YouTube in **Firefox**. Chrome and Edge lock their cookies on Windows, so yt-dlp can't read them.
+   - Create the file `%APPDATA%\yt-dlp\config.txt` containing this one line:
+     `--cookies-from-browser firefox`
+   - Leihu's downloads now use that login. To undo it, delete the file.
+   - Use a secondary Google account if you can: YouTube may restrict accounts it sees downloading.

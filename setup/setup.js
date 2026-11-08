@@ -65,7 +65,13 @@ async function init() {
       currentStep = STEPS.indexOf('google-creds');
     } else if (status.configured.twitch) {
       currentStep = STEPS.indexOf('rewards');
-    } else if (status.clientId) {
+    }
+    // ?reauth=1 (dashboard → Chat settings): authorize again for a permission added later
+    if (status.configured.twitch && status.clientId && new URLSearchParams(location.search).get('reauth') === '1') {
+      state.clientId = status.clientId;
+      state.reauth = true;
+      currentStep = STEPS.indexOf('twitch-auth');
+    } else if (!status.configured.twitch && status.clientId) {
       // Twitch app already registered (Client ID known) but the user
       // authorization expired/was revoked — this happens when the refresh
       // token gets rejected. No need to re-enter the Client ID or redo
@@ -199,7 +205,7 @@ async function validateClientId() {
     showStatus(status, 'ok', t.verified);
     setTimeout(goNext, 800);
   } catch (err) {
-    showStatus(status, 'error', '✗ ' + (err.message || t.errInvalid));
+    showStatus(status, 'error', err.message === 'invalid_client' ? t.errInvalid : '✗ ' + err.message);
   }
 }
 
@@ -245,6 +251,10 @@ async function startDeviceAuth() {
   try {
     const res = await api('POST', '/setup/api/start-device-auth');
     document.getElementById('device-code-display').textContent = res.user_code;
+    // Twitch's own link carries the code (…/activate?device-code=…), so it's filled in there
+    if (/^https:\/\/(www\.)?twitch\.tv\/activate/.test(res.verification_uri || '')) {
+      document.querySelector('#auth-waiting .device-url').href = res.verification_uri;
+    }
 
     // Countdown timer
     let remaining = res.expires_in;
@@ -284,7 +294,7 @@ async function pollDeviceAuth(interval) {
     renderStep();
   } else if (res.status === 'error') {
     clearInterval(deviceTimerInterval);
-    alert(t.errGeneric(res.error));
+    alert(t.errGeneric(I18N.server(res)));
     renderStep();
   } else {
     // pending — keep polling
@@ -360,7 +370,7 @@ function renderRewardPicker(containerId, type, label, hint, requiresText) {
         ${matching.map(r => `
           <div class="reward-option" onclick="pickReward('${type}', ${r._idx})" id="reward-opt-${type}-${r._idx}">
             <div class="reward-opt-tag">${r.is_user_input_required ? t.textInputTag : t.noTextTag}</div>
-            <div class="reward-opt-name">${esc(r.title)}</div>
+            <div class="reward-opt-name">${esc(r.title)}${r.manageable ? '' : ` <span style="color:var(--text-dim)">${t.madeOnTwitch}</span>`}</div>
             <div class="reward-opt-cost">${r.cost} pts</div>
           </div>`).join('')}
         ${newOptionHtml}
@@ -377,9 +387,11 @@ function renderRewardPicker(containerId, type, label, hint, requiresText) {
       </div>`;
   }
 
+  // Rewards this app makes can be completed / refunded from the dashboard; ones made on Twitch can be taken over there later
   container.innerHTML = `
     <div style="font-size:11px; letter-spacing:2px; color:var(--text-dim); margin-bottom:8px; text-transform:uppercase">${label}</div>
-    <div style="font-size:12px; color:var(--text-dim); margin-bottom:12px">${hint}</div>
+    <div style="font-size:12px; color:var(--text-dim); margin-bottom:6px">${hint}</div>
+    <div style="font-size:12px; color:var(--text-dim); margin-bottom:12px">${t.manageHint}</div>
     ${listHtml}
     <div id="create-form-${type}" style="display:none; margin-top:12px">
       <div class="field" style="margin-bottom:10px">
@@ -405,7 +417,7 @@ async function pickReward(type, idx) {
   document.getElementById(`reward-opt-${type}-${idx}`).classList.add('selected');
 
   try {
-    await api('POST', '/setup/api/create-rewards', { mode: 'pick', rewardType: type, rewardId: reward.id });
+    await api('POST', '/setup/api/create-rewards', { mode: 'pick', rewardType: type, rewardId: reward.id, title: reward.title });
     document.getElementById(`reward-list-${type}`).style.display = 'none';
     const doneEl = document.getElementById(`reward-done-${type}`);
     doneEl.style.display = 'block';
@@ -524,6 +536,10 @@ function renderSongSheet(el) {
   el.innerHTML = `
     <div class="step-title">${t.title}</div>
     <div class="step-subtitle">${t.subtitle}</div>
+    <div class="info-box amber">
+      <div class="info-label">${t.noSheetTitle}</div>
+      <div class="info-body">${t.noSheet}</div>
+    </div>
     ${state.serviceEmail ? `
       <div class="info-box green">
         <div class="info-label">${t.shareTitle}</div>
@@ -932,10 +948,13 @@ function skipHistory() {
 function renderOBS(el) {
   const t = T().obs;
   const overlayUrl = `${location.origin}/overlay/index.html`;
+  const clipUrl = `${location.origin}/clip-player/index.html`;
   const css = `body { background-color: rgba(0, 0, 0, 0) !important; margin: 0px auto; overflow: hidden; }`;
 
-  const urlBlock = `<div class="code-block"><span>${overlayUrl}</span><button class="copy-btn" onclick="copyText('${overlayUrl}', this)">${T().copy}</button></div>`;
-  const cssBlock = `<div class="code-block"><span>${css}</span><button class="copy-btn" onclick="copyText(\`${css}\`, this)">${T().copy}</button></div>`;
+  const block = (text) => `<div class="code-block"><span>${text}</span><button class="copy-btn" onclick="copyText(\`${text}\`, this)">${T().copy}</button></div>`;
+  // Steps hold {url} / {css} / {clipUrl} where the copyable blocks go
+  const list = (steps) => `<ol class="steps-list" style="margin-bottom:16px">${steps.map(s =>
+    `<li>${s.replace('{url}', block(overlayUrl)).replace('{css}', block(css)).replace('{clipUrl}', block(clipUrl))}</li>`).join('')}</ol>`;
 
   el.innerHTML = `
     <div class="step-title">${t.title}</div>
@@ -945,22 +964,15 @@ function renderOBS(el) {
       <div class="tab" onclick="switchTab('streamlabs-tab', this)">${t.streamlabsTab}</div>
     </div>
     <div class="tab-content active" id="obs-tab">
-      <ol class="steps-list" style="margin-bottom:16px">
-        <li>${t.obsSteps[0]}</li>
-        <li>${t.obsSteps[1]}${urlBlock}</li>
-        <li>${t.obsSteps[2]}</li>
-        <li>${t.obsSteps[3]}${cssBlock}</li>
-        <li>${t.obsSteps[4]}</li>
-      </ol>
+      <div class="info-label">${t.overlayTitle}</div>
+      ${list(t.obsSteps)}
     </div>
     <div class="tab-content" id="streamlabs-tab">
-      <ol class="steps-list" style="margin-bottom:16px">
-        <li>${t.streamlabsSteps[0]}</li>
-        <li>${t.streamlabsSteps[1]}${urlBlock}</li>
-        <li>${t.streamlabsSteps[2]}</li>
-        <li>${t.streamlabsSteps[3]}${cssBlock}</li>
-      </ol>
+      <div class="info-label">${t.overlayTitle}</div>
+      ${list(t.streamlabsSteps)}
     </div>
+    <div class="info-label">${t.clipTitle}</div>
+    ${list(t.clipSteps)}
     <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
       <button class="btn btn-primary" onclick="goNext()">${t.allDoneBtn}</button>
       <button class="btn btn-ghost" onclick="window.open('${overlayUrl}', '_blank')">${t.previewBtn}</button>
@@ -1021,7 +1033,8 @@ async function api(method, url, body) {
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(url, opts);
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  // Server messages with a code are shown in the wizard's language (shared/i18n-server.js)
+  if (!res.ok) throw new Error(I18N.server(data) || `HTTP ${res.status}`);
   return data;
 }
 

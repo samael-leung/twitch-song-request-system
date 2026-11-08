@@ -6,9 +6,14 @@ Twitch 頻道點數點歌，附 OBS 顯示層與連麥 Shoutout 功能。
 
 ## 開始使用
 
+**第一次用、還沒有歌單？** 從 [新手入門（從零開始）](docs/STARTER_GUIDE_zh_TW.md) 開始 —— 不需要會寫程式。
+（English: [Starter Guide](docs/STARTER_GUIDE.md)）
+
 **首次安裝**：安裝 [Node.js LTS](https://nodejs.org)，然後雙擊 `start_zh.bat`，跟著瀏覽器的安裝精靈走即可。
 
 **每次直播**：雙擊 `start_zh.bat`，就這樣。
+
+**控制台**：`http://localhost:3000/dashboard` — 點歌佇列、雷虎練唱台，以及聊天室（篩選、標示要宣讀的訊息、直接發言和回覆、封鎖／禁言／Shoutout／揪團／置頂、完成或退還兌換），以及模式（一鍵切換 Streamlabs／OBS 的場景、顯示項目、音訊，並暫停 Clip、在聊天室發言）。
 
 > 完整說明請見 [SETUP_zh_TW.md](SETUP_zh_TW.md)
 
@@ -18,7 +23,7 @@ Twitch 頻道點數點歌，附 OBS 顯示層與連麥 Shoutout 功能。
 
 | 來源 | 網址 | 尺寸 |
 |---|---|---|
-| 歌單顯示層 | `http://localhost:3000/overlay/index.html` | 960×1362，縮小至 50% |
+| 歌單顯示層 | `http://localhost:3000/overlay/index.html` | 960×1470，縮小至 50%（480×735） |
 | Clip Player | `http://localhost:3000/clip-player/index.html` | 1920×1080 |
 
 歌單顯示層 Custom CSS：
@@ -32,8 +37,9 @@ body { background-color: rgba(0, 0, 0, 0) !important; margin: 0px auto; overflow
 
 | 指令 | 說明 |
 |---|---|
-| `!so <帳號>` | 播放指定頻道的隨機 Clip，並記錄至感謝名單 |
+| `!so <帳號>` | 送出 Twitch 的 Shoutout，播放指定頻道的隨機 Clip，並記錄至感謝名單 |
 | `!tk` | 播放感謝名單，列出本場所有 `!so` 的頻道 |
+| `!endingtk` | 片尾感謝名單：揪團、訂閱、小奇點、新追隨、兌換、點歌和最活躍的聊天觀眾 |
 | `!watch <網址>` | 播放 Twitch Clip、YouTube 或影片連結 |
 | `!replay` | 重播上一個片段 |
 | `!stop` | 立即停止當前播放 |
@@ -42,11 +48,13 @@ body { background-color: rgba(0, 0, 0, 0) !important; margin: 0px auto; overflow
 
 ## !tk 背景圖設定
 
-每次呼叫 `!tk` 時，系統會從資料夾中隨機選取一張背景圖片。
+每次呼叫 `!tk` 或 `!endingtk` 時，系統會從資料夾中隨機選取一張背景圖片。
 
 1. 將背景圖片（jpg / png / gif / webp）放入 `clip-player/sponsor-bgs/` 資料夾，可放多張
 2. 重新啟動伺服器
 
 > 若資料夾內沒有圖片，背景顯示為深色。
 
-雷虎練唱台雙向同步：兩個儲存庫皆使用 `leihu-song-request-sync` 分支。已正式納入使用者驗證成功的相容 API 修復，避免選歌端點 404；保留既有點歌者、佇列與原生雷虎整合介面。部署、測試與 ZIP 升級注意事項見 [LEIHU_INTEGRATION.md](LEIHU_INTEGRATION.md)。
+## 雷虎練唱台雙向同步
+
+本分支以 [sheng7337/twitch-song-request-system](https://github.com/sheng7337/twitch-song-request-system) 的 2026.11-1（`00d83d0`）為上游，保留原生雷虎整合、聊天室、模式切換與佇列保存，再加入練唱台 1.6.9 使用的 `/api/integrations/leihu/selection`。修復畫面的同步 404 不需要重裝練唱台或安裝 ngrok；已下載原作者 ZIP 者可直接套用相容修復包。兩個整合 repo 都只更新 `leihu-song-request-sync` 分支。部署與修復方式見 [LEIHU_INTEGRATION.md](LEIHU_INTEGRATION.md)。
