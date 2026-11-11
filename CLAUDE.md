@@ -76,6 +76,9 @@ vtuber-song-queue/
 │   ├── first-chat.js      Anonymous read-only IRC: Twitch's first-msg flag → chat-log markFirst
 │   ├── chat-send.js       The Chat tab's message box: Helix POST /chat/messages (replies too)
 │   ├── chat-mod.js        The Chat tab's ban / timeout / unban, Twitch Shoutout, raid / cancel, pin / unpin (Helix)
+│   ├── chat-badges.js     Badge pictures for the chat on stream (Helix /chat/badges, global + channel, read once)
+│   ├── veadotube.js       veadotube mini windows (~/.veadotube/instances → WebSocket): avatar states, set, thumbnails
+│   ├── outfits.js         👕 Outfit rewards: redemptions wait for the streamer's pick; time limit back to the default
 │   ├── modes.js           Modes (🎛 tab, top-bar buttons): save / apply the streaming app's state + this app's part
 │   ├── stream-app.js      Streamlabs Desktop (Remote Control JSON-RPC) / OBS (obs-websocket 5) on this PC
 │   ├── stream-session.js  When the stream went live (stream.online / Helix /streams), for "to announce"
@@ -86,6 +89,8 @@ vtuber-song-queue/
 ├── dashboard/i18n-dashboard.js, dashboard/i18n-links.js   Page strings, EN + zh-TW
 ├── setup/                 Web setup wizard (index.html, setup.css, setup.js, i18n.js — EN + zh-TW)
 ├── overlay/index.html     OBS Browser Source — song queue, cyberpunk dark/neon style
+├── overlay/chat.html      OBS Browser Source — the chat on stream (?style=panel | bubble | list | row)
+├── overlay/break.html     OBS Browser Source — "休息中 / ON BREAK" card; ?card=opening "準備中 / STARTING SOON" (?min=N / ?at=HH:MM count down)
 ├── dashboard/index.html   Streamer control panel — tabs (Song Queue: 2×2 panels, drag/drop, history, manual add; Leihu; Chat), ⚙ per tab
 ├── dashboard/links.html   YouTube link finder review page
 ├── clip-player/
@@ -319,6 +324,13 @@ vtuber-song-queue/
   #chat-dock (right of .tab-area in .workspace) on the other tabs. Use chatOnScreen() (not currentTab === 'chat')
   for "is the chat visible". Docked: live only (a past day switches back), tools / filters hidden, a strip names an
   active filter. localStorage chatDock {open, width}; none under 900px; starts closed under 1100px and in the stream window
+- Chat on stream (overlay/chat.html, replaces OneComme): loads /api/chat/recent, then sends `{type: 'chat-subscribe'}`
+  like the dashboard and adds `chat` records; `chat-delete` removes messages at once. Shows the last `chatOverlay.max`
+  of chat / redemptions / follows / notices (subs, gifts, raids… and `announcement`; a community gift once), bots
+  (shared/chat-bots.js) and !commands per the settings. Badges: `user.badgeIds` ("set/version", new records only)
+  → /api/chat/badges. Subs / gifts / raids… in its own words in the overlay language (chatOverlay.notice.* in
+  shared/i18n-viewer.js, from the notice's tier / months / count / bitsTier / charity); Twitch's English `system` line for
+  other types and older records. Emotes: static-cdn.jtvnw.net v2. Styles by ?style=; html zoom 2, the body sized to half the window
 - Dashboard Chat tab (chat-log.js): every `channel.chat.message`, redemption, chat notification (sub,
   raid…) and follow becomes a record (user,
   badges, text split into text / emote / mention / cheer parts, message_type, bits, reply, `songs` = sheet
@@ -332,7 +344,8 @@ vtuber-song-queue/
   channel, first-time (`first` from IRC's first-msg, or `user_intro`), highlighted / bits, redemptions, waiting redemptions, one viewer, search, bots) run in
   the dashboard. ♪ on a song mention adds it via `/api/add` with the viewer as requester
 - "To announce" (要宣讀), highlighted in every view (`.to-announce`, not a filter): subs / resubs / gifts (a community gift once: its `sub_gift` lines carry
-  `communityGift` and are left out), raids, watch streaks, bits badges, charity, follows, redemptions
+  `communityGift` and are left out), raids, watch streaks, bits badges, charity, follows, redemptions except song request / random song ones (`songRewards` from
+  `/api/redemptions/manageable`, redemptions.songRewardIds)
   (their mark reads "✓ Announce", beside ✓ Done), cheers,
   highlighted messages, first-time chatters, and each viewer's first message this session (`greet`,
   worked out in the dashboard; bots and the streamer left out). The session = since the stream last
@@ -534,6 +547,13 @@ register it in index.js.
 | POST | `/api/leihu/link` | Manual link `{title, artist, id}` — `id: null` unlinks |
 | POST | `/api/leihu/prepare` | Import / render key for one song now `{title, artist, key}` |
 | GET | `/api/chat/recent` | Chat tab: the latest 1000 chat records `{records, channel}` |
+| GET | `/api/chat/badges` | `{"set/version": picture}` — badge pictures for the chat on stream (chat-badges.js) |
+| GET | `/api/outfits` | 👕 veadotube windows + states, outfit window, waiting redemptions, settings, `revertAt` (outfits.js) |
+| GET | `/api/outfits/thumb?window=&state=` | A state's 128 × 128 PNG from veadotube (cached by its hash) |
+| POST | `/api/outfits/pick` | `{ state, id?, window? }` — wear it; with a redemption id: done + time limit |
+| POST | `/api/outfits/drop` | `{ id, refund }` — refund a waiting redemption, or just close its card |
+| POST | `/api/outfits/keep` | Stop the time limit |
+| POST | `/api/outfits/settings` | `{ rewards?, default?, window?, minutes? }` (OUTFIT_* in .env) |
 | GET | `/api/chat/days` | Days with a chat log, newest first |
 | GET | `/api/chat/log?day=YYYY-MM-DD` | One day's chat records, with deletions, redemption statuses, first messages and ✓ marks applied |
 | GET | `/api/credits` | `{follows, lastAt, groups}` — who `!endingtk` would thank now; follows: `on` / `no-permission` / `failed` |
@@ -552,7 +572,7 @@ register it in index.js.
 | POST | `/api/modes/switch` | `{id}` → `{skipped, failed, appError, chat, tab, canvasChanged?}` |
 | POST | `/api/modes/new` / `save` / `recapture` / `delete` / `order` | `{name, icon}` / `{mode}` / `{id}` / `{id}` / `{ids}` |
 | POST | `/api/modes/connection` | `{app, port?, secret?}` → writes .env, reconnects, answers like GET |
-| GET | `/api/redemptions/manageable` | `{ids, channel}` — rewards whose redemptions the Chat tab can change |
+| GET | `/api/redemptions/manageable` | `{ids, channel, songRewards}` — rewards whose redemptions the Chat tab can change; the song ones (not to announce) |
 | POST | `/api/redemptions/status` | `{id, rewardId, action: 'done' \| 'refund'}` |
 | GET | `/api/rewards` | Chat ⚙: every reward with `role`, `manageable`, `skipsQueue`, `takeover` |
 | POST | `/api/rewards/takeover` | `{id, action: 'start' \| 'finish' \| 'cancel'}` |
@@ -597,6 +617,10 @@ See `.env.example` for full descriptions.
 - `LEIHU_AUTOSTART` — `1` = start Leihu without its window when the song queue starts (dashboard toggle)
 - `CHAT_LOG_DAYS` — days of chat log kept in chat-logs/ (default 30)
 - `SONG_NOTES` — `0` = no song notes on the song overlay (Chat tab switch; on when unset)
+- `CHAT_OVERLAY_MAX` (1–50, 10), `CHAT_OVERLAY_SIZE` (60–200 %, 100), `CHAT_OVERLAY_REDEEMS` / `_EVENTS` (on),
+  `CHAT_OVERLAY_COMMANDS` / `_BOTS` (off) — the chat on stream; `chatOverlay` in /api/settings, set from Chat ⚙
+- `OUTFIT_REWARDS` (reward IDs, comma-separated), `OUTFIT_DEFAULT` (veadotube state), `OUTFIT_MINUTES` (0 = stays) —
+  the 👕 Outfits tab; `VEADOTUBE_DIR` overrides ~/.veadotube/instances (tests)
 - `LEIHU_ROOT` — optional: Leihu's folder for starting it; unset = remembered from Leihu's `/api/status` `root`
 - `STREAM_APP` (`streamlabs` / `obs`), `STREAMLABS_TOKEN`, `STREAMLABS_PORT`, `OBS_WS_PORT`, `OBS_WS_PASSWORD` — modes' streaming app (🎛 Modes tab)
 

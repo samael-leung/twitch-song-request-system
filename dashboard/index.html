@@ -7,6 +7,7 @@
 <script src="/shared/i18n.js"></script>
 <script src="/shared/i18n-server.js"></script>
 <script src="/dashboard/i18n-dashboard.js"></script>
+<script src="/shared/chat-bots.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -119,6 +120,11 @@
   .setting-name { width: 120px; flex-shrink: 0; }
   .setting input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--purple); }
   .setting-hint { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  /* Chat ⚙ "Chat on stream": one row per style, its Browser Source address and Copy */
+  .co-url { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .co-url b { width: 120px; flex-shrink: 0; font-weight: 400; color: var(--text); }
+  .co-url code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--blue, #5a9aff); }
+  .co-url .btn { font-size: 12px; padding: 2px 9px; }
   .step { border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
   .step-title { font-size: 14px; font-weight: 600; color: var(--text); }
   .step-status { font-size: 13px; color: var(--amber); }
@@ -761,6 +767,43 @@
   .picker-item .st { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
   .picker-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
+  /* 👕 Outfits: the tab, and the pick card that pops up on any tab for a waiting redemption */
+  .outfit-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .outfit {
+    position: relative; width: 104px; padding: 4px 4px 3px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+    color: var(--text-dim); font-size: 11px;
+  }
+  .outfit:hover { border-color: var(--purple); color: var(--text); }
+  .outfit img { width: 94px; height: 94px; object-fit: contain; }
+  .outfit .outfit-name { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .outfit.cur { border-color: var(--green); color: var(--green); box-shadow: 0 0 0 1px var(--green) inset; }
+  .outfit-star {
+    position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; padding: 0; border: none; border-radius: 50%;
+    background: rgba(8,8,20,0.75); color: var(--text-dim); cursor: pointer; font-size: 13px; line-height: 22px;
+  }
+  .outfit-star:hover, .outfit-star.on { color: var(--amber); }
+  .outfit-window { display: flex; flex-direction: column; gap: 6px; }
+  .outfit-window + .outfit-window { margin-top: 10px; }
+  .outfit-window-title { font-size: 13px; color: var(--text-dim); }
+  .outfit-window-title b { color: var(--text); font-weight: normal; }
+  .outfit-rewards { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+  .outfit-revert { font-size: 14px; color: var(--amber); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .outfit-revert[hidden] { display: none; }
+  .outfit-pick {
+    position: fixed; left: 16px; bottom: 16px; z-index: 350; width: min(600px, calc(100vw - 32px)); max-height: 70vh; overflow-y: auto;
+    background: var(--bg-panel); border: 1px solid var(--border-amber); border-left: 3px solid var(--amber); border-radius: 8px;
+    padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 6px 28px rgba(0,0,0,0.7);
+  }
+  .outfit-pick[hidden] { display: none; }
+  .outfit-pick-head { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--amber); }
+  .outfit-pick-head .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .outfit-pick-head .more { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
+  .outfit-pick .outfit { width: 84px; }
+  .outfit-pick .outfit img { width: 74px; height: 74px; }
+  .outfit-pick-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .outfit-pick-actions .btn { font-size: 12px; padding: 3px 10px; }
+
   .toast {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 400;
     max-width: calc(100vw - 32px); pointer-events: none;
@@ -888,6 +931,7 @@
   <button class="tab" role="tab" id="tabbtn-leihu" data-tab="leihu" aria-controls="tab-leihu" onclick="showTab('leihu')" data-i18n="dash.tab.leihu">🎤 Leihu Singsing</button>
   <button class="tab" role="tab" id="tabbtn-chat" data-tab="chat" aria-controls="tab-chat" onclick="showTab('chat')"><span data-i18n="dash.tab.chat">💬 Chat</span><span class="tab-count" id="chat-unread" hidden></span></button>
   <button class="tab" role="tab" id="tabbtn-modes" data-tab="modes" aria-controls="tab-modes" onclick="showTab('modes')" data-i18n="dash.tab.modes">🎛 Modes</button>
+  <button class="tab" role="tab" id="tabbtn-outfits" data-tab="outfits" aria-controls="tab-outfits" onclick="showTab('outfits')"><span data-i18n="dash.tab.outfits">👕 Outfits</span><span class="tab-count" id="outfit-count" hidden></span></button>
   <!-- The chat beside the other tabs: open / close (placeChat) -->
   <button class="tab dock-btn" id="dock-btn" type="button" onclick="toggleChatDock()" aria-pressed="false">💬<span class="tab-count" id="dock-unread" hidden></span> <span id="dock-arrow">◂</span></button>
 </nav>
@@ -899,6 +943,8 @@
 </div>
 
 <span class="toast" id="toast"></span>
+<!-- 👕 A redemption of an outfit reward, waiting for the streamer to pick the outfit (server/outfits.js) -->
+<div class="outfit-pick" id="outfit-pick" role="dialog" aria-live="polite" hidden></div>
 
 <div class="workspace">
 <div class="tab-area">
@@ -1015,6 +1061,27 @@
   <!-- Chat settings -->
   <div class="tab-config" id="config-chat" hidden>
     <button class="btn tab-config-close" onclick="toggleTabConfig('chat', false)" data-i18n-aria-label="dash.closeSettings">✕</button>
+    <!-- The on-stream chat (overlay/chat.html): its Browser Source addresses and settings -->
+    <section>
+      <h3 data-i18n="dash.chat.overlayTitle">Chat on stream</h3>
+      <p class="setting-hint" data-i18n="dash.chat.overlayHint">Add one as a Browser Source in OBS / Streamlabs (any size, e.g. 960 × 1080, then scale it to 50%).</p>
+      <div id="co-urls"></div>
+      <label class="setting">
+        <span class="setting-name" data-i18n="dash.chat.overlayMax">Messages shown</span>
+        <input type="number" class="cooldown-input" id="co-max" min="1" max="50" step="1" onchange="saveChatOverlay('max')" />
+      </label>
+      <label class="setting">
+        <span class="setting-name" data-i18n="dash.chat.overlaySize">Text size</span>
+        <input type="range" class="opacity-slider" id="co-size" min="60" max="200" step="10"
+          oninput="document.getElementById('co-size-value').textContent = this.value + '%'" onchange="saveChatOverlay('size')" />
+        <span id="co-size-value"></span>
+      </label>
+      <label class="setting"><input type="checkbox" id="co-redeems" onchange="saveChatOverlay('redeems')" /> <span data-i18n="dash.chat.overlayRedeems">🎟 Channel-point redemptions</span></label>
+      <label class="setting"><input type="checkbox" id="co-events" onchange="saveChatOverlay('events')" /> <span data-i18n="dash.chat.overlayEvents">⭐ Subs, gifts, raids and follows</span></label>
+      <label class="setting"><input type="checkbox" id="co-commands" onchange="saveChatOverlay('commands')" /> <span data-i18n="dash.chat.overlayCommands">! Chat commands (!so, !sr…)</span></label>
+      <label class="setting"><input type="checkbox" id="co-bots" onchange="saveChatOverlay('bots')" /> <span data-i18n="dash.chat.overlayBots">🤖 Bots (Nightbot, StreamElements…)</span></label>
+      <p class="setting-hint" data-i18n="dash.chat.overlayNote">Changes show on stream at once. Messages a mod deletes, and a timed-out or banned viewer's, leave the stream at once.</p>
+    </section>
     <section>
       <h3 data-i18n="dash.chat.notesTitle">Song notes on the stream overlay</h3>
       <label class="setting">
@@ -1050,6 +1117,28 @@
     <p class="setting-hint" data-i18n="dash.modes.intro"></p>
     <div class="modes-row" id="modes-presets" hidden></div>
     <div class="modes-list" id="modes-list"></div>
+  </div>
+</div>
+
+<div class="tab-page" id="tab-outfits" role="tabpanel" aria-labelledby="tabbtn-outfits" hidden>
+  <div class="modes-page">
+    <section class="modes-box">
+      <h3 data-i18n="dash.outfits.title">Outfits · veadotube</h3>
+      <p class="setting-hint" data-i18n="dash.outfits.intro"></p>
+      <div class="outfit-revert" id="outfit-revert" hidden></div>
+      <div id="outfit-windows"></div>
+    </section>
+    <section class="modes-box">
+      <h3 data-i18n="dash.outfits.settingsTitle">Redemptions</h3>
+      <p class="setting-hint" data-i18n="dash.outfits.rewardsHint"></p>
+      <div class="outfit-rewards" id="outfit-rewards"></div>
+      <label class="modes-row">
+        <span data-i18n="dash.outfits.minutes">Back to the default outfit after</span>
+        <input type="number" class="cooldown-input" id="outfit-minutes" min="0" max="1440" step="1" onchange="saveOutfits({ minutes: Number(this.value) || 0 })" />
+        <span id="outfit-minutes-unit"></span>
+      </label>
+      <p class="setting-hint" data-i18n="dash.outfits.minutesHint"></p>
+    </section>
   </div>
 </div>
 
@@ -1206,6 +1295,7 @@ function connect() {
     ws.send(JSON.stringify({ type: 'chat-subscribe' }));
     loadChat();   // fills in chat missed while disconnected
     loadModes(currentTab === 'modes');
+    loadOutfits();
   };
   ws.onclose = () => { document.getElementById('dot').classList.add('off'); reconnectTimer = setTimeout(connect, 3000); };
   ws.onmessage = (e) => {
@@ -1219,6 +1309,7 @@ function connect() {
       else if (m.type === 'chat-announced') applyAnnounced(m.ids, m.done);
       else if (m.type === 'chat-session') loadChatSession().then(() => { linkSession(); rerenderChat(); });
       else if (m.type === 'modes') onModesMessage(m);
+      else if (m.type === 'outfits') { outfits.status = m; paintOutfits(); }
     } catch(_){}
   };
 }
@@ -1643,6 +1734,7 @@ async function loadSettings() {
     document.getElementById('cooldown-input').value = settings.randomCooldownDays;
     cooldownDays = settings.randomCooldownDays;
     document.getElementById('chat-song-notes').checked = settings.songNotes !== false;
+    if (settings.chatOverlay) paintChatOverlay(settings.chatOverlay);
     document.getElementById('opacity-input').value = settings.panelBgAlpha;
     document.getElementById('opacity-value').textContent = settings.panelBgAlpha;
     document.getElementById('brightness-input').value = settings.textBrightness;
@@ -1991,7 +2083,7 @@ async function pollLeihu() {
 
 // ── Tabs ── Each tab is a button in .tabs and a .tab-page; #leihu in the address keeps the tab
 // on reload. Planned: chat room, rewards, OBS / Streamlabs control — add them here and in the markup.
-const TABS = ['queue', 'leihu', 'chat', 'modes'];
+const TABS = ['queue', 'leihu', 'chat', 'modes', 'outfits'];
 let currentTab = 'queue';
 
 function showTab(name) {
@@ -2010,6 +2102,8 @@ function showTab(name) {
   placeChat();
   if (name === 'chat') loadChatDays();
   if (name === 'modes') loadModes(true);
+  if (name === 'outfits') { loadOutfits(); loadOutfitRewards(); }
+  paintOutfitPick();
 }
 
 // Arrow keys move between tabs (the usual tab-list keys)
@@ -2279,14 +2373,13 @@ async function openPicker(entry, st) {
 // ── Chat tab ── Live chat comes over the WebSocket (server/chat-log.js); earlier days load from
 // their log. Every filter runs here, on the records in memory.
 const CHAT_FILTERS = ['all', 'songs', 'commands', 'mods', 'subs', 'mentions', 'first', 'highlight', 'redeems', 'waiting', 'events'];
-// Common chat bots (logins), hidden while "Hide bots" is on
-const CHAT_BOTS = ['nightbot', 'streamelements', 'moobot', 'fossabot', 'wizebot', 'streamlabs', 'soundalerts',
-  'sery_bot', 'botrixoficial', 'kofistreambot', 'commanderroot', 'streamstickers', 'pokemoncommunitygame'];
+// Common chat bots (logins), hidden while "Hide bots" is on: CHAT_BOTS in shared/chat-bots.js
 const CHAT_SHOWN_MAX = 1500;   // rows drawn at once; the count says when more matched
 const chat = {
   live: [], day: '', dayRecords: null, days: [], channel: null, filter: 'all', user: null, query: '',
   hideBots: true, unread: 0, newCount: 0, atBottom: true,
   manageable: new Set(),   // rewards whose redemptions ✓ / ↩ can change (the app made them)
+  songRewards: new Set(),  // song request / random song rewards: not something to announce
   session: { since: null, records: [], seen: new Set() },   // this stream session, for "to announce"
   canSend: false, sendMax: 500, replyTo: null,   // the message box (needs user:write:chat); the message it answers
   mod: { can: {}, pinned: null, raid: null },   // moderation buttons allowed, the pinned message, a raid on its way
@@ -2309,6 +2402,7 @@ async function loadManageable() {
   try {
     const m = await (await fetch('/api/redemptions/manageable')).json();
     chat.manageable = new Set(m.ids || []);
+    chat.songRewards = new Set(m.songRewards || []);
     chat.channel = chat.channel || m.channel || null;
   } catch(_) {}
 }
@@ -2826,6 +2920,50 @@ document.getElementById('reward-rows').addEventListener('click', async (e) => {
 });
 
 // Song notes on the stream overlay (server/song-notes.js, SONG_NOTES); saved for everyone
+// ── Chat on stream (overlay/chat.html) ── its three styles' addresses, and what it shows
+const CHAT_OVERLAY_STYLES = ['panel', 'bubble', 'list', 'row'];
+
+function paintChatOverlay(s) {
+  document.getElementById('co-urls').innerHTML = CHAT_OVERLAY_STYLES.map((style) => {
+    const url = `${location.origin}/overlay/chat.html?style=${style}`;
+    return `<div class="co-url"><b>${esc(t('dash.chat.overlayStyle.' + style))}</b><code title="${esc(url)}">${esc(url)}</code>`
+      + `<button class="btn" type="button" data-url="${esc(url)}">${esc(t('dash.chat.overlayCopy'))}</button></div>`;
+  }).join('');
+  document.getElementById('co-max').value = s.max;
+  document.getElementById('co-size').value = s.size;
+  document.getElementById('co-size-value').textContent = s.size + '%';
+  for (const key of ['redeems', 'events', 'commands', 'bots']) document.getElementById('co-' + key).checked = !!s[key];
+}
+
+document.getElementById('co-urls').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-url]');
+  if (!btn) return;
+  try {
+    await navigator.clipboard.writeText(btn.dataset.url);
+    showToast(t('dash.chat.overlayCopied'));
+  } catch(_) {
+    showToast(btn.dataset.url, true);
+  }
+});
+
+async function saveChatOverlay(key) {
+  const el = document.getElementById('co-' + key);
+  const value = el.type === 'checkbox' ? el.checked : Number(el.value);
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatOverlay: { [key]: value } }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'save failed');
+    paintChatOverlay(data.chatOverlay);
+    showToast(t('dash.chat.overlaySaved'));
+  } catch (err) {
+    showToast(t('dash.chat.overlayFailed'), true);
+    loadSettings();
+  }
+}
+
 async function saveSongNotes() {
   const box = document.getElementById('chat-song-notes');
   try {
@@ -3160,7 +3298,8 @@ const ANNOUNCE_NOTICES = ['sub', 'resub', 'sub_gift', 'community_sub_gift', 'gif
   'pay_it_forward', 'raid', 'watch_streak', 'bits_badge_tier', 'charity_donation'];
 
 function isAnnounce(rec) {
-  if (rec.kind === 'follow' || rec.kind === 'redeem') return true;
+  if (rec.kind === 'follow') return true;
+  if (rec.kind === 'redeem') return !chat.songRewards.has(rec.rewardId);   // song requests go to the queue, not to thank
   // A gift of several subs: the one community_sub_gift line, not each viewer's
   if (rec.kind === 'notice') return ANNOUNCE_NOTICES.includes(rec.notice) && !(rec.notice === 'sub_gift' && rec.communityGift);
   if (rec.kind !== 'chat' || rec.deleted) return false;
@@ -3346,6 +3485,162 @@ I18N.onChange(() => {
   paintModeBar();
   if (currentTab === 'modes') paintModes();
 });
+
+// ── 👕 Outfits (server/outfits.js, veadotube.js) ───────────────────────────────
+// veadotube's windows and their avatar states as pictures: a click wears one, ☆ makes it the default
+// (the outfit the time limit goes back to; its window is the outfit window). A redemption of an
+// outfit reward pops up a pick card on any tab.
+const outfits = { status: null, rewards: null };
+
+async function loadOutfits() {
+  try {
+    outfits.status = await (await fetch('/api/outfits')).json();
+  } catch(_) { return; }
+  paintOutfits();
+}
+
+async function loadOutfitRewards() {
+  try {
+    const res = await fetch('/api/rewards');
+    const body = await res.json();
+    if (!res.ok) throw new Error(I18N.server(body, 'dash.toast.requestFailed'));
+    outfits.rewards = body.rewards;
+  } catch (err) {
+    outfits.rewards = null;
+    document.getElementById('outfit-rewards').textContent = t('dash.chat.rewardsFailed', { message: err.message });
+    return;
+  }
+  paintOutfitRewards();
+}
+
+function outfitThumb(win, s) {
+  return `/api/outfits/thumb?window=${encodeURIComponent(win)}&state=${encodeURIComponent(s.id)}&h=${encodeURIComponent(s.thumbHash)}`;
+}
+
+// One window's states as picture buttons; with star, ☆ sets the default
+function outfitButtons(w, { star, pickFor } = {}) {
+  const st = outfits.status;
+  return `<div class="outfit-grid">${w.states.map(s => {
+    const isDefault = st.window === w.id && st.default === s.id;
+    return `<div class="outfit${w.current === s.id ? ' cur' : ''}" role="button" tabindex="0" data-window="${esc(w.id)}" data-outfit="${esc(s.id)}"${pickFor ? ` data-for="${esc(pickFor)}"` : ''} title="${esc(s.name)}">`
+      + `<img src="${esc(outfitThumb(w.id, s))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`
+      + `<span class="outfit-name">${isDefault ? '⭐ ' : ''}${esc(s.name)}</span>`
+      + (star ? `<button class="outfit-star${isDefault ? ' on' : ''}" type="button" data-default="${esc(s.id)}" title="${esc(t('dash.outfits.setDefault'))}" aria-label="${esc(t('dash.outfits.setDefault'))}">${isDefault ? '★' : '☆'}</button>` : '')
+      + '</div>';
+  }).join('')}</div>`;
+}
+
+// The windows the pick card offers: the outfit window, or every one before a default is set
+function outfitWindows() {
+  const st = outfits.status;
+  const w = st.windows.find(x => x.id === st.window);
+  return w ? [w] : st.windows;
+}
+
+function paintOutfits() {
+  const st = outfits.status;
+  if (!st) return;
+  const box = document.getElementById('outfit-windows');
+  if (!st.windows.length) {
+    box.innerHTML = `<p class="setting-hint">${esc(t('dash.outfits.none'))}</p>`;
+  } else {
+    box.innerHTML = (st.window ? '' : `<p class="setting-hint">${esc(t(st.unsure ? 'dash.outfits.pickWindow' : 'dash.outfits.pickDefault', { state: st.default }))}</p>`)
+      + st.windows.map((w, i) => {
+        const role = w.id === st.window ? t('dash.outfits.outfitWindow') : st.window ? t('dash.outfits.otherWindow') : t('dash.outfits.window', { n: i + 1 });
+        return `<div class="outfit-window"><div class="outfit-window-title"><b>${esc(role)}</b> · ${esc(t('dash.outfits.wearing', { state: w.current || '—' }))}</div>${outfitButtons(w, { star: true })}</div>`;
+      }).join('');
+  }
+  document.getElementById('outfit-revert').hidden = !st.revertAt;
+  paintOutfitRevert();
+  document.getElementById('outfit-minutes').value = st.minutes;
+  document.getElementById('outfit-minutes-unit').textContent = st.minutes ? t('dash.outfits.minutesUnit') : t('dash.outfits.never');
+  const count = document.getElementById('outfit-count');
+  count.hidden = !st.pending.length;
+  count.textContent = st.pending.length;
+  if (outfits.rewards) paintOutfitRewards();
+  paintOutfitPick();
+}
+
+// "Back to iRO_1 in 4:32" while a time limit runs
+function paintOutfitRevert() {
+  const st = outfits.status;
+  if (!st || !st.revertAt) return;
+  const s = Math.max(0, Math.round((st.revertAt - Date.now()) / 1000));
+  const left = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  document.getElementById('outfit-revert').innerHTML = `<span>⏱ ${esc(t('dash.outfits.revertIn', { state: st.default, left }))}</span>`
+    + `<button class="btn" type="button" onclick="keepOutfit()">${esc(t('dash.outfits.keep'))}</button>`;
+}
+setInterval(paintOutfitRevert, 1000);
+
+function paintOutfitRewards() {
+  const st = outfits.status;
+  const box = document.getElementById('outfit-rewards');
+  if (!st || !outfits.rewards) return;
+  box.innerHTML = outfits.rewards.filter(r => r.role !== 'song' && r.role !== 'random').map(r =>
+    `<label><input type="checkbox" data-outfit-reward="${esc(r.id)}"${st.rewards.includes(r.id) ? ' checked' : ''}> ${esc(r.title)}`
+    + (r.manageable || !st.rewards.includes(r.id) ? '' : ` <span class="setting-hint">· ${esc(t('dash.outfits.notManaged'))}</span>`) + '</label>'
+  ).join('') || esc(t('dash.chat.rewardsNone'));
+}
+
+document.getElementById('outfit-rewards').addEventListener('change', (e) => {
+  if (!e.target.dataset.outfitReward) return;
+  const ids = [...document.querySelectorAll('[data-outfit-reward]')].filter(x => x.checked).map(x => x.dataset.outfitReward);
+  saveOutfits({ rewards: ids });
+});
+
+// The first waiting redemption, with the outfits to pick from. Not over the Leihu tab (singing): it
+// waits, counted on the 👕 tab, and pops up on leaving Leihu.
+function paintOutfitPick() {
+  const st = outfits.status;
+  const card = document.getElementById('outfit-pick');
+  const p = currentTab !== 'leihu' && st && st.pending[0];
+  card.hidden = !p;
+  if (!p) return;
+  const wins = outfitWindows();
+  const more = st.pending.length > 1 ? `<span class="more">${esc(t('dash.outfits.moreWaiting', { n: st.pending.length - 1 }))}</span>` : '';
+  card.innerHTML = `<div class="outfit-pick-head"><span class="grow">👕 ${esc(t('dash.outfits.redeemed', { name: p.user, reward: p.reward }))}</span>${more}</div>`
+    + (wins.length ? wins.map((w, i) => (wins.length > 1 ? `<div class="outfit-window-title"><b>${esc(t('dash.outfits.window', { n: i + 1 }))}</b> · ${esc(t('dash.outfits.wearing', { state: w.current || '—' }))}</div>` : '')
+      + outfitButtons(w, { pickFor: p.id })).join('') : `<p class="setting-hint">${esc(t('dash.outfits.none'))}</p>`)
+    + `<div class="outfit-pick-actions">`
+    + (chat.manageable.has(p.rewardId) ? `<button class="btn skip" type="button" data-drop="refund">${esc(t('dash.outfits.refund'))}</button>` : '')
+    + `<button class="btn" type="button" data-drop="skip" title="${esc(t('dash.outfits.skipHint'))}">${esc(t('dash.outfits.skip'))}</button></div>`;
+  card.dataset.id = p.id;
+}
+
+async function outfitPost(url, body) {
+  try {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+    const out = await res.json();
+    if (!res.ok) throw new Error(I18N.server(out, 'dash.toast.requestFailed'));
+    outfits.status = out;
+    paintOutfits();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+const saveOutfits = (updates) => outfitPost('/api/outfits/settings', updates);
+const keepOutfit = () => outfitPost('/api/outfits/keep');
+
+function onOutfitClick(e) {
+  const star = e.target.closest('[data-default]');
+  if (star) { saveOutfits({ default: star.dataset.default, window: star.closest('[data-window]').dataset.window }); return; }
+  const drop = e.target.closest('[data-drop]');
+  if (drop) { outfitPost('/api/outfits/drop', { id: document.getElementById('outfit-pick').dataset.id, refund: drop.dataset.drop === 'refund' }); return; }
+  const o = e.target.closest('[data-outfit]');
+  if (!o) return;
+  // In the tab too, a click in the outfit window answers the oldest waiting redemption (done + time limit)
+  const st = outfits.status;
+  const waiting = st && st.pending[0] && (!st.window || st.window === o.dataset.window) ? st.pending[0].id : '';
+  outfitPost('/api/outfits/pick', { state: o.dataset.outfit, id: o.dataset.for || waiting, window: o.dataset.window });
+}
+for (const id of ['outfit-windows', 'outfit-pick']) {
+  const el = document.getElementById(id);
+  el.addEventListener('click', onOutfitClick);
+  el.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-outfit]')) { e.preventDefault(); onOutfitClick(e); }
+  });
+}
 
 // ── Modes (server/modes.js, stream-app.js) ─────────────────────────────────────
 // The top bar's buttons switch; the 🎛 Modes tab connects Streamlabs / OBS and edits modes, saved as

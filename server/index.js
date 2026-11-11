@@ -14,6 +14,7 @@ const { registerClient, addSong, addPending, updatePending, acceptPending, skipS
 const { connect: connectTwitch, setEventHandler, setChatHandler, setModerationHandler, setNoticeHandler, setFollowHandler, setRewardHandler, setStreamHandler, followStatus } = require('./twitch');
 const { registerCommand, handleChatEvent } = require('./chat-router');
 const chatLog = require('./chat-log');
+const chatBadges = require('./chat-badges');
 const songNotes = require('./song-notes');
 const registerShoutout = require('./commands/shoutout');
 const registerWatch = require('./commands/watch');
@@ -27,6 +28,7 @@ const firstChat = require('./first-chat');
 const chatSend = require('./chat-send');
 const chatMod = require('./chat-mod');
 const modes = require('./modes');
+const outfits = require('./outfits');
 const streamApp = require('./stream-app');
 const streamSession = require('./stream-session');
 const { generateIfMissing: generateSponsorVoice } = require('./sponsor-voice');
@@ -160,6 +162,7 @@ setRedemptionHook(redemptions.settle);
 setStreamHandler(streamSession.onEvent);
 streamSession.init(session => sendChat({ type: 'chat-session', ...session }));
 modes.init(msg => sendChat(msg));   // after mediaQueue.init: a mode may hold clips
+outfits.init({ send: msg => sendChat(msg), saveEnv: values => setupRouter.writeEnvValues(values) });
 
 // Returns the matching random-reward config object if the given rewardId is
 // a configured random reward, or null if it isn't.
@@ -186,6 +189,7 @@ setEventHandler(async (event) => {
 
   console.log(`[event] Redemption from @${requester}: "${requestText}" (reward: ${rewardId})`);
   try { chatLog.addRedemption(event); } catch (err) { console.error('[chat-log] Could not log a redemption:', err.message); }
+  if (outfits.onRedemption(event)) return;   // 👕 waits for the streamer's pick in the dashboard
 
   // Random song reward(s) — each entry in TWITCH_RANDOM_REWARDS can restrict to specific sheet tabs.
   const matchedRandom = parseRandomReward(rewardId);
@@ -659,6 +663,30 @@ const TEXT_BRIGHTNESS_MIN = 0.5;
 const TEXT_BRIGHTNESS_MAX = 2;
 const OVERLAY_LANGUAGES = ['en', 'zh-TW'];   // what viewers see on the overlay and clip player
 
+// The on-stream chat (overlay/chat.html): how many messages it shows, text size (%), and what it
+// shows besides chat. Each is a .env value; a missing or broken one is its default.
+const CHAT_OVERLAY = {
+  max: { env: 'CHAT_OVERLAY_MAX', min: 1, max: 50, def: 10 },
+  size: { env: 'CHAT_OVERLAY_SIZE', min: 60, max: 200, def: 100 },
+  bots: { env: 'CHAT_OVERLAY_BOTS', def: false },
+  commands: { env: 'CHAT_OVERLAY_COMMANDS', def: false },
+  redeems: { env: 'CHAT_OVERLAY_REDEEMS', def: true },
+  events: { env: 'CHAT_OVERLAY_EVENTS', def: true },
+};
+
+function chatOverlaySettings() {
+  const out = {};
+  for (const [key, s] of Object.entries(CHAT_OVERLAY)) {
+    const raw = process.env[s.env];
+    if (typeof s.def === 'boolean') out[key] = raw === '1' ? true : raw === '0' ? false : s.def;
+    else {
+      const n = Number(raw);
+      out[key] = raw != null && raw !== '' && Number.isInteger(n) && n >= s.min && n <= s.max ? n : s.def;
+    }
+  }
+  return out;
+}
+
 function overlayLanguage() {
   return OVERLAY_LANGUAGES.includes(process.env.OVERLAY_LANGUAGE) ? process.env.OVERLAY_LANGUAGE : 'en';
 }
@@ -681,6 +709,7 @@ app.get('/api/settings', (req, res) => {
     leihuAutoStart: process.env.LEIHU_AUTOSTART === '1',
     songNotes: songNotes.enabled(),
     overlayLanguage: overlayLanguage(),
+    chatOverlay: chatOverlaySettings(),
   });
 });
 
@@ -725,6 +754,25 @@ app.post('/api/settings', (req, res) => {
     broadcastSettings({ overlayLanguage: updates.overlayLanguage });
   }
 
+  if (req.body.chatOverlay && typeof req.body.chatOverlay === 'object') {
+    const values = {};
+    for (const [key, value] of Object.entries(req.body.chatOverlay)) {
+      const s = CHAT_OVERLAY[key];
+      if (!s) continue;
+      if (typeof s.def === 'boolean') values[s.env] = value ? '1' : '0';
+      else {
+        const n = Number(value);
+        if (!Number.isInteger(n) || n < s.min || n > s.max) {
+          return res.status(400).json({ error: `chatOverlay.${key} must be a whole number from ${s.min} to ${s.max}` });
+        }
+        values[s.env] = String(n);
+      }
+    }
+    setupRouter.writeEnvValues(values);
+    updates.chatOverlay = chatOverlaySettings();
+    broadcastSettings({ chatOverlay: updates.chatOverlay });
+  }
+
   if (req.body.leihuAutoPrepare !== undefined) {
     updates.leihuAutoPrepare = !!req.body.leihuAutoPrepare;
     setupRouter.writeEnvValues({ LEIHU_AUTO_PREPARE: updates.leihuAutoPrepare ? '1' : '0' });
@@ -745,6 +793,7 @@ app.post('/api/settings', (req, res) => {
 
 // ── Chat log (dashboard Chat tab, chat-log.js) ───────────────────────────────
 app.get('/api/chat/recent', (req, res) => res.json(chatLog.getRecent()));
+app.get('/api/chat/badges', async (req, res) => res.json(await chatBadges.get()));   // the on-stream chat's badge pictures
 app.get('/api/chat/days', async (req, res) => res.json(await chatLog.days()));
 app.get('/api/chat/log', async (req, res) => res.json(await chatLog.load(String(req.query.day || ''))));
 // "To announce" (Chat tab): this stream session's records (stream-session.js; the last 12 hours until
@@ -830,7 +879,7 @@ app.get('/api/credits', async (req, res) => {
 // ── Channel-point redemptions (redemptions.js) ─────────────────────────────────
 // Which rewards' redemptions the Chat tab can mark done / refund, and the channel for Twitch's own queue
 app.get('/api/redemptions/manageable', async (req, res) => {
-  res.json({ ids: [...await redemptions.manageableIds()], channel: await redemptions.channelLogin() });
+  res.json({ ids: [...await redemptions.manageableIds()], channel: await redemptions.channelLogin(), songRewards: [...redemptions.songRewardIds()] });
 });
 // { id, rewardId, action: 'done' | 'refund' }
 app.post('/api/redemptions/status', async (req, res) => {
@@ -844,6 +893,38 @@ app.post('/api/redemptions/status', async (req, res) => {
     res.status(err.messageCode ? 400 : 500).json(errorBody(err));
   }
 });
+// 👕 Outfits (server/outfits.js): veadotube's avatar states, the redemptions waiting for a pick, the settings
+app.get('/api/outfits', (req, res) => res.json(outfits.status()));
+app.get('/api/outfits/thumb', async (req, res) => {
+  const png = await outfits.thumb(String(req.query.window || ''), String(req.query.state || ''));
+  if (!png) return res.status(404).end();
+  res.set('Cache-Control', 'max-age=300').type('png').send(png);
+});
+app.post('/api/outfits/pick', (req, res) => {
+  if (!req.body.state) return res.status(400).json({ error: 'state is needed' });
+  try {
+    outfits.pick(String(req.body.state), req.body.id ? String(req.body.id) : '', req.body.window ? String(req.body.window) : '');
+    res.json(outfits.status());
+  } catch (err) {
+    res.status(err.messageCode ? 400 : 500).json(errorBody(err));
+  }
+});
+app.post('/api/outfits/drop', (req, res) => {
+  outfits.drop(String(req.body.id || ''), !!req.body.refund);
+  res.json(outfits.status());
+});
+app.post('/api/outfits/keep', (req, res) => {
+  outfits.keep();
+  res.json(outfits.status());
+});
+app.post('/api/outfits/settings', (req, res) => {
+  try {
+    res.json(outfits.save(req.body || {}));
+  } catch (err) {
+    res.status(err.messageCode ? 400 : 500).json(errorBody(err));
+  }
+});
+
 // Chat ⚙: every reward, and taking over one made on Twitch ({ id, action: 'start' | 'finish' | 'cancel' })
 app.get('/api/rewards', async (req, res) => {
   try {
@@ -862,7 +943,7 @@ app.post('/api/rewards/takeover', async (req, res) => {
   }
 });
 
-// New chat goes only to dashboards that asked for it (overlay and clip player don't need it)
+// New chat goes only to pages that asked for it: dashboards and the on-stream chat (overlay/chat.html)
 function sendChat(msg) {
   const str = JSON.stringify(msg);
   for (const client of wss.clients) {

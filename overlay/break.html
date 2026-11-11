@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Break Card</title>
 <!-- "休息中 / On break" card for a Browser Source, in the song overlay's look. Show it with a mode (☕).
+     ?card=opening is the "準備中 / Starting soon" card for the opening theme, in green.
      Browser Source: width 960, height 260, then scale it to 50% (it renders at 2x, like the song overlay).
-     ?min=10 counts down 10 minutes (then "馬上回來 / Back soon"); without it, the time on break counts up.
+     ?min=10 counts down 10 minutes, ?at=20:00 counts down to 20:00 (then "馬上回來 / Back soon" or
+     "馬上開始 / Any moment"); without either, the break card counts the time up and the opening card shows the time.
      The clock starts when the page loads: tick "Refresh browser when scene becomes active" or
      "Shutdown source when not visible" so it starts again on every break.
      lang="en" like the song overlay: under zh-TW, OBS's browser picks a different (serif) font for Chinese. -->
@@ -39,6 +41,9 @@
 
   body { padding: 6px; }
 
+  body.opening { --amber: #4aff9a; }   /* the opening card: the song overlay's green */
+  body.opening .title-en { letter-spacing: 3px; }   /* "STARTING SOON" on one line */
+
   .panel {
     display: flex; align-items: center; gap: 18px;
     background: var(--bg-panel);
@@ -63,7 +68,7 @@
   .title-en {
     display: flex; align-items: center; gap: 10px; margin-top: 8px;
     font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: 500; letter-spacing: 7px;
-    color: var(--amber);
+    color: var(--amber); white-space: nowrap;
   }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); animation: blink 2s ease-in-out infinite; }
   @keyframes blink { 0%,100% { opacity: 1 } 50% { opacity: .2 } }
@@ -80,8 +85,8 @@
 <body>
 <div class="panel">
   <div class="words">
-    <div class="title">休息中</div>
-    <div class="title-en"><span class="dot"></span>ON BREAK</div>
+    <div class="title" id="title">休息中</div>
+    <div class="title-en"><span class="dot"></span><span id="title-en">ON BREAK</span></div>
   </div>
   <div class="side">
     <div class="clock" id="clock">00:00</div>
@@ -90,26 +95,43 @@
   <div class="bar" id="bar" hidden><div class="bar-fill" id="bar-fill"></div></div>
 </div>
 <script>
-  // ?min=N: count down N minutes; otherwise count the time on break up
-  const minutes = Number(new URLSearchParams(location.search).get('min')) || 0;
+  const params = new URLSearchParams(location.search);
+  const opening = params.get('card') === 'opening';
+  const CARD = opening
+    ? { title: '準備中', en: 'STARTING SOON', at: '開始 · Start', soon: '馬上開始 · Any moment', idle: '馬上開始 · Any moment', page: 'Opening Card' }
+    : { title: '休息中', en: 'ON BREAK', at: '回來 · Back', soon: '馬上回來 · Back soon', idle: '馬上回來 · BRB', page: 'Break Card' };
+  document.body.classList.toggle('opening', opening);
+  document.title = CARD.page;
+  document.getElementById('title').textContent = CARD.title;
+  document.getElementById('title-en').textContent = CARD.en;
+
+  // ?min=N counts down N minutes, ?at=HH:MM counts down to that time; otherwise the break card counts
+  // up and the opening card shows the time
+  const hhmm = d => d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
   const start = Date.now();
-  const total = minutes * 60000;
-  const backAt = new Date(start + total).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+  let end = 0;
+  const minutes = Number(params.get('min')) || 0;
+  const at = /^(\d{1,2}):(\d{2})$/.exec(params.get('at') || '');
+  if (minutes) end = start + minutes * 60000;
+  else if (at) end = new Date().setHours(+at[1], +at[2], 0, 0);
+  const total = end - start;
   const mmss = ms => {
     const s = Math.max(0, Math.round(ms / 1000));
-    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return `${h ? h + ':' + pad(m) : pad(m)}:${pad(s % 60)}`;
   };
-  if (total) document.getElementById('bar').hidden = false;
+  if (total > 0) document.getElementById('bar').hidden = false;
+  document.getElementById('back').textContent = total > 0 ? `${hhmm(new Date(end))} ${CARD.at}` : CARD.idle;
   function tick() {
-    const gone = Date.now() - start;
-    if (!total) {
-      document.getElementById('clock').textContent = mmss(gone);
+    if (!end) {
+      document.getElementById('clock').textContent = opening ? hhmm(new Date()) : mmss(Date.now() - start);
       return;
     }
-    const left = total - gone;
+    const left = end - Date.now();
     document.getElementById('clock').textContent = mmss(left);
-    document.getElementById('bar-fill').style.transform = `scaleX(${Math.max(0, left / total)})`;
-    document.getElementById('back').textContent = left > 0 ? `${backAt} 回來 · Back` : '馬上回來 · Back soon';
+    if (total > 0) document.getElementById('bar-fill').style.transform = `scaleX(${Math.max(0, left / total)})`;
+    if (left <= 0) document.getElementById('back').textContent = CARD.soon;
   }
   tick();
   setInterval(tick, 1000);

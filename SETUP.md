@@ -101,6 +101,27 @@ Its language (English or 繁體中文) is set in the dashboard: Song Queue tab �
 4. Put it at the top of the scene, covering the whole screen
 5. It stays fully transparent, and shows content only for `!so`, `!watch`, `!tk` and `!endingtk`
 
+### Chat on stream (instead of OneComme)
+
+Your Twitch chat on stream: the last messages, newest at the bottom, with badges, emotes and cheers,
+channel-point redemptions and subs / gifts / raids / follows.
+
+1. Add a new source → **Browser**
+2. URL, one of three styles (💬 Chat → ⚙ → **Chat on stream** lists them with **Copy**):
+   - `http://localhost:3000/overlay/chat.html?style=panel` — the song list's look
+   - `http://localhost:3000/overlay/chat.html?style=bubble` — speech bubbles
+   - `http://localhost:3000/overlay/chat.html?style=list` — plain lines with an outline, for over a game or video
+   - `http://localhost:3000/overlay/chat.html?style=row` — one horizontal strip, e.g. along the top of the screen:
+     newest on the right, older messages leave on the left
+3. Any size, e.g. Width `960`, Height `1080` (the row: `3840 × 200`), the same **Custom CSS** as the song overlay
+4. In your scene, scale it to 50% (e.g. `480 × 540`) — it renders at 2× for sharp text
+5. 💬 Chat → ⚙ → **Chat on stream**: how many messages, text size, and whether it shows redemptions,
+   subs / raids / follows, `!commands` and bots. Changes show at once.
+
+Messages a mod deletes, and a timed-out or banned viewer's, leave the stream at once. Moving from
+OneComme: run both for one stream, then remove the OneComme source; modes that showed or hid it
+mark it ⚠ — pick the new chat with **Pick a replacement…**, or press 📥 on the mode.
+
 ---
 
 ## Google Sheets setup
@@ -194,7 +215,7 @@ list. Messages mods delete show struck through.
   The search box looks in messages and names. Bots are hidden while **Hide bots** is ticked.
 - **To announce:** what to thank or greet on stream is highlighted in amber, right in the chat — subs,
   resubs and gifted subs (a gift of several subs as one line), raids, cheers, new followers, watch
-  streaks, channel-point redemptions, highlighted messages, first-time chatters, and each viewer's first message this stream
+  streaks, channel-point redemptions (not song requests: those go to the queue), highlighted messages, first-time chatters, and each viewer's first message this stream
   (tagged *first words this stream*; bots and you are left out). **✓** on one removes its highlight
   (on a redemption it's **✓ Announce**, apart from its **✓ Done**).
   Changed your mind? Point at the row and click **✓ announced** to highlight it again. In the filter
@@ -277,6 +298,21 @@ Streamlabs Desktop or OBS Studio back the way you saved the mode and does this a
   - Items added later aren't touched. The editor lists them under "Not in this mode" with **＋** to add one.
 - **Studio Mode:** in OBS, a mode changes the program scene. In Streamlabs Desktop it may only change the
   preview; press Transition.
+
+---
+
+## Outfits (👕 Outfits tab)
+
+Viewers redeem a reward, you pick the outfit: your avatar's state in veadotube mini (2.1 or newer).
+
+1. In veadotube mini → **program settings**, turn on the **WebSocket server**
+2. Dashboard → **👕 Outfits**: your veadotube windows show with a picture of each state. Click one to wear it.
+3. Press **☆** on your usual outfit: it becomes the default, and its window the one redemptions change.
+   With the same avatar in two windows, press ☆ in the right one, once after opening veadotube.
+4. Under **Redemptions**, tick the rewards that change the outfit, and set **Back to the default outfit
+   after** N minutes (0 = it stays until the next redemption)
+5. When one is redeemed, a card with your outfits pops up on any tab: click the one to wear. Rewards made
+   by the app (or taken over in 💬 Chat ⚙) are then marked done, or **↩ Refund**; others stay in Twitch's queue.
 
 ---
 

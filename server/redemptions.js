@@ -131,6 +131,7 @@ function copyOf(r) {
 function roleOf(id) {
   if (id && id === process.env.TWITCH_REWARD_ID) return 'song';
   try { if (JSON.parse(process.env.TWITCH_RANDOM_REWARDS || '[]').some(r => r.id === id)) return 'random'; } catch {}
+  if (id && (process.env.OUTFIT_REWARDS || '').split(',').includes(id)) return 'outfit';
   return '';
 }
 
@@ -249,7 +250,16 @@ function originalsOf(ids) {
   return Object.entries(loadTakeovers()).filter(([, t]) => t.done && ids.has(t.copyId)).map(([id]) => id);
 }
 
+// Song request and random song rewards (the !endingtk roll thanks their redeemers as requesters; the
+// Chat tab doesn't list them to announce). A reward the app took over still counts under its old ID.
+function songRewardIds() {
+  const ids = new Set([process.env.TWITCH_REWARD_ID].filter(Boolean));
+  try { for (const r of JSON.parse(process.env.TWITCH_RANDOM_REWARDS || '[]')) if (r.id) ids.add(r.id); } catch {}
+  for (const id of originalsOf(ids)) ids.add(id);
+  return ids;
+}
+
 module.exports = {
   manageableIds, channelLogin, setStatus, settle, listRewards,
-  startTakeover, finishTakeover, cancelTakeover, onRewardRemoved, originalsOf, copyOf, tempTitle,
+  startTakeover, finishTakeover, cancelTakeover, onRewardRemoved, originalsOf, songRewardIds, copyOf, tempTitle,
 };

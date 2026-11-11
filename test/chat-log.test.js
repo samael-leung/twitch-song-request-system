@@ -44,7 +44,7 @@ test('a chat message keeps who said it, badges, emotes, mentions and the songs i
   const rec = log.fromChat(chatEvent(), 1000);
   assert.deepStrictEqual(rec, {
     kind: 'chat', id: 'm1', at: 1000,
-    user: { id: '42', login: 'viewer', name: '觀眾A', color: '#FF7F50', badges: ['subscriber', 'vip'] },
+    user: { id: '42', login: 'viewer', name: '觀眾A', color: '#FF7F50', badges: ['subscriber', 'vip'], badgeIds: ['subscriber/12', 'vip/1'] },
     text: '@Kenzi 可以唱晴天嗎 Kappa',
     parts: [{ t: 'mention', text: '@Kenzi', login: 'kenzi' }, { t: 'text', text: ' 可以唱晴天嗎 ' }, { t: 'emote', text: 'Kappa', id: '25' }],
     type: 'text', songs: [{ title: '晴天', artist: '周杰倫', lastAt: Date.parse('2026-10-20T12:00:00Z') }],
@@ -171,4 +171,20 @@ test('announced marks: kept per day, applied when read back, and undone; a gift 
   assert.deepStrictEqual(marked, { 'f-old': true, g1: false, hi1: true });
   assert.ok(!since.some(r => r.kind === 'announced'), 'mark lines are applied, not listed');
   assert.ok((await log.loadSince(Date.now() - 60000)).every(r => r.at >= Date.now() - 60000), 'only records since then');
+});
+
+test('subs, gifts and raids keep what the chat on stream says in its own words', () => {
+  const base = { chatter_user_id: '7', chatter_user_login: 'neko', chatter_user_name: 'Neko', system_message: 'Twitch says…' };
+  const resub = log.fromNotice({ ...base, message_id: 'a', notice_type: 'resub', resub: { cumulative_months: 12, sub_tier: '1000', is_prime: false } });
+  assert.deepStrictEqual([resub.tier, resub.months], ['1000', 12]);
+  const prime = log.fromNotice({ ...base, message_id: 'b', notice_type: 'sub', sub: { sub_tier: '1000', is_prime: true } });
+  assert.strictEqual(prime.tier, 'prime');
+  const community = log.fromNotice({ ...base, message_id: 'c', notice_type: 'community_sub_gift', community_sub_gift: { id: 'g', total: 5, sub_tier: '1000' } });
+  assert.deepStrictEqual([community.count, community.tier], [5, '1000']);
+  const charity = log.fromNotice({ ...base, message_id: 'd', notice_type: 'charity_donation',
+    charity_donation: { charity_name: 'Red Cross', amount: { value: 1050, decimal_place: 2, currency: 'USD' } } });
+  assert.deepStrictEqual(charity.charity, { name: 'Red Cross', amount: 10.5, currency: 'USD' });
+  const bits = log.fromNotice({ ...base, message_id: 'e', notice_type: 'bits_badge_tier', bits_badge_tier: { tier: 1000 } });
+  assert.strictEqual(bits.bitsTier, 1000);
+  assert.strictEqual(log.fromNotice({ ...base, message_id: 'f', notice_type: 'announcement', announcement: { color: 'PRIMARY' } }).tier, undefined);
 });
