@@ -363,6 +363,10 @@ dashboard connects to it by itself — nothing to set up. When it isn't running,
   so OBS hears it mixed with every other tab. `start.bat` opens the dashboard in a separate copy of Chrome
   (or Edge) for this; opened some other way, Leihu tab ⚙ → **🔊 Open the stream window** does the same. In OBS add **Application Audio Capture**, pick the
   window **點歌控制台 Song Queue (OBS)** and set Window Match Priority to **Window title must match**.
+- **Leihu 2.0's global hotkeys** (Ctrl+Alt+Space play / pause, KEY up / down, next song…, also for a Stream Deck)
+  belong to Leihu's own window: they work when you open Leihu from its shortcut and sing there. Started with
+  **▶ Start Leihu** (no window of its own) there are none, and with both open they act on Leihu's window, not
+  the dashboard's Leihu tab.
 
 ---
 

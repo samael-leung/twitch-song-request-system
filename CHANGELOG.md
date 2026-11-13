@@ -9,6 +9,74 @@ the dashboard under 🎵 Song Queue → ⚙ Settings. Read **⚠ Action needed**
 
 ---
 
+## 2026.11-2 — 2026-11-15
+
+**Works with:** Node.js LTS · Leihu Singsing 1.6.x–2.0.x (checked with 2.0.0) · for modes, Streamlabs
+Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
+**搭配**：Node.js LTS · 雷虎練唱台 1.6.x–2.0.x（以 2.0.0 確認過）· 模式需要 Streamlabs Desktop 或 OBS Studio 30
+以上 · 換裝需要 veadotube mini 2.1 以上。
+
+### ⚠ Action needed / 需要動手
+
+- **Restart** the app (close it, run `start.bat` / `start_zh.bat` again) and refresh the dashboard.
+  **重新啟動**程式（關掉後再執行 `start.bat`／`start_zh.bat`），並重新整理控制台。
+- **Refresh each Browser Source** in OBS / Streamlabs once (its properties → **Refresh cache of current
+  page**): the song list, break card and clip player load the new theme files. They look as before until
+  you pick another theme.
+  在 OBS／Streamlabs 把每個**瀏覽器來源重新整理**一次（內容 →「**重新整理目前頁面的快取**」）：歌單、休息卡和
+  Clip 播放器要載入新的主題檔案。在你選別的主題之前，看起來都和原本一樣。
+- Everything new is optional: nothing else to change.
+  新功能都是選用的：其他什麼都不用改。
+
+### What's new / 新功能
+
+- **🎨 Themes and text sizes** (🎵 Song Queue → ⚙ → **Look**): five themes — **Neon** (the original),
+  **Daylight**, **High contrast**, **Ocean**, **Cream & coffee** — chosen apart for the dashboard and the
+  overlays; the dashboard's text size (85–140%, the same on every browser and phone), the song list's and
+  the break card's. Overlays change at once and keep their size in OBS; `?theme=…` on an overlay URL gives
+  it its own theme.
+  **🎨 主題和文字大小**（🎵 點歌佇列 → ⚙ →「**外觀**」）：五個主題 ——「**霓虹**」（原本的樣子）、「**日光**」、
+  「**高對比**」、「**海洋**」、「**奶油咖啡**」—— 控制台和疊加層分開選；控制台的文字大小（85–140%，每個瀏覽器和
+  手機都一樣）、歌單和休息卡的文字大小。疊加層立刻改變，在 OBS 裡的大小不變；疊加層網址加上 `?theme=…`
+  可以單獨用別的主題。
+- **💬 Chat on stream** (`/overlay/chat.html`), instead of OneComme: four styles (panel, bubbles, plain
+  lines, one row), Twitch badges and emotes, redemptions and subs / gifts / raids / follows; deleted
+  messages and banned viewers leave at once. Modes that used OneComme offer **Pick a replacement…**.
+  **💬 直播畫面上的聊天室**（`/overlay/chat.html`），取代 OneComme：四種樣式（面板、對話泡泡、簡單列表、橫向一排）、
+  Twitch 徽章和表情符號、兌換和訂閱／贈訂／揪團／追隨；被刪除的訊息和被封鎖的觀眾會立刻消失。用過 OneComme 的模式
+  會提供「**選擇替代…**」。
+- **👕 Outfits** with veadotube mini: viewers redeem a reward, a card pops up (not over the Leihu tab) and
+  you click the outfit to wear; the redemption is completed, or refunded. A default outfit (☆) and
+  **Back to the default after N minutes**.
+  **👕 換裝**（veadotube mini）：觀眾兌換獎勵後會跳出卡片（雷虎練唱台分頁不會跳），點一下要穿的衣服；兌換會自動
+  完成，或退還。可以設定預設服裝（☆）和「**N 分鐘後換回預設服裝**」。
+- **🚀 Raid with the ending roll**: 🛡 Moderate → Raid with **🎬 With the ending roll** plays the
+  `!endingtk` roll so the raid goes 10 seconds after it ends. Cancel, or someone raiding you meanwhile,
+  stops both.
+  **🚀 搭配片尾名單揪團**：🛡 管理 → 揪團，勾選「**🎬 搭配片尾名單**」會播 `!endingtk` 的片尾名單，名單結束 10 秒後
+  出發。取消揪團，或這段期間有人揪團過來，兩個都會停止。
+- **準備中 / STARTING SOON** card for the opening (`/overlay/break.html?card=opening`); both cards count
+  down with `?min=10` or `?at=20:00`.
+  開場用的「**準備中／STARTING SOON**」卡片（`/overlay/break.html?card=opening`）；兩種卡片都可以用 `?min=10` 或
+  `?at=20:00` 倒數。
+
+### Fixes / 修正
+
+- Song-request and random-song redemptions no longer show as "to announce" in the 💬 Chat tab (the queue
+  already has them).
+  點歌和隨機點歌的兌換不會再出現在 💬 聊天室分頁的「要宣讀」（歌單裡已經有了）。
+- Stopping a clip no longer blanks a sponsor roll that starts right after it.
+  停止 Clip 後馬上播的感謝名單不會再被清掉。
+
+### Leihu Singsing 2.0 / 雷虎練唱台 2.0
+
+Works as before. Its new global hotkeys belong to Leihu's own window: they don't work when Leihu is
+started from the dashboard (**▶ Start Leihu**), and act on Leihu's window, not the dashboard's Leihu tab.
+照常運作。它新的全域快捷鍵屬於雷虎練唱台自己的視窗：從控制台啟動（「**▶ 啟動雷虎練唱台**」）時沒有作用，而且控制的是
+雷虎練唱台的視窗，不是控制台的雷虎練唱台分頁。
+
+---
+
 ## 2026.11-1 — 2026-11-08
 
 The first official release. 第一個正式版本。

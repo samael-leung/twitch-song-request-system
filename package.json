@@ -1,6 +1,6 @@
 {
   "name": "vtuber-song-queue",
-  "version": "2026.11-1",
+  "version": "2026.11-2",
   "description": "Twitch Channel Points song request system for VTubers",
   "main": "server/index.js",
   "scripts": {
