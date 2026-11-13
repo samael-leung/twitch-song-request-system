@@ -1039,8 +1039,10 @@
        <p id="leihu-placeholder-text"></p>
        <button class="btn add" id="leihu-start" onclick="launchLeihu('start')" hidden data-i18n="dash.leihu.start">▶ Start Leihu</button>
      </div>
+     <!-- speaker-selection: Leihu plays on the output device chosen in its settings (AudioContext.setSinkId);
+          without it the browser refuses, and Leihu falls back to Windows' default device -->
      <iframe class="leihu-frame" id="leihu-frame" hidden data-i18n-title="dash.leihu.title"
-             allow="microphone; autoplay; fullscreen; clipboard-write"></iframe>
+             allow="microphone; speaker-selection; autoplay; fullscreen; clipboard-write"></iframe>
     </div>
    </div>
   </div>

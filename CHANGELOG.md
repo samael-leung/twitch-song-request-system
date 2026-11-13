@@ -71,6 +71,11 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
   點歌和隨機點歌的兌換不會再出現在 💬 聊天室分頁的「要宣讀」（歌單裡已經有了）。
 - Stopping a clip no longer blanks a sponsor roll that starts right after it.
   停止 Clip 後馬上播的感謝名單不會再被清掉。
+- In the dashboard's Leihu tab, Leihu now plays on the output device chosen in its settings, like its own
+  window. Before, the browser refused that and Leihu played on Windows' default device — on another device
+  (e.g. Bluetooth headphones) the music reached you later, so the singing on stream fell behind the music.
+  控制台的雷虎練唱台分頁現在會用它設定裡選的輸出裝置播放，和它自己的視窗一樣。之前瀏覽器不允許，雷虎練唱台只能用
+  Windows 預設裝置播放 —— 換成別的裝置（例如藍牙耳機）時，音樂比較晚傳到耳朵，直播上的歌聲就會落後音樂。
 - On a phone the dashboard fits the screen: the top bar and the manual request bar wrap, and a long song
   title no longer makes the page wider than the screen.
   在手機上控制台不會超出畫面：最上面一列和手動點歌列會換行，很長的歌名也不會讓頁面變寬。
