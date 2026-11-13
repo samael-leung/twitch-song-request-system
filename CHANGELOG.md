@@ -71,6 +71,9 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
   點歌和隨機點歌的兌換不會再出現在 💬 聊天室分頁的「要宣讀」（歌單裡已經有了）。
 - Stopping a clip no longer blanks a sponsor roll that starts right after it.
   停止 Clip 後馬上播的感謝名單不會再被清掉。
+- On a phone the dashboard fits the screen: the top bar and the manual request bar wrap, and a long song
+  title no longer makes the page wider than the screen.
+  在手機上控制台不會超出畫面：最上面一列和手動點歌列會換行，很長的歌名也不會讓頁面變寬。
 
 ### Leihu Singsing 2.0 / 雷虎練唱台 2.0
 
