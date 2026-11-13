@@ -105,4 +105,13 @@ async function gather(now = Date.now()) {
   return collect(records, { since, broadcasterId: process.env.TWITCH_BROADCASTER_ID || '', songRewards: redemptions.songRewardIds() });
 }
 
-module.exports = { collect, gather, addAvatars, saveRunAt, lastRunAt, GROUPS, TOP_CHATTERS };
+// How long the clip player shows a roll of these groups (clip-player/index.html's timings): the title
+// 1 s, each page of 4 a 0.55 s fade and 5 s on screen (the last 10 s), a new heading 1.2 s, the fade-out
+// 0.6 s. Raid with the ending roll (ending-raid.js) times the raid from it.
+function rollMs(groups) {
+  const pages = groups.reduce((n, g) => n + Math.ceil(g.people.length / 4), 0);
+  if (!pages) return 0;
+  return 1000 + pages * 550 + (pages - 1) * 5000 + 10000 + (groups.length - 1) * 1200 + 600;
+}
+
+module.exports = { collect, gather, addAvatars, saveRunAt, lastRunAt, rollMs, GROUPS, TOP_CHATTERS };

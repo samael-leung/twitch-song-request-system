@@ -86,6 +86,22 @@ function stopAll() {
   console.log(`[media-queue] Stopped and cleared (dropped ${had} queued)`);
 }
 
+// Raid with the ending roll (ending-raid.js): this plays at once — over what plays now (it stops) and
+// while held; the queue waits. → its mediaId
+function playNow(payload) {
+  if (current) broadcast({ type: 'media-stop' });
+  play(payload);
+  console.log(`[media-queue] Playing now: "${payload.title}"`);
+  return current.mediaId;
+}
+
+// Stops this item if it's still on screen; the next one plays (unless held)
+function stopIf(mediaId) {
+  if (!current || current.mediaId !== mediaId) return;
+  broadcast({ type: 'media-stop' });
+  advance();
+}
+
 // Holding: what plays now finishes, new items wait (up to MAX_HELD); letting go plays them in turn
 function setHold(on) {
   held = !!on;
@@ -94,4 +110,4 @@ function setHold(on) {
 
 const isHeld = () => held;
 
-module.exports = { init, enqueue, onEnded, stopAll, setHold, isHeld };
+module.exports = { init, enqueue, playNow, stopIf, onEnded, stopAll, setHold, isHeld };

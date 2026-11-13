@@ -595,12 +595,12 @@
   }
 
   function hideSponsorRoll() {
-    sponsorGen++; // cancels any pending showPage callbacks
+    const gen = ++sponsorGen; // cancels any pending showPage callbacks
     if (sponsorVoiceEl) { sponsorVoiceEl.pause(); sponsorVoiceEl.currentTime = 0; }
     sponsorCardsEl.classList.remove('visible');
     sponsorTitleEl.style.opacity = '0';
     sponsorRuleEl.style.opacity = '0';
-    setTimeout(() => sponsorRollEl.classList.remove('active'), 600);
+    setTimeout(() => { if (sponsorGen === gen) sponsorRollEl.classList.remove('active'); }, 600);   // not a roll that started since
   }
 
   // ── WebSocket connection ──────────────────────────────────────────────────────

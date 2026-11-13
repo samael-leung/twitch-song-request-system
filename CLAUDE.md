@@ -72,6 +72,7 @@ vtuber-song-queue/
 │   ├── messages.js        Message codes for errors/notes the web pages show translated
 │   ├── node-check.js      Is Node.js below the secure minimum (`secureNode` in package.json)
 │   ├── ending-credits.js  Who !endingtk thanks, from the chat log (groups, avatars, ending-credits.json)
+│   ├── ending-raid.js     Raid with the ending roll: times the roll and the raid so it goes 10 s after the roll
 │   ├── redemptions.js     Redemptions done / refunded (Chat tab, queue songs); taking over rewards made on Twitch
 │   ├── first-chat.js      Anonymous read-only IRC: Twitch's first-msg flag → chat-log markFirst
 │   ├── chat-send.js       The Chat tab's message box: Helix POST /chat/messages (replies too)
@@ -566,7 +567,8 @@ register it in index.js.
 | POST | `/api/chat/mod/ban` | `{login, seconds?, reason?}` → `{name, until}`; no seconds = ban |
 | POST | `/api/chat/mod/unban` | `{login}` → `{name}`; ends a ban or timeout |
 | POST | `/api/chat/mod/shoutout` | `{login}` → `{name, twitch, clip}`; Twitch Shoutout + the `!so` clip |
-| POST | `/api/chat/mod/raid` / `raid/cancel` | `{login}` → `{name, login, createdAt}` / cancels |
+| POST | `/api/chat/mod/raid` / `raid/cancel` | `{login}` → `{name, login, createdAt}` / cancels (a raid with the ending roll: both) |
+| GET / POST | `/api/chat/mod/raid/roll` | `?login=` → channel + `{people, rollMs, rollIn, raidIn, landsIn}` / `{login}` starts it → `{name, rollAt, raidAt, landsAt, …}`; WS `ending-raid` |
 | POST | `/api/chat/mod/pin` / `unpin` | `{id, seconds?}` → pinned message / `{id}` |
 | GET | `/api/modes` | `{modes, active, held, connection, live, issues}` — `?live=0` doesn't ask the streaming app |
 | POST | `/api/modes/switch` | `{id}` → `{skipped, failed, appError, chat, tab, canvasChanged?}` |

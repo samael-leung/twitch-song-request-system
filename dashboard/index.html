@@ -319,6 +319,8 @@
   .mod-menu .chat-act.danger { color: var(--red); border-color: rgba(255,90,90,0.4); }
   .mod-menu .chat-act.danger.sure { color: var(--bg); background: var(--red); }
   .mod-menu .chat-act:disabled { opacity: 0.4; }
+  .mod-check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); cursor: pointer; }
+  .mod-menu .mod-check input { padding: 0; }
   .mod-note { color: var(--amber); font-size: 12px; }
   .mod-note a { color: var(--blue); }
   .chat-compose[hidden], .chat-compose [hidden] { display: none; }
@@ -1310,6 +1312,7 @@ function connect() {
       else if (m.type === 'chat-session') loadChatSession().then(() => { linkSession(); rerenderChat(); });
       else if (m.type === 'modes') onModesMessage(m);
       else if (m.type === 'outfits') { outfits.status = m; paintOutfits(); }
+      else if (m.type === 'ending-raid') onEndingRaid(m);
     } catch(_){}
   };
 }
@@ -3052,6 +3055,7 @@ async function loadChatMod() {
     const m = await (await fetch('/api/chat/mod')).json();
     chat.mod.can = m.can || {};
     chat.mod.pinned = m.pinned || null;
+    if (m.endingRaid) chat.mod.raid = rollRaid(m.endingRaid);
   } catch(_) {}
   paintChatBanners();
 }
@@ -3117,6 +3121,7 @@ function openModMenu(user, anchor) {
   menu.innerHTML = head
     + `<div class="mod-row"><button class="chat-act" data-mod="shoutout"${off('shoutout')}>📣 Shoutout</button>`
     + `<button class="chat-act" data-mod="raid"${off('raid')}>🚀 ${esc(t('dash.chat.mod.raid'))}</button></div>`
+    + `<label class="mod-check"><input type="checkbox" class="mod-roll" checked${off('raid')} /> ${esc(t('dash.chat.mod.withRoll'))}</label>`
     + `<div class="mod-label">${esc(t('dash.chat.mod.timeout'))}</div>`
     + `<div class="mod-row">${MOD_TIMEOUTS.map(s => `<button class="chat-act" data-mod="timeout" data-s="${s}"${off('ban')}>${esc(modDuration(s))}</button>`).join('')}</div>`
     + `<div class="mod-row"><input type="number" class="mod-n" min="1" step="1"${off('ban')} aria-label="${esc(t('dash.chat.mod.timeout'))}" />`
@@ -3156,15 +3161,20 @@ async function onModMenuClick(e, user, menu) {
     if (!(seconds > 0)) { showToast(t('dash.chat.mod.howLong'), true); menu.querySelector('.mod-n').focus(); return; }
   }
   if (act === 'ban' && !modArmed(b, t('dash.chat.mod.banSure', { name: shown }))) return;
+  const withRoll = act === 'raid' && menu.querySelector('.mod-roll').checked;
   if (act === 'raid' && !b.classList.contains('sure')) {
-    // Say where the viewers would go before they go
+    // Say where the viewers would go before they go (with the ending roll: and when the roll and the raid go)
     b.disabled = true;
     try {
-      const res = await fetch(`/api/chat/mod/channel?login=${encodeURIComponent(login)}`);
+      const res = await fetch(`/api/chat/mod/${withRoll ? 'raid/roll' : 'channel'}?login=${encodeURIComponent(login)}`);
       const ch = await res.json();
       if (!res.ok) throw new Error(I18N.server(ch, 'dash.toast.requestFailed'));
       b.disabled = false;
-      modArmed(b, t(ch.live ? 'dash.chat.mod.raidSureLive' : 'dash.chat.mod.raidSureOffline', { name: ch.name, n: ch.viewers }), 8000);
+      const sure = t(ch.live ? 'dash.chat.mod.raidSureLive' : 'dash.chat.mod.raidSureOffline', { name: ch.name, n: ch.viewers });
+      const when = !withRoll ? '' : ch.rollMs
+        ? ' ' + t('dash.chat.mod.raidSureRoll', { roll: modClock(ch.rollIn), length: modClock(ch.rollMs), lands: modClock(ch.landsIn) })
+        : ' ' + t('dash.chat.mod.raidSureNoRoll');
+      modArmed(b, sure + when, 10000);
     } catch (err) {
       b.disabled = false;
       showToast(err.message, true);
@@ -3185,6 +3195,11 @@ async function onModMenuClick(e, user, menu) {
       const reason = r.twitch ? I18N.server(r.twitch, 'dash.toast.requestFailed') : '';
       const key = r.twitch ? (r.clip ? 'shoutoutClipOnly' : 'shoutoutNothing') : (r.clip ? 'shoutoutBoth' : 'shoutoutNoClip');
       showToast(t('dash.chat.mod.' + key, { name: r.name, reason }), !!r.twitch && !r.clip);
+    } else if (act === 'raid' && withRoll) {
+      const r = await modPost('/api/chat/mod/raid/roll', { login });
+      chat.mod.raid = rollRaid(r);
+      paintChatBanners();
+      showToast(t(r.rollMs ? 'dash.chat.mod.raidRollStarted' : 'dash.chat.mod.raidStarted', { name: r.name, roll: modClock(r.rollAt - Date.now()), lands: modClock(r.landsAt - Date.now()) }));
     } else if (act === 'raid') {
       const r = await modPost('/api/chat/mod/raid', { login });
       chat.mod.raid = { name: r.name, until: Date.now() + RAID_COUNTDOWN_MS };
@@ -3246,7 +3261,7 @@ function paintChatBanners() {
       + (chat.mod.can.pin ? `<button class="chat-act" data-unpin="${esc(p.id)}">${esc(t('dash.chat.mod.unpin'))}</button>` : '') + '</div>'
     : '')
     + (raid
-      ? `<div class="chat-banner raid">🚀 <span class="what" data-ends="${raid.until}" data-key="dash.chat.mod.raiding" data-name="${esc(raid.name)}"></span>`
+      ? `<div class="chat-banner raid">🚀 <span class="what" data-ends="${raid.until}" data-key="dash.chat.mod.raiding" data-name="${esc(raid.name)}"${raid.rollAt ? ` data-roll="${raid.rollAt}"` : ''}></span>`
         + `<button class="chat-act" data-cancel-raid="1">${esc(t('dash.chat.mod.cancelRaid'))}</button></div>`
       : '');
   clearInterval(chatBannerTick);
@@ -3260,7 +3275,10 @@ function tickChatBanners() {
   for (const el of document.querySelectorAll('#chat-banners [data-ends]')) {
     const left = Number(el.dataset.ends) - now;
     if (left <= 0) ended = true;
-    el.textContent = t(el.dataset.key, { time: modClock(left), name: el.dataset.name || '' });
+    const roll = Number(el.dataset.roll) - now;   // raid with the ending roll, before the roll starts
+    el.textContent = roll > 0
+      ? t('dash.chat.mod.raidingRoll', { time: modClock(left), roll: modClock(roll), name: el.dataset.name || '' })
+      : t(el.dataset.key, { time: modClock(left), name: el.dataset.name || '' });
   }
   if (!ended) return;
   if (chat.mod.pinned && chat.mod.pinned.endsAt && chat.mod.pinned.endsAt <= now) chat.mod.pinned = null;
@@ -3289,6 +3307,20 @@ document.getElementById('chat-banners').addEventListener('click', async (e) => {
   }
   paintChatBanners();
 });
+
+// Raid with the ending roll (server/ending-raid.js): its run → the raid banner
+function rollRaid(r) {
+  return { name: r.name, until: r.landsAt, rollAt: r.rollAt || null, withRoll: true };
+}
+
+// The server's word on a raid with the ending roll: started, stopped (Cancel, or someone raiding us), or failed
+function onEndingRaid(m) {
+  if (m.run) chat.mod.raid = rollRaid(m.run);
+  else if (chat.mod.raid && chat.mod.raid.withRoll) chat.mod.raid = null;
+  if (m.stopped === 'raided') showToast(t('dash.chat.mod.raidStoppedRaided', { name: m.by || '?' }), true);
+  if (m.error) showToast(t('dash.chat.mod.raidRollFailed', { reason: I18N.server(m.error, 'dash.toast.requestFailed') }), true);
+  paintChatBanners();
+}
 
 // "To announce": support to thank on stream (redemptions too), and viewers to greet — a first message in the channel,
 // or a viewer's first words this stream (greet, worked out here: per session live, per day otherwise).

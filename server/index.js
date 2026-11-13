@@ -23,6 +23,7 @@ const registerStop = require('./commands/stop');
 const registerThanks = require('./commands/thanks');
 const registerEndingThanks = require('./commands/ending-thanks');
 const endingCredits = require('./ending-credits');
+const endingRaid = require('./ending-raid');
 const redemptions = require('./redemptions');
 const firstChat = require('./first-chat');
 const chatSend = require('./chat-send');
@@ -146,7 +147,9 @@ setChatHandler((event) => {
 setModerationHandler(chatLog.onModeration);
 // Subs, gifts, raids and follows: shown in the Chat tab, thanked by !endingtk (ending-credits.js)
 setNoticeHandler((event) => {
-  try { chatLog.addNotice(event); } catch (err) { console.error('[chat-log] Could not log a chat notice:', err.message); }
+  let rec = null;
+  try { rec = chatLog.addNotice(event); } catch (err) { console.error('[chat-log] Could not log a chat notice:', err.message); }
+  endingRaid.onRecord(rec);   // a raid coming in stops ours with the ending roll
 });
 setFollowHandler((event) => {
   try { chatLog.addFollow(event); } catch (err) { console.error('[chat-log] Could not log a follow:', err.message); }
@@ -162,6 +165,7 @@ setRedemptionHook(redemptions.settle);
 setStreamHandler(streamSession.onEvent);
 streamSession.init(session => sendChat({ type: 'chat-session', ...session }));
 modes.init(msg => sendChat(msg));   // after mediaQueue.init: a mode may hold clips
+endingRaid.init(msg => sendChat(msg));
 outfits.init({ send: msg => sendChat(msg), saveEnv: values => setupRouter.writeEnvValues(values) });
 
 // Returns the matching random-reward config object if the given rewardId is
@@ -832,14 +836,17 @@ function modRoute(fn) {
 }
 app.get('/api/chat/mod', async (req, res) => {
   const can = await chatMod.permissions();
-  res.json({ can, pinned: can.pin ? await chatMod.pinned() : null });
+  res.json({ can, pinned: can.pin ? await chatMod.pinned() : null, endingRaid: endingRaid.status() });
 });
 app.get('/api/chat/mod/channel', modRoute((b, req) => chatMod.channel(req.query.login)));
 app.post('/api/chat/mod/ban', modRoute(b => chatMod.ban(b.login, { seconds: b.seconds, reason: b.reason })));
 app.post('/api/chat/mod/unban', modRoute(b => chatMod.unban(b.login)));
 app.post('/api/chat/mod/shoutout', modRoute(b => registerShoutout.shoutout(b.login)));   // Twitch's Shoutout + the !so clip
 app.post('/api/chat/mod/raid', modRoute(b => chatMod.raid(b.login)));
-app.post('/api/chat/mod/raid/cancel', modRoute(() => chatMod.cancelRaid()));
+app.post('/api/chat/mod/raid/cancel', modRoute(() => endingRaid.active() ? endingRaid.stop('canceled') : chatMod.cancelRaid()));
+// Raid with the ending roll (ending-raid.js): GET → the channel and when the roll and the raid would go; POST starts it
+app.get('/api/chat/mod/raid/roll', modRoute((b, req) => endingRaid.plan(req.query.login)));
+app.post('/api/chat/mod/raid/roll', modRoute(b => endingRaid.start(b.login)));
 app.post('/api/chat/mod/pin', modRoute(b => chatMod.pin(b.id, b.seconds)));
 app.post('/api/chat/mod/unpin', modRoute(b => chatMod.unpin(b.id)));
 

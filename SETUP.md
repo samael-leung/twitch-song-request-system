@@ -240,7 +240,11 @@ list. Messages mods delete show struck through.
   clips, like `!so`; Twitch only allows it while you're live, every 2 minutes (once an hour for the same
   channel), so outside that the clip still plays and you're told why. **Raid** first shows whether that
   channel is live and how many viewers it has; click again to go. Twitch then counts down 90 seconds
-  (shown above the chat, with **Cancel raid**). **📌** (shown when you point at a message) pins it to the
+  (shown above the chat, with **Cancel raid**). With **🎬 With the ending roll** ticked (the default), the
+  `!endingtk` roll plays so the raid goes 10 seconds after it ends: the app starts the raid and the roll at
+  the right times (the confirm says when) and the roll cuts in over a clip. **Cancel raid**, or someone raiding
+  you meanwhile, stops both. Don't press Raid Now on Twitch, and use this button rather than Twitch's own
+  `/raid`, which the app can't follow. **📌** (shown when you point at a message) pins it to the
   top of your Twitch chat for 1, 5 or 30 minutes or until the stream ends; the pinned message shows above
   the chat with **Unpin**. Setups from before these buttons need to authorize again once: the menu links to it.
 - **Redemptions:** a waiting redemption of a reward this app made gets **✓ Done** and **↩ Refund**
