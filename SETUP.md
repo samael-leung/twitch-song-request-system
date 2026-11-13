@@ -187,6 +187,7 @@ Open `http://localhost:3000/dashboard` during streams.
 | 4 panels (2×2) | Left: Now Playing above Up Next · Right: Pending Review above Played |
 | Drag & drop | Move songs between panels or reorder within |
 | ⚙ Settings | Each tab has its own ⚙ at the right end of its top row: Song Queue — random cooldown, overlay opacity / brightness / language; Leihu Singsing — its settings and the two steps; Chat — song notes on the overlay, who `!endingtk` would thank now, channel-point rewards. Each saves on its own |
+| 🎨 Look | 🎵 Song Queue → ⚙ → **Look**: five themes — **Neon** (the original), **Daylight**, **High contrast**, **Ocean**, **Cream & coffee** — chosen apart for the dashboard and for the overlays, and text sizes: the dashboard's (85–140%, the same on every browser and phone that opens it), the song list's and the break card's. Overlays change at once on stream and keep their size in OBS (bigger text, fewer songs in the same space). One overlay in another theme: add `?theme=daylight` (`neon`, `daylight`, `contrast`, `ocean`, `coffee`) to its URL. The chat's text size stays under 💬 Chat → ⚙ |
 | EN / 中文 | Switches the dashboard, links page and setup wizard together; the overlay and clip player follow the ⚙ "Overlay language" setting |
 | ✓ Finished | Moves Now Playing → Played, pulls next song |
 | Pending column | Weak/unmatched requests — edit and accept manually |

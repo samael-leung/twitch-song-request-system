@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-surface="overlay">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
@@ -7,8 +7,8 @@
 <title>Song Queue Overlay</title>
 <script src="/shared/i18n.js"></script>
 <script src="/shared/i18n-viewer.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/themes.css">
+<script src="/shared/theme.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -23,20 +23,13 @@
     zoom: 2;
   }
 
-  :root {
+  /* Colours and fonts: shared/themes.css (⚙ Settings → Look → Overlay theme, or ?theme= in the URL) */
+  :root[data-surface="overlay"] {   /* outranks the theme's own --bg-panel (themes.css) */
     --panel-bg-alpha: 0.92;
     --text-brightness: 1;
-    --bg-panel: rgba(8, 8, 20, var(--panel-bg-alpha));
-    --bg-card: rgba(15, 10, 30, 0.95);
-    --border: rgba(120, 60, 220, 0.3);
-    --purple: #b06aff;
-    --purple-dim: #7b4fb5;
-    --blue: #5a9aff;
-    --green: #4aff9a;
-    --green-dim: #2a9a5a;
-    --text: #d4c8f0;
-    --text-dim: #7a6a9a;
-    --text-muted: #3a3060;
+    --ts: 1;   /* the song lists' text size (⚙ → Look → Song list text) */
+    --bg-panel: rgba(var(--panel-rgb), var(--panel-bg-alpha));
+    --bg-card: rgba(var(--card-rgb), 0.95);
     --list-height: 240px;
   }
 
@@ -44,7 +37,7 @@
     width: 480px;
     background: transparent !important;
     background-color: transparent !important;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: var(--font-body);
     color: var(--text);
     overflow: hidden;
   }
@@ -63,27 +56,27 @@
   .panel::before, .panel::after {
     content: ''; position: absolute; width: 10px; height: 10px;
   }
-  .panel::before { top: -1px; left: -1px; border-top: 2px solid var(--purple); border-left: 2px solid var(--purple); }
-  .panel::after  { bottom: -1px; right: -1px; border-bottom: 2px solid var(--purple); border-right: 2px solid var(--purple); }
+  .panel::before { top: -1px; left: -1px; border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+  .panel::after  { bottom: -1px; right: -1px; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); }
 
   /* ── Header ── */
   .header {
     display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-shrink: 0;
   }
   .header-title {
-    font-family: 'Orbitron', sans-serif;
+    font-family: var(--font-display);
     font-size: 10px; font-weight: 500; letter-spacing: 3px;
-    color: var(--purple-dim); text-transform: uppercase; flex: 1;
+    color: var(--accent-dim); text-transform: uppercase; flex: 1;
   }
   .status-dot {
     width: 6px; height: 6px; border-radius: 50%;
-    background: var(--purple); animation: blink 2s ease-in-out infinite;
+    background: var(--accent); animation: blink 2s ease-in-out infinite;
   }
-  .status-dot.disconnected { background: #ff4444; animation: none; }
+  .status-dot.disconnected { background: var(--danger); animation: none; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
   .badge {
     font-size: 12px; padding: 2px 8px; border-radius: 3px; letter-spacing: 1px;
-    background: rgba(80,30,120,0.4); border: 1px solid rgba(120,60,200,0.4); color: var(--purple);
+    background: rgba(var(--tint-accent-rgb), 0.4); border: 1px solid rgba(var(--accent-deep-rgb), 0.4); color: var(--accent);
   }
 
   /* ── Now Playing ── One height whether a song plays or not, with or without an artist, in any
@@ -92,15 +85,15 @@
     height: 123px; overflow: hidden;
     background: transparent;
     border: 1px solid var(--border);
-    border-left: 3px solid var(--purple);
+    border-left: 3px solid var(--accent);
     border-radius: 4px;
     padding: 10px 12px;
     margin-bottom: 10px;
     flex-shrink: 0;
   }
-  .np-label     { font-size: 8px; line-height: 12px; letter-spacing: 3px; color: var(--purple-dim); margin-bottom: 4px; }
+  .np-label     { font-size: 8px; line-height: 12px; letter-spacing: 3px; color: var(--accent-dim); margin-bottom: 4px; }
   .np-title     {
-    font-family: 'Orbitron', sans-serif; font-size: 32px; font-weight: 500; color: #ddc8ff;
+    font-family: var(--font-display); font-size: 32px; font-weight: 500; color: var(--text-strong);
     height: 40px; line-height: 40px; white-space: nowrap; overflow: hidden;
   }
   .np-title-inner {
@@ -108,7 +101,7 @@
     white-space: nowrap;
   }
   .np-artist    { font-size: 15px; height: 20px; line-height: 20px; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .np-requester { font-size: 13px; height: 18px; line-height: 18px; color: var(--blue); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .np-requester { font-size: 13px; height: 18px; line-height: 18px; color: var(--info); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .np-empty     { font-size: 12px; color: var(--text-muted); line-height: 44px; }
   @keyframes scroll-title {
     0%      { transform: translateX(0); }
@@ -123,7 +116,7 @@
   .section-header {
     font-size: 8px; letter-spacing: 3px; margin-bottom: 6px; flex-shrink: 0;
   }
-  .section-header.purple { color: var(--text-muted); }  .section-header.green  { color: rgba(42,154,90,0.7); margin-top: 10px; }
+  .section-header.purple { color: var(--text-muted); }  .section-header.green  { color: rgba(var(--good-deep-rgb), 0.7); margin-top: 10px; }
 
   /* ── Auto-scrolling ticker lists ── */
   .scroll-list {
@@ -141,8 +134,8 @@
     z-index: 1;
     pointer-events: none;
   }
-  .scroll-list.queue-scroll::before  { background: linear-gradient(to bottom, rgba(8,8,20,0.92), transparent); }
-  .scroll-list.played-scroll::before { background: linear-gradient(to bottom, rgba(8,8,20,0.92), transparent); }
+  .scroll-list.queue-scroll::before  { background: linear-gradient(to bottom, rgba(var(--panel-rgb), var(--panel-bg-alpha)), transparent); }
+  .scroll-list.played-scroll::before { background: linear-gradient(to bottom, rgba(var(--panel-rgb), var(--panel-bg-alpha)), transparent); }
 
   .scroll-inner {
     display: flex;
@@ -155,7 +148,7 @@
   /* ── Divider line ── */
   .divider-line {
     height: 1px;
-    background: linear-gradient(to right, transparent, rgba(120,60,220,0.3), transparent);
+    background: linear-gradient(to right, transparent, rgba(var(--accent-deep-rgb), 0.3), transparent);
     margin: 10px 0;
     flex-shrink: 0;
   }
@@ -166,26 +159,26 @@
     padding: 3px 8px; border-radius: 3px;
     animation: slide-in 0.3s ease; flex-shrink: 0;
   }
-  .queue-item  { background: transparent; border: 1px solid rgba(60,40,100,0.3); }
-  .played-item { background: transparent; border: 1px solid rgba(30,70,50,0.3); }
+  .queue-item  { background: transparent; border: 1px solid rgba(var(--line-accent-rgb), 0.3); }
+  .played-item { background: transparent; border: 1px solid rgba(var(--line-good-rgb), 0.3); }
   @keyframes slide-in { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
 
-  .q-num   { font-size: 13px; color: var(--purple-dim); min-width: 22px; }
-  .q-title { font-size: 21px; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .q-artist{ font-size: 15px; color: var(--text-dim); }
-  .q-req   { font-size: 13px; color: var(--blue); white-space: nowrap; }
+  .q-num   { font-size: calc(13px * var(--ts)); color: var(--accent-dim); min-width: 22px; }
+  .q-title { font-size: calc(21px * var(--ts)); color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .q-artist{ font-size: calc(15px * var(--ts)); color: var(--text-dim); }
+  .q-req   { font-size: calc(13px * var(--ts)); color: var(--info); white-space: nowrap; }
 
-  .p-num   { font-size: 13px; color: rgba(74,255,154,0.6); min-width: 22px; }
-  .p-title { font-size: 21px; color: rgba(180,220,190,0.75); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .p-artist{ font-size: 15px; color: rgba(120,160,130,0.6); }
-  .p-req   { font-size: 13px; color: rgba(90,154,255,0.6); white-space: nowrap; }
+  .p-num   { font-size: calc(13px * var(--ts)); color: rgba(var(--good-rgb), 0.6); min-width: 22px; }
+  .p-title { font-size: calc(21px * var(--ts)); color: var(--played-text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .p-artist{ font-size: calc(15px * var(--ts)); color: var(--played-dim); }
+  .p-req   { font-size: calc(13px * var(--ts)); color: rgba(var(--info-rgb), 0.6); white-space: nowrap; }
 
   .played-badge {
     font-size: 12px; padding: 2px 8px; border-radius: 3px; letter-spacing: 1px;
-    background: rgba(20,80,50,0.4); border: 1px solid rgba(40,140,80,0.4); color: var(--green);
+    background: rgba(var(--tint-good-rgb), 0.4); border: 1px solid rgba(var(--good-deep-rgb), 0.4); color: var(--good);
   }
 
-  .list-empty { font-size: 10px; color: var(--text-muted); text-align: center; padding: 8px 0; }
+  .list-empty { font-size: calc(10px * var(--ts)); color: var(--text-muted); text-align: center; padding: 8px 0; }
 
   /* ── Song notes (chat named a song: "title - 99 days ago" since it was last sung): floating
         at the bottom of the overlay, over the Played list. A new one comes up from the bottom and
@@ -197,15 +190,15 @@
   }
   .note-item {
     display: flex; align-items: baseline; gap: 8px; padding: 5px 10px; border-radius: 4px;
-    background: rgba(6, 32, 18, 0.96); border: 1px solid rgba(74, 255, 154, 0.5); border-left: 3px solid var(--green);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); animation: note-up 0.35s ease;
+    background: var(--note-good-bg); border: 1px solid rgba(var(--good-rgb), 0.5); border-left: 3px solid var(--good);
+    box-shadow: 0 4px 14px rgba(var(--shadow-rgb), calc(0.5 * var(--shadow-k))); animation: note-up 0.35s ease;
   }
   @keyframes note-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-  .note-item.recent { background: rgba(40, 24, 6, 0.96); border-color: rgba(255, 184, 74, 0.6); border-left-color: #ffb84a; }
-  .n-title { font-size: 21px; color: #e8f5ec; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .n-days  { font-size: 19px; color: var(--green); white-space: nowrap; }
-  .note-item.recent .n-title { color: #ffe9c7; }
-  .note-item.recent .n-days { color: #ffb84a; }
+  .note-item.recent { background: var(--note-warn-bg); border-color: rgba(var(--warn-rgb), 0.6); border-left-color: var(--warn); }
+  .n-title { font-size: calc(21px * var(--ts)); color: var(--note-good-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .n-days  { font-size: calc(19px * var(--ts)); color: var(--good); white-space: nowrap; }
+  .note-item.recent .n-title { color: var(--note-warn-text); }
+  .note-item.recent .n-days { color: var(--warn); }
 </style>
 </head>
 <body>
@@ -277,8 +270,10 @@ function connect() {
   };
 }
 
-function applySettings({ panelBgAlpha, textBrightness, overlayLanguage }) {
+function applySettings({ panelBgAlpha, textBrightness, overlayLanguage, overlayTheme, songTextScale }) {
   if (overlayLanguage) I18N.setLang(overlayLanguage, { save: false, tagPage: false });
+  if (overlayTheme) Theme.apply(overlayTheme);
+  if (songTextScale) { Theme.scale(songTextScale); if (lastState) renderState(lastState); }   // the tickers measure again
   if (panelBgAlpha != null) {
     document.documentElement.style.setProperty('--panel-bg-alpha', panelBgAlpha);
   }

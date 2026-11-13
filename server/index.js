@@ -16,6 +16,7 @@ const { registerCommand, handleChatEvent } = require('./chat-router');
 const chatLog = require('./chat-log');
 const chatBadges = require('./chat-badges');
 const songNotes = require('./song-notes');
+const look = require('./look');
 const registerShoutout = require('./commands/shoutout');
 const registerWatch = require('./commands/watch');
 const registerReplay = require('./commands/replay');
@@ -714,6 +715,7 @@ app.get('/api/settings', (req, res) => {
     songNotes: songNotes.enabled(),
     overlayLanguage: overlayLanguage(),
     chatOverlay: chatOverlaySettings(),
+    ...look.read(),   // themes and text sizes (look.js)
   });
 });
 
@@ -790,6 +792,15 @@ app.post('/api/settings', (req, res) => {
   if (req.body.leihuAutoStart !== undefined) {
     updates.leihuAutoStart = !!req.body.leihuAutoStart;
     setupRouter.writeEnvValues({ LEIHU_AUTOSTART: updates.leihuAutoStart ? '1' : '0' });
+  }
+
+  // Themes and text sizes: { look: { dashboardTheme?, overlayTheme?, …TextScale? } }; every page follows at once
+  if (req.body.look !== undefined) {
+    let parsed;
+    try { parsed = look.parse(req.body.look); } catch (err) { return res.status(400).json(errorBody(err)); }
+    setupRouter.writeEnvValues(parsed.env);
+    Object.assign(updates, parsed.values);
+    broadcastSettings(parsed.values);
   }
 
   res.json({ ok: true, ...updates });
