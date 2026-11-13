@@ -34,12 +34,12 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
 
 ### What's new / 新功能
 
-- **🎨 Themes and text sizes** (🎵 Song Queue → ⚙ → **Look**): five themes — **Neon** (the original),
+- **🎨 Themes and text sizes** (**🎨 Look & overlays** at the top, beside EN / 中文): five themes — **Neon** (the original),
   **Daylight**, **High contrast**, **Ocean**, **Cream & coffee** — chosen apart for the dashboard and the
   overlays; the dashboard's text size (85–140%, the same on every browser and phone), the song list's and
   the break card's. Overlays change at once and keep their size in OBS; `?theme=…` on an overlay URL gives
   it its own theme.
-  **🎨 主題和文字大小**（🎵 點歌佇列 → ⚙ →「**外觀**」）：五個主題 ——「**霓虹**」（原本的樣子）、「**日光**」、
+  **🎨 主題和文字大小**（最上面、EN／中文旁邊的「**🎨 外觀與疊加層**」）：五個主題 ——「**霓虹**」（原本的樣子）、「**日光**」、
   「**高對比**」、「**海洋**」、「**奶油咖啡**」—— 控制台和疊加層分開選；控制台的文字大小（85–140%，每個瀏覽器和
   手機都一樣）、歌單和休息卡的文字大小。疊加層立刻改變，在 OBS 裡的大小不變；疊加層網址加上 `?theme=…`
   可以單獨用別的主題。

@@ -1,6 +1,6 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Colours and fonts: shared/themes.css, in the dashboard's theme (⚙ Settings → Look) */
+/* Colours and fonts: shared/themes.css, in the dashboard's theme (🎨 Look & overlays) */
 
 html, body {
   min-height: 100vh;

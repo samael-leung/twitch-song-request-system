@@ -290,7 +290,7 @@ Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/refresh-songs
 |---|---|
 | `.env` | Credentials, IDs, URLs — see `.env.example` for descriptions |
 | `server/config.js` | Matching thresholds, random weights, Leihu recognition language per tab |
-| Dashboard ⚙ → **Look** | Themes and text sizes of the dashboard and overlays (`shared/themes.css` holds the colours) |
+| Dashboard **🎨 Look & overlays** | Themes and text sizes of the dashboard and overlays (`shared/themes.css` holds the colours) |
 | `overlay/index.html` | `--list-height` at the top — list height; `SCROLL_PX_PER_SEC` — scroll speed |
 
 ---

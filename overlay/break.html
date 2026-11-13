@@ -23,10 +23,10 @@
     zoom: 2;   /* rendered at 2x; the Browser Source is scaled to 50% for sharp text */
   }
 
-  /* Colours and fonts: shared/themes.css (⚙ Settings → Look → Overlay theme, or ?theme= in the URL) */
+  /* Colours and fonts: shared/themes.css (🎨 Look & overlays → overlay theme, or ?theme= in the URL) */
   :root[data-surface="overlay"] {   /* outranks the theme's own --bg-panel (themes.css) */
     --bg-panel: rgba(var(--panel-rgb), 0.92);
-    --ts: 1;   /* text size (⚙ → Look → Break card text) */
+    --ts: 1;   /* text size (🎨 Look & overlays → Break card text) */
   }
 
   html, body {
@@ -134,7 +134,7 @@
   tick();
   setInterval(tick, 1000);
 
-  // The overlay theme and this card's text size (⚙ Settings → Look), now and when they change
+  // The overlay theme and this card's text size (🎨 Look & overlays), now and when they change
   function applyLook(s) {
     if (s.overlayTheme) Theme.apply(s.overlayTheme);
     if (s.breakTextScale) Theme.scale(s.breakTextScale);

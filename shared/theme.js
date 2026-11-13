@@ -1,5 +1,5 @@
 // shared/theme.js — puts a page in one of the five looks (shared/themes.css) and its text size.
-// The dashboard and the overlays each have their own (⚙ Settings → Look, saved by the server);
+// The dashboard and the overlays each have their own (🎨 Look & overlays in the dashboard's top bar, saved by the server);
 // an overlay's URL can pick another with ?theme=. Only the active look's fonts load. The last look
 // is kept in this browser so the page starts in it instead of flashing Neon first.
 //

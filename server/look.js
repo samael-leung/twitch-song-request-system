@@ -1,5 +1,5 @@
 // server/look.js
-// ⚙ Settings → Look: the dashboard's and the overlays' themes (shared/themes.css) and text sizes,
+// 🎨 Look & overlays (the dashboard's top bar): the dashboard's and the overlays' themes (shared/themes.css) and text sizes,
 // kept in .env. The dashboard's are shared by every browser and phone that opens it. Each
 // overlay has its own text size (the chat overlay keeps its own setting, CHAT_OVERLAY_SIZE); an
 // overlay's Browser Source size never changes with it.

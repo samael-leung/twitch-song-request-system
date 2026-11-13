@@ -13,7 +13,7 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root { --ts: 1; }   /* colours and fonts: shared/themes.css; --ts: the text size (⚙ Settings → Look) */
+  :root { --ts: 1; }   /* colours and fonts: shared/themes.css; --ts: the text size (🎨 Look & overlays) */
 
   html, body {
     height: 100%;
@@ -27,7 +27,7 @@
 
   /* ── Top bar ── */
   .topbar {
-    display: flex; align-items: center; gap: 12px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;   /* a phone: its buttons go to a second line */
     padding: 12px 20px;
     background: var(--bg-panel);
     border-bottom: 1px solid var(--border);
@@ -87,6 +87,7 @@
     padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
   }
   .tab-config[hidden] { display: none; }
+  .app-config { position: fixed; }   /* 🎨 Look & overlays: under the top bar, over any tab (top set on opening) */
   .tab-config-close { position: absolute; top: 10px; right: 10px; }
   .tab-config > section:first-of-type h3 { padding-right: 40px; }
   .tab-config-btn[aria-expanded="true"] { background: rgba(var(--accent-rgb), 0.15); }
@@ -97,7 +98,7 @@
   }
   .setting { display: flex; align-items: center; gap: 10px; font-size: calc(14px * var(--ts)); color: var(--text); cursor: pointer; }
   .setting-name { width: calc(120px * var(--ts)); flex-shrink: 0; }
-  /* ⚙ → Look: a card per theme, drawn in that theme (data-theme-card, shared/themes.css) */
+  /* 🎨 Look & overlays: a card per theme, drawn in that theme (data-theme-card, shared/themes.css) */
   .theme-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(132px * var(--ts)), 1fr)); gap: 8px; }
   .theme-card {
     display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left;
@@ -115,8 +116,9 @@
   .setting-hint { font-size: calc(13px * var(--ts)); color: var(--text-dim); line-height: 1.5; }
   /* Chat ⚙ "Chat on stream": one row per style, its Browser Source address and Copy */
   .co-url { display: flex; align-items: center; gap: 8px; font-size: calc(13px * var(--ts)); }
-  .co-url b { width: 120px; flex-shrink: 0; font-weight: 400; color: var(--text); }
-  .co-url code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--info); }
+  .co-url b { width: calc(120px * var(--ts)); flex-shrink: 0; font-weight: 400; color: var(--text); }
+  .co-url b small { color: var(--text-dim); }
+  .co-url code { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--info); }   /* the path; Copy gives the whole address */
   .co-url .btn { font-size: calc(12px * var(--ts)); padding: 2px 9px; }
   .step { border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
   .step-title { font-size: calc(14px * var(--ts)); font-weight: 600; color: var(--text); }
@@ -344,7 +346,7 @@
   /* Narrow windows: one column, the page scrolls */
   @media (max-width: 900px) {
     html, body { height: auto; }
-    .board { grid-template-columns: 1fr; }
+    .board { grid-template-columns: minmax(0, 1fr); }   /* a long title wraps instead of widening the page */
     .col-panel.grow { min-height: 320px; }
     .pending-panel { max-height: none; }
     .leihu-frame { flex: none; height: 85vh; }
@@ -660,6 +662,12 @@
     font-family: var(--font-body); font-size: calc(15px * var(--ts)); color: var(--text);
     outline: none; transition: border-color .15s; min-width: 0;
   }
+  /* Narrow windows: the song box gets a line of its own (after the rules above, so it wins) */
+  @media (max-width: 900px) {
+    .request-bar { flex-wrap: wrap; }
+    .request-input-wrap { flex: 1 1 100%; }
+    .requester-input { min-width: 0; }
+  }
   .requester-input:focus { border-color: var(--info); }
   .requester-input::placeholder { color: var(--text-dim); opacity: 0.7; }
 
@@ -915,9 +923,78 @@
     <div class="mode-bar" id="mode-bar" role="group" data-i18n-aria-label="dash.modes.bar"></div>
   </div>
   <span class="lang-switch" role="group" data-i18n-aria-label="dash.set.language"></span>
+  <button class="chip tab-config-btn" id="app-config-btn" type="button" onclick="toggleTabConfig('app')" aria-expanded="false" aria-controls="config-app" data-i18n="dash.app.button">🎨 Look &amp; overlays</button>
   <button class="chip" id="leihu-chip" onclick="showTab('leihu')" data-i18n-title="dash.leihuChipTitle">
     🎤 <span id="leihu-state" data-i18n="dash.leihuOffline">Leihu offline</span>
   </button>
+</div>
+
+<!-- 🎨 Look & overlays (top bar): what isn't one tab's — the dashboard's and the overlays' themes and text
+     sizes (shared/themes.css, server/look.js), the overlays' opacity / brightness / language, every overlay's
+     Browser Source address, and the version -->
+<div class="tab-config app-config" id="config-app" hidden>
+  <button class="btn tab-config-close" onclick="toggleTabConfig('app', false)" data-i18n-aria-label="dash.closeSettings">✕</button>
+  <section>
+    <h3 data-i18n="dash.app.dashTitle">Dashboard</h3>
+    <p class="look-label" data-i18n="dash.look.dashTheme">Theme</p>
+    <div class="theme-picks" id="look-dash-themes" data-look="dashboardTheme"></div>
+    <label class="setting">
+      <span class="setting-name" data-i18n="dash.look.dashSize">Text size</span>
+      <input type="range" class="opacity-slider" id="look-dash-ts" data-look="dashboardTextScale" min="0.85" max="1.4" step="0.05" />
+      <span class="opacity-value" id="look-dash-ts-value">100%</span>
+    </label>
+    <p class="setting-hint" data-i18n="dash.look.dashHint">Every browser and phone that opens the dashboard shows the same. Its language: EN / 中文 at the top.</p>
+  </section>
+  <section>
+    <h3 data-i18n="dash.app.overlaysTitle">Overlays on stream</h3>
+    <p class="look-label" data-i18n="dash.look.overlayTheme">Theme</p>
+    <div class="theme-picks" id="look-overlay-themes" data-look="overlayTheme"></div>
+    <label class="setting">
+      <span class="setting-name" data-i18n="dash.look.songSize">Song list text</span>
+      <input type="range" class="opacity-slider" id="look-song-ts" data-look="songTextScale" min="0.8" max="1.25" step="0.05" />
+      <span class="opacity-value" id="look-song-ts-value">100%</span>
+    </label>
+    <label class="setting">
+      <span class="setting-name" data-i18n="dash.look.breakSize">Break card text</span>
+      <input type="range" class="opacity-slider" id="look-break-ts" data-look="breakTextScale" min="0.8" max="1.1" step="0.05" />
+      <span class="opacity-value" id="look-break-ts-value">100%</span>
+    </label>
+    <p class="setting-hint" data-i18n="dash.look.overlayHint">Overlays change at once on stream; their size in OBS stays. Bigger text shows fewer songs in the same space. The chat's text size: 💬 Chat → ⚙. One overlay in another theme: add ?theme=daylight (neon, daylight, contrast, ocean, coffee) to its URL.</p>
+    <label class="setting">
+      <span class="setting-name" data-i18n="dash.set.opacity">Panel opacity</span>
+      <input type="range" class="opacity-slider" id="opacity-input" min="0" max="1" step="0.01"
+             oninput="document.getElementById('opacity-value').textContent = this.value" onchange="saveOpacity()" />
+      <span class="opacity-value" id="opacity-value">0.92</span>
+    </label>
+    <label class="setting">
+      <span class="setting-name" data-i18n="dash.set.brightness">Brightness</span>
+      <input type="range" class="opacity-slider" id="brightness-input" min="0.5" max="2" step="0.05"
+             oninput="document.getElementById('brightness-value').textContent = this.value" onchange="saveBrightness()" />
+      <span class="opacity-value" id="brightness-value">1</span>
+    </label>
+    <p class="setting-hint" data-i18n="dash.set.overlayHint">Opacity: 0 = see-through, 1 = solid. Brightness: 1 = normal.</p>
+    <button class="link-btn" onclick="resetOverlay()" data-i18n="dash.set.reset">Reset to default (0.92 / 1)</button>
+    <label class="setting">
+      <span class="setting-name" data-i18n="dash.set.overlayLang">Overlay language</span>
+      <select class="lang-select" id="overlay-lang" onchange="saveOverlayLanguage()">
+        <option value="en">English</option>
+        <option value="zh-TW">繁體中文</option>
+      </select>
+    </label>
+    <p class="setting-hint" data-i18n="dash.set.overlayLangHint">Language viewers see on the overlays in OBS.</p>
+  </section>
+  <!-- Every overlay's address for a Browser Source, with its size (the chat's styles: 💬 Chat → ⚙) -->
+  <section>
+    <h3 data-i18n="dash.app.sourcesTitle">Browser Sources</h3>
+    <p class="setting-hint" data-i18n="dash.app.sourcesHint">Add each as a Browser Source at this size, then scale it to 50% in your scene (they render at 2× for sharp text). The chat's addresses: 💬 Chat → ⚙.</p>
+    <div id="ov-urls"></div>
+  </section>
+  <!-- This copy's version (package.json, /api/version) and what each release changed -->
+  <section>
+    <h3 data-i18n="dash.set.versionTitle">Version</h3>
+    <p class="setting-hint"><span id="app-version">…</span> ·
+      <a href="https://github.com/sheng7337/twitch-song-request-system/releases" target="_blank" rel="noopener" data-i18n="dash.set.releases">What's new in each release</a></p>
+  </section>
 </div>
 
 <!-- Tabs: a button here and a .tab-page below (TABS in the script) -->
@@ -1163,68 +1240,12 @@
     </label>
     <p class="setting-hint" data-i18n="dash.set.cooldownHint">Days after a song is requested before the random reward can pick it again. 0 = no cooldown, at most 60.</p>
   </section>
-  <!-- Themes and text sizes (shared/themes.css, server/look.js) -->
-  <section id="look">
-    <h3 data-i18n="dash.look.title">Look</h3>
-    <p class="look-label" data-i18n="dash.look.dashTheme">Dashboard theme</p>
-    <div class="theme-picks" id="look-dash-themes" data-look="dashboardTheme"></div>
-    <label class="setting">
-      <span class="setting-name" data-i18n="dash.look.dashSize">Dashboard text size</span>
-      <input type="range" class="opacity-slider" id="look-dash-ts" data-look="dashboardTextScale" min="0.85" max="1.4" step="0.05" />
-      <span class="opacity-value" id="look-dash-ts-value">100%</span>
-    </label>
-    <p class="setting-hint" data-i18n="dash.look.dashHint">Every browser and phone that opens the dashboard shows the same.</p>
-    <p class="look-label" data-i18n="dash.look.overlayTheme">Overlay theme</p>
-    <div class="theme-picks" id="look-overlay-themes" data-look="overlayTheme"></div>
-    <label class="setting">
-      <span class="setting-name" data-i18n="dash.look.songSize">Song list text</span>
-      <input type="range" class="opacity-slider" id="look-song-ts" data-look="songTextScale" min="0.8" max="1.25" step="0.05" />
-      <span class="opacity-value" id="look-song-ts-value">100%</span>
-    </label>
-    <label class="setting">
-      <span class="setting-name" data-i18n="dash.look.breakSize">Break card text</span>
-      <input type="range" class="opacity-slider" id="look-break-ts" data-look="breakTextScale" min="0.8" max="1.1" step="0.05" />
-      <span class="opacity-value" id="look-break-ts-value">100%</span>
-    </label>
-    <p class="setting-hint" data-i18n="dash.look.overlayHint">Overlays change at once on stream; their size in OBS stays. Bigger text shows fewer songs in the same space. The chat's text size: 💬 Chat → ⚙. One overlay in another theme: add ?theme=daylight (neon, daylight, contrast, ocean, coffee) to its URL.</p>
-  </section>
-  <section>
-    <h3 data-i18n="dash.set.overlayTitle">Overlay look</h3>
-    <label class="setting">
-      <span class="setting-name" data-i18n="dash.set.opacity">Panel opacity</span>
-      <input type="range" class="opacity-slider" id="opacity-input" min="0" max="1" step="0.01"
-             oninput="document.getElementById('opacity-value').textContent = this.value" onchange="saveOpacity()" />
-      <span class="opacity-value" id="opacity-value">0.92</span>
-    </label>
-    <label class="setting">
-      <span class="setting-name" data-i18n="dash.set.brightness">Brightness</span>
-      <input type="range" class="opacity-slider" id="brightness-input" min="0.5" max="2" step="0.05"
-             oninput="document.getElementById('brightness-value').textContent = this.value" onchange="saveBrightness()" />
-      <span class="opacity-value" id="brightness-value">1</span>
-    </label>
-    <p class="setting-hint" data-i18n="dash.set.overlayHint">Opacity: 0 = see-through, 1 = solid. Brightness: 1 = normal.</p>
-    <button class="link-btn" onclick="resetOverlay()" data-i18n="dash.set.reset">Reset to default (0.92 / 1)</button>
-    <label class="setting">
-      <span class="setting-name" data-i18n="dash.set.overlayLang">Overlay language</span>
-      <select class="lang-select" id="overlay-lang" onchange="saveOverlayLanguage()">
-        <option value="en">English</option>
-        <option value="zh-TW">繁體中文</option>
-      </select>
-    </label>
-    <p class="setting-hint" data-i18n="dash.set.overlayLangHint">Language viewers see on the song overlay and clip player in OBS.</p>
-  </section>
   <section>
     <h3 data-i18n="dash.set.clearTitle">Clear the queue</h3>
     <p class="setting-hint" data-i18n="dash.set.clearHint">Removes Now Playing and every song in Up Next, e.g. to start a new stream fresh. Played and Pending Review stay. Nothing is recorded as sung.</p>
     <div class="step-buttons">
       <button class="btn danger" onclick="if(confirm(I18N.t('dash.clearConfirm'))) api('clear')" data-i18n="dash.clearAll">✕ Clear All</button>
     </div>
-  </section>
-  <!-- This copy's version (package.json, /api/version) and what each release changed -->
-  <section>
-    <h3 data-i18n="dash.set.versionTitle">Version</h3>
-    <p class="setting-hint"><span id="app-version">…</span> ·
-      <a href="https://github.com/sheng7337/twitch-song-request-system/releases" target="_blank" rel="noopener" data-i18n="dash.set.releases">What's new in each release</a></p>
   </section>
 </div>
 
@@ -1787,7 +1808,24 @@ function themeCardsHtml(selected) {
     + `<span class="tc-name">${esc(t('dash.look.themes.' + name))}</span></button>`).join('');
 }
 
+// Every overlay's Browser Source: [i18n key, path, width × height] (the chat's are in 💬 Chat → ⚙)
+const OVERLAY_SOURCES = [
+  ['song', '/overlay/index.html', '960 × 1470'],
+  ['clip', '/clip-player/index.html', '1920 × 1080'],
+  ['break', '/overlay/break.html', '960 × 260'],
+  ['opening', '/overlay/break.html?card=opening', '960 × 260'],
+];
+
+function paintOverlaySources() {
+  document.getElementById('ov-urls').innerHTML = OVERLAY_SOURCES.map(([key, p, size]) => {
+    const url = location.origin + p;
+    return `<div class="co-url"><b>${esc(t('dash.app.src.' + key))}<br><small>${size}</small></b><code title="${esc(url)}">${esc(p)}</code>`
+      + `<button class="btn" type="button" data-url="${esc(url)}">${esc(t('dash.chat.overlayCopy'))}</button></div>`;
+  }).join('');
+}
+
 function paintLook() {
+  paintOverlaySources();
   document.getElementById('look-dash-themes').innerHTML = themeCardsHtml(look.dashboardTheme || 'neon');
   document.getElementById('look-overlay-themes').innerHTML = themeCardsHtml(look.overlayTheme || 'neon');
   for (const [key, id] of Object.entries(LOOK_SIZES)) {
@@ -1808,17 +1846,17 @@ async function saveLook(changes) {
   }
 }
 
-document.getElementById('look').addEventListener('click', (e) => {
+document.getElementById('config-app').addEventListener('click', (e) => {
   const card = e.target.closest('[data-pick]');
   if (card) saveLook({ [card.parentElement.dataset.look]: card.dataset.pick });
 });
-document.getElementById('look').addEventListener('input', (e) => {
+document.getElementById('config-app').addEventListener('input', (e) => {
   const key = e.target.dataset.look;
   if (!key) return;
   document.getElementById(e.target.id + '-value').textContent = Math.round(e.target.value * 100) + '%';
   if (key === 'dashboardTextScale') Theme.scale(e.target.value);   // see it while dragging
 });
-document.getElementById('look').addEventListener('change', (e) => {
+document.getElementById('config-app').addEventListener('change', (e) => {
   if (e.target.dataset.look) saveLook({ [e.target.dataset.look]: Number(e.target.value) });
 });
 // Name colours follow the theme (Theme.nameColor)
@@ -1839,7 +1877,7 @@ function toggleTabConfig(tab, open) {
 }
 
 function closeTabConfigs() {
-  for (const tab of TABS) toggleTabConfig(tab, false);
+  for (const tab of [...TABS, 'app']) toggleTabConfig(tab, false);
 }
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTabConfigs(); });
@@ -3005,7 +3043,7 @@ const CHAT_OVERLAY_STYLES = ['panel', 'bubble', 'list', 'row'];
 function paintChatOverlay(s) {
   document.getElementById('co-urls').innerHTML = CHAT_OVERLAY_STYLES.map((style) => {
     const url = `${location.origin}/overlay/chat.html?style=${style}`;
-    return `<div class="co-url"><b>${esc(t('dash.chat.overlayStyle.' + style))}</b><code title="${esc(url)}">${esc(url)}</code>`
+    return `<div class="co-url"><b>${esc(t('dash.chat.overlayStyle.' + style))}</b><code title="${esc(url)}">${esc(url.slice(location.origin.length))}</code>`
       + `<button class="btn" type="button" data-url="${esc(url)}">${esc(t('dash.chat.overlayCopy'))}</button></div>`;
   }).join('');
   document.getElementById('co-max').value = s.max;
@@ -3014,7 +3052,8 @@ function paintChatOverlay(s) {
   for (const key of ['redeems', 'events', 'commands', 'bots']) document.getElementById('co-' + key).checked = !!s[key];
 }
 
-document.getElementById('co-urls').addEventListener('click', async (e) => {
+// Copy an overlay's address (💬 Chat → ⚙, 🎨 Look & overlays)
+for (const id of ['co-urls', 'ov-urls']) document.getElementById(id).addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-url]');
   if (!btn) return;
   try {

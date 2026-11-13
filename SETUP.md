@@ -90,7 +90,7 @@ Add the overlay to your scene — do this once:
    this is what makes the 2× render look sharper instead of just bigger
 
 The overlay connects automatically when the server is running and updates live.
-Its language (English or 繁體中文) is set in the dashboard: Song Queue tab ⚙ → **Overlay language**.
+Its language (English or 繁體中文) is set in the dashboard: **🎨 Look & overlays** (top) → **Overlay language**.
 
 ### Clip player (shoutouts / sponsor roll)
 
@@ -185,9 +185,9 @@ Open `http://localhost:3000/dashboard` during streams.
 | Tabs | 🎵 Song Queue (the panels below) and 🎤 Leihu Singsing — Leihu's own screen inside the dashboard. **⚙ Settings** at the right end of its top row opens Leihu's settings and the two steps that get your song list ready; while those run, their progress shows in the header. `#leihu` in the address opens that tab. Leihu only shows on the PC it runs on. **▶ Start Leihu** there (or "Start Leihu with the song queue") runs Leihu without its own window, so it shows only in this tab |
 | 4 panels (2×2) | Left: Now Playing above Up Next · Right: Pending Review above Played |
 | Drag & drop | Move songs between panels or reorder within |
-| ⚙ Settings | Each tab has its own ⚙ at the right end of its top row: Song Queue — random cooldown, overlay opacity / brightness / language; Leihu Singsing — its settings and the two steps; Chat — song notes on the overlay, who `!endingtk` would thank now, channel-point rewards. Each saves on its own |
-| 🎨 Look | 🎵 Song Queue → ⚙ → **Look**: five themes — **Neon** (the original), **Daylight**, **High contrast**, **Ocean**, **Cream & coffee** — chosen apart for the dashboard and for the overlays, and text sizes: the dashboard's (85–140%, the same on every browser and phone that opens it), the song list's and the break card's. Overlays change at once on stream and keep their size in OBS (bigger text, fewer songs in the same space). One overlay in another theme: add `?theme=daylight` (`neon`, `daylight`, `contrast`, `ocean`, `coffee`) to its URL. The chat's text size stays under 💬 Chat → ⚙ |
-| EN / 中文 | Switches the dashboard, links page and setup wizard together; the overlay and clip player follow the ⚙ "Overlay language" setting |
+| ⚙ Settings | Each tab has its own ⚙ at the right end of its top row: Song Queue — random cooldown, clear the queue; Leihu Singsing — its settings and the two steps; Chat — song notes on the overlay, who `!endingtk` would thank now, channel-point rewards. Each saves on its own |
+| 🎨 Look & overlays | The button at the top, beside EN / 中文 — one place for what isn't a single tab's: five themes — **Neon** (the original), **Daylight**, **High contrast**, **Ocean**, **Cream & coffee** — chosen apart for the dashboard and for the overlays, and text sizes: the dashboard's (85–140%, the same on every browser and phone that opens it), the song list's and the break card's. Overlays change at once on stream and keep their size in OBS (bigger text, fewer songs in the same space). One overlay in another theme: add `?theme=daylight` (`neon`, `daylight`, `contrast`, `ocean`, `coffee`) to its URL. The chat's text size stays under 💬 Chat → ⚙. Also here: the overlays' panel opacity, brightness and language, each overlay's Browser Source address and size with **Copy**, and the version |
+| EN / 中文 | Switches the dashboard, links page and setup wizard together; the overlays follow **🎨 Look & overlays → Overlay language** |
 | ✓ Finished | Moves Now Playing → Played, pulls next song |
 | Pending column | Weak/unmatched requests — edit and accept manually |
 | 🔍 Find (Pending) | For a song that isn't on your sheet: searches lyric sites and YouTube (needs Leihu Singsing running), then **▶ Queue + prepare** or **＋ Add to** your first excluded tab with its link |

@@ -239,7 +239,7 @@ You add **two** Browser sources:
 2. URL: `http://localhost:3000/clip-player/index.html`, Width `1920`, Height `1080`, same Custom CSS
 3. Put it at the **top** of the source list, covering the whole screen. It's see-through until something plays
 
-> The overlay's language (English / 中文) is set on the dashboard: Song Queue tab **⚙ Settings → Overlay language**.
+> The overlay's language (English / 中文) is set on the dashboard: **🎨 Look & overlays** (top) **→ Overlay language**.
 
 ---
 

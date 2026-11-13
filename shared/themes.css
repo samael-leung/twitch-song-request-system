@@ -1,6 +1,6 @@
-/* shared/themes.css — the five looks of the dashboard and the overlays (⚙ Settings → Look).
+/* shared/themes.css — the five looks of the dashboard and the overlays (🎨 Look & overlays).
    <html data-theme="neon|daylight|contrast|ocean|coffee"> picks one (shared/theme.js sets it), and
-   data-theme-card="…" gives one element a look (the previews in ⚙ Settings → Look);
+   data-theme-card="…" gives one element a look (the previews in 🎨 Look & overlays);
    overlays also carry data-surface="overlay" for their own few values. Pages use these tokens
    only, never colours of their own (test/themes.test.js checks), so every theme reaches every page.
 

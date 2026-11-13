@@ -166,7 +166,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// The dashboard's theme and text size (⚙ Settings → Look)
+// The dashboard's theme and text size (🎨 Look & overlays)
 fetch('/api/settings').then(r => r.json()).then(s => { Theme.apply(s.dashboardTheme); Theme.scale(s.dashboardTextScale); }).catch(() => {});
 const t = I18N.t, tHtml = I18N.tHtml;
 let view = { job: {}, songs: [], written: 0 };
