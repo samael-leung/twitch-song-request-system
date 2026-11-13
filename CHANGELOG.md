@@ -27,6 +27,10 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
   Clip 播放器要載入新的主題檔案。在你選別的主題之前，看起來都和原本一樣。
 - Everything new is optional: nothing else to change.
   新功能都是選用的：其他什麼都不用改。
+- The terminal setup wizard (`setup.bat` / `setup.ps1`, `setup_zh.*`) is gone: use the web wizard
+  (`start.bat` opens it) or [SETUP_MANUAL.md](SETUP_MANUAL.md). Your `.env` stays as it is.
+  終端機版安裝精靈（`setup.bat`／`setup.ps1`、`setup_zh.*`）已移除：請用網頁版精靈（`start_zh.bat` 會開啟）或
+  [SETUP_MANUAL.md](SETUP_MANUAL.md)。你的 `.env` 不受影響。
 
 ### What's new / 新功能
 

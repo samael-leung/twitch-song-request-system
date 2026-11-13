@@ -56,8 +56,7 @@ no terminal commands, no manual `.env` editing:
 The wizard validates each step as you go and explains exactly what to do and why.
 If you're interrupted partway through, it picks up where you left off.
 
-> Prefer the terminal? `setup.ps1` / `setup_zh.ps1` walk through the same steps
-> (Twitch Device Authorization, reward creation, Google Sheets) interactively in PowerShell.
+> Prefer to fill in `.env` yourself? See [SETUP_MANUAL.md](SETUP_MANUAL.md).
 
 ---
 
@@ -390,7 +389,6 @@ the search uses its lyric sites and YouTube tools):
 ```
 vtuber-song-queue/
 ├── setup/                    ← browser-based setup wizard (served at /setup)
-├── setup.ps1 / setup_zh.ps1  ← optional terminal setup wizard
 ├── start.ps1 / start_zh.ps1  ← run every stream
 ├── *.bat                     ← double-click launchers (avoid PowerShell execution policy issues)
 ├── .env                      ← secrets (never commit!)

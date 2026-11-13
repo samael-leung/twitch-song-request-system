@@ -107,7 +107,6 @@ vtuber-song-queue/
 ├── docs/                  Starter guide (STARTER_GUIDE.md / _zh_TW.md, images/), song-list-template.xlsx;
 │                          served at /docs (the wizard links the template)
 ├── tools/build-han-readings.js  Rebuilds server/data/han-readings.json from Unihan_Readings.txt
-├── setup.ps1 / setup_zh.ps1   Terminal setup wizard (alternative to the web wizard)
 ├── start.ps1 / start_zh.ps1   Every-stream startup: starts server, opens browser when ready
 ├── *.bat                  Double-click launchers (avoid PowerShell execution-policy issues)
 ├── SETUP.md / SETUP_zh_TW.md / SETUP_MANUAL.md   User guides (docs/STARTER_GUIDE*.md for newcomers)
@@ -136,7 +135,7 @@ vtuber-song-queue/
   Scopes: `channel:read:redemptions channel:manage:redemptions user:read:chat user:write:chat moderator:read:followers
   moderator:manage:banned_users moderator:manage:shoutouts channel:manage:raids moderator:manage:chat_messages`
   (older setups lack the later ones: the dashboard links to `/setup?reauth=1`, which jumps to the
-  wizard's authorization step). setup.ps1 / setup_zh.ps1 ask for the same scopes
+  wizard's authorization step)
 - `ensureFreshToken()` refreshes 1 min before expiry. Call it before **every** Helix call.
   Concurrent calls share one refresh (`refreshPromise`) — Twitch rotates the refresh token,
   so two parallel refreshes would invalidate each other
@@ -207,7 +206,7 @@ vtuber-song-queue/
 ### Encoding (critical — many bugs came from this)
 - All PowerShell scripts use `[System.IO.File]::WriteAllText/ReadAllText` with `UTF8Encoding($false)` (UTF-8 **without** BOM) for `.env` file operations
 - `Set-Content` / `Get-Content` without explicit encoding corrupts Chinese characters on Windows
-- Scripts containing Chinese (`setup_zh.ps1`, `start_zh.ps1`) are saved with UTF-8 BOM so PowerShell 5.x parses them correctly; the English ones are pure ASCII
+- Scripts containing Chinese (`start_zh.ps1`) are saved with UTF-8 BOM so PowerShell 5.x parses them correctly; the English ones are pure ASCII
 - `.env.example` is pure ASCII (no unicode decorations)
 - `dotenv` reads `.env` as UTF-8 by default — this is fine as long as the file was written correctly
 

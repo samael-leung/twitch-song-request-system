@@ -61,6 +61,7 @@ You need a **Service Account** so the server can read/write your Google Sheets.
 
 Your existing sheet with songs. The server reads it at startup and every 5 minutes.
 
+- Copy its sheet ID (see [Getting a Sheet ID](#getting-a-sheet-id)) into `.env` as `GOOGLE_SHEET_ID`
 - Must have a header row with at least a title column and an artist column
 - Column names must match `SHEET_SONG_COLUMN` and `SHEET_ARTIST_COLUMN` in `.env`
 - Optional: a `key` column with numeric values (e.g. `3`, `-2`) for key transposition display
@@ -289,7 +290,8 @@ Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/refresh-songs
 |---|---|
 | `.env` | Credentials, IDs, URLs — see `.env.example` for descriptions |
 | `server/config.js` | Matching thresholds, random weights, Leihu recognition language per tab |
-| `overlay/index.html` | CSS variables at top — font sizes, list height; `SCROLL_PX_PER_SEC` — scroll speed |
+| Dashboard ⚙ → **Look** | Themes and text sizes of the dashboard and overlays (`shared/themes.css` holds the colours) |
+| `overlay/index.html` | `--list-height` at the top — list height; `SCROLL_PX_PER_SEC` — scroll speed |
 
 ---
 

@@ -55,8 +55,7 @@ OBS 顯示層透過 WebSocket 即時更新
 精靈會在每個步驟即時驗證輸入內容，並清楚說明該做什麼、為什麼要這麼做。
 如果中途離開，下次回來會從中斷的地方繼續。
 
-> 偏好用終端機操作？`setup.ps1` / `setup_zh.ps1` 也能在 PowerShell 中以互動方式
-> 完成相同的步驟（Twitch 裝置授權、建立兌換項目、設定 Google 試算表）。
+> 想自己填寫 `.env`？請看 [SETUP_MANUAL.md](SETUP_MANUAL.md)（英文）。
 
 ---
 
@@ -370,7 +369,6 @@ OBS Studio 恢復成存下的樣子，並做點歌系統這邊的事。
 ```
 vtuber-song-queue/
 ├── setup/                      ← 瀏覽器版安裝精靈（於 /setup 提供服務）
-├── setup.ps1 / setup_zh.ps1    ← 選用的終端機安裝精靈
 ├── start.ps1 / start_zh.ps1    ← 每次直播開始時執行
 ├── *.bat                       ← 雙擊執行用啟動檔（避免 PowerShell 執行原則問題）
 ├── .env                        ← 金鑰設定（請勿上傳至 Git！）
