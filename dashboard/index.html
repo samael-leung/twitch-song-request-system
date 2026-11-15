@@ -114,6 +114,9 @@
   .look-label { font-size: calc(14px * var(--ts)); color: var(--text); margin: 4px 0 6px; }
   .setting input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
   .setting-hint { font-size: calc(13px * var(--ts)); color: var(--text-dim); line-height: 1.5; }
+  /* Song Queue ⚙ → Sheet tabs: a tick per tab */
+  .tab-picks { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  .tab-pick-note { font-size: calc(12px * var(--ts)); color: var(--text-dim); }
   /* Chat ⚙ "Chat on stream": one row per style, its Browser Source address and Copy */
   .co-url { display: flex; align-items: center; gap: 8px; font-size: calc(13px * var(--ts)); }
   .co-url b { width: calc(120px * var(--ts)); flex-shrink: 0; font-weight: 400; color: var(--text); }
@@ -1234,6 +1237,11 @@
 <div class="tab-config" id="config-queue" hidden>
   <button class="btn tab-config-close" onclick="toggleTabConfig('queue', false)" data-i18n-aria-label="dash.closeSettings">✕</button>
   <section>
+    <h3 data-i18n="dash.set.tabsTitle">Sheet tabs</h3>
+    <div class="tab-picks" id="tab-picks"></div>
+    <p class="setting-hint" data-i18n="dash.set.tabsHint">Ticked tabs can be requested, picked by the random reward and searched by the 🔗 link finder.</p>
+  </section>
+  <section>
     <h3 data-i18n="dash.set.randomTitle">Random song reward</h3>
     <label class="setting">
       <span class="setting-name" data-i18n="dash.set.cooldown">Cooldown</span>
@@ -1241,6 +1249,14 @@
       <span data-i18n="dash.set.days">days</span>
     </label>
     <p class="setting-hint" data-i18n="dash.set.cooldownHint">Days after a song is requested before the random reward can pick it again. 0 = no cooldown, at most 60.</p>
+    <label class="setting">
+      <span class="setting-name" data-i18n="dash.set.pickMode">Pick</span>
+      <select class="lang-select" id="pick-mode" onchange="savePickMode()">
+        <option value="weighted" data-i18n="dash.set.pickWeighted">Weighted (recommended)</option>
+        <option value="pure" data-i18n="dash.set.pickPure">Pure random</option>
+      </select>
+    </label>
+    <p class="setting-hint" data-i18n="dash.set.pickHint">Weighted: songs not requested for a while come up more often.</p>
   </section>
   <section>
     <h3 data-i18n="dash.set.clearTitle">Clear the queue</h3>
@@ -1778,6 +1794,9 @@ async function loadSettings() {
     const settings = await res.json();
     document.getElementById('cooldown-input').value = settings.randomCooldownDays;
     cooldownDays = settings.randomCooldownDays;
+    document.getElementById('pick-mode').value = settings.randomPickMode || 'weighted';
+    sheetTabs = { all: settings.sheetTabs || [], excluded: settings.excludedTabs || [] };
+    paintSheetTabs();
     document.getElementById('chat-song-notes').checked = settings.songNotes !== false;
     if (settings.chatOverlay) paintChatOverlay(settings.chatOverlay);
     document.getElementById('opacity-input').value = settings.panelBgAlpha;
@@ -1905,6 +1924,54 @@ async function saveOverlayLanguage() {
   } catch(_) {
     showToast(t('dash.toast.overlayLangFailed'), true);
   }
+}
+
+async function savePickMode() {
+  const sel = document.getElementById('pick-mode');
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ randomPickMode: sel.value }),
+    });
+    if (!res.ok) throw new Error('save failed');
+    showToast(t('dash.toast.pickModeSet', { name: sel.options[sel.selectedIndex].text }));
+  } catch(_) {
+    showToast(t('dash.toast.pickModeFailed'), true);
+  }
+}
+
+// Song Queue ⚙ → Sheet tabs (server/song-tabs.js): a tick per tab; unticked ones are left out of requests,
+// random picks and the link finder. The first one left out is where Pending's "＋ Add to" puts songs.
+let sheetTabs = { all: [], excluded: [] };
+
+function paintSheetTabs() {
+  const box = document.getElementById('tab-picks');
+  const all = [...sheetTabs.all, ...sheetTabs.excluded.filter(n => !sheetTabs.all.includes(n))];
+  if (!all.length) { box.innerHTML = `<p class="setting-hint">${esc(t('dash.set.tabsNone'))}</p>`; return; }
+  box.innerHTML = all.map(name => {
+    const note = name === sheetTabs.excluded[0] ? ` <span class="tab-pick-note">${esc(t('dash.set.tabsPractice'))}</span>` : '';
+    return `<label class="setting"><input type="checkbox" data-sheet-tab="${esc(name)}"${sheetTabs.excluded.includes(name) ? '' : ' checked'} onchange="saveSheetTabs()" /> <span>${esc(name)}</span>${note}</label>`;
+  }).join('');
+}
+
+async function saveSheetTabs() {
+  const boxes = [...document.querySelectorAll('#tab-picks [data-sheet-tab]')];
+  if (!boxes.some(b => b.checked)) { showToast(t('dash.toast.tabsAllOff'), true); paintSheetTabs(); return; }
+  boxes.forEach(b => { b.disabled = true; });
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ excludedTabs: boxes.filter(b => !b.checked).map(b => b.dataset.sheetTab) }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(I18N.server(data, 'dash.toast.tabsFailed'));
+    sheetTabs.excluded = data.excludedTabs;
+    loadSongList();
+    showToast(t('dash.toast.tabsSet', { count: data.songCount }));
+  } catch (err) {
+    showToast(err.message || t('dash.toast.tabsFailed'), true);
+  }
+  paintSheetTabs();
 }
 
 async function saveCooldown() {
@@ -3634,6 +3701,7 @@ I18N.onChange(() => {
   paintModeBar();
   if (currentTab === 'modes') paintModes();
   paintLook();
+  paintSheetTabs();
 });
 
 // ── 👕 Outfits (server/outfits.js, veadotube.js) ───────────────────────────────

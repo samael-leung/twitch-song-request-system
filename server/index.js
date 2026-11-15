@@ -17,6 +17,8 @@ const chatLog = require('./chat-log');
 const chatBadges = require('./chat-badges');
 const songNotes = require('./song-notes');
 const look = require('./look');
+const songTabs = require('./song-tabs');
+const config = require('./config');
 const registerShoutout = require('./commands/shoutout');
 const registerWatch = require('./commands/watch');
 const registerReplay = require('./commands/replay');
@@ -715,11 +717,14 @@ app.get('/api/settings', (req, res) => {
     songNotes: songNotes.enabled(),
     overlayLanguage: overlayLanguage(),
     chatOverlay: chatOverlaySettings(),
+    randomPickMode: songTabs.pickMode(),
+    excludedTabs: config.EXCLUDED_TABS,
+    sheetTabs: require('./sheets').getTabs(),
     ...look.read(),   // themes and text sizes (look.js)
   });
 });
 
-app.post('/api/settings', (req, res) => {
+app.post('/api/settings', async (req, res) => {
   const updates = {};
 
   if (req.body.randomCooldownDays !== undefined) {
@@ -729,6 +734,18 @@ app.post('/api/settings', (req, res) => {
     }
     updates.randomCooldownDays = days;
     setupRouter.writeEnvValues({ RANDOM_COOLDOWN_DAYS: String(days) });
+  }
+
+  if (req.body.randomPickMode !== undefined) {
+    try { updates.randomPickMode = songTabs.parsePickMode(req.body.randomPickMode); } catch (err) { return res.status(400).json(errorBody(err)); }
+    setupRouter.writeEnvValues({ RANDOM_PICK_MODE: updates.randomPickMode });
+  }
+
+  // Sheet tabs left out of requests, random picks and the link finder; the song list is read again
+  if (req.body.excludedTabs !== undefined) {
+    try { updates.excludedTabs = songTabs.excludedList(req.body.excludedTabs); } catch (err) { return res.status(400).json(errorBody(err)); }
+    setupRouter.writeEnvValues({ EXCLUDED_TABS: updates.excludedTabs.join(',') });
+    updates.songCount = (await require('./sheets').fetchSongs()).length;
   }
 
   if (req.body.panelBgAlpha !== undefined) {

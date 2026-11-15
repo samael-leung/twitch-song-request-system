@@ -76,9 +76,10 @@ Your existing sheet with songs. The server reads it at startup and every 5 minut
 | ロキ | みきとP | -2 |
 | Ghost Rule | DECO*27 | 3 |
 
-**Tabs:** All tabs are included except those listed in `EXCLUDED_TABS` in `.env`, comma-separated
-(`EXCLUDED_TABS=待練勿點,草稿`). When the line isn't there, the tab `待練勿點` is excluded;
-`EXCLUDED_TABS=` with nothing after it uses every tab.
+**Tabs:** All tabs are included except the ones unticked in the dashboard (🎵 Song Queue → ⚙ → Sheet tabs),
+saved as `EXCLUDED_TABS` in `.env`, comma-separated (`EXCLUDED_TABS=待練勿點,草稿`). When the line isn't there,
+the tab `待練勿點` is excluded; `EXCLUDED_TABS=` with nothing after it uses every tab. The first one listed is
+where Pending's "＋ Add to" puts songs.
 
 ### History sheet
 
@@ -309,7 +310,7 @@ Tune in `server/config.js`: `AUTO_ACCEPT_THRESHOLD`, `MATCH_THRESHOLD` (0.2 stri
 
 ## Random song modes
 
-Set `RANDOM_PICK_MODE` in `.env`:
+Choose in the dashboard (🎵 Song Queue → ⚙ → Pick), saved as `RANDOM_PICK_MODE` in `.env`:
 - `weighted` — favors songs not played recently (recommended)
 - `pure` — truly random
 

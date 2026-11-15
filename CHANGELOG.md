@@ -63,6 +63,9 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
   down with `?min=10` or `?at=20:00`.
   開場用的「**準備中／STARTING SOON**」卡片（`/overlay/break.html?card=opening`）；兩種卡片都可以用 `?min=10` 或
   `?at=20:00` 倒數。
+- **Sheet tabs and random pick in the dashboard** (🎵 Song Queue → ⚙): tick which tabs viewers can request,
+  and choose weighted or pure random — no more editing `.env`.
+  **歌單分頁和抽歌方式改在控制台設定**（🎵 點歌佇列 → ⚙）：勾選哪些分頁可以點歌，選擇加權或完全隨機 —— 不用再改 `.env`。
 
 ### Fixes / 修正
 

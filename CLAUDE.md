@@ -65,6 +65,7 @@ vtuber-song-queue/
 │   ├── chat-router.js     Dispatches chat messages to registered commands (mods-only by default)
 │   ├── chat-log.js        Chat + redemption log for the dashboard Chat tab, chat-logs/YYYY-MM-DD.jsonl
 │   ├── song-notes.js      Song overlay note "last sung N days ago" when chat names a sheet song
+│   ├── song-tabs.js       Song Queue ⚙: sheet tabs left out (EXCLUDED_TABS, kept in order) and the random pick mode
 │   ├── look.js            🎨 Look & overlays: dashboard / overlay themes and text sizes (.env), checked
 │   ├── media-queue.js     Clip player queue (max 3; 10 while a mode holds it), mediaId matching, watchdog
 │   ├── media-history.js   Last played media, for !replay
@@ -179,7 +180,7 @@ vtuber-song-queue/
 - `QUEUE_STATE_FILE` overrides the state file (tests)
 
 ### Random picker (random.js)
-- `RANDOM_PICK_MODE`: `weighted` (favours songs not requested recently) or `pure`
+- `RANDOM_PICK_MODE`: `weighted` (favours songs not requested recently) or `pure` — Song Queue ⚙ → Pick
 - Excludes songs in nowPlaying/queue/played and songs requested within `RANDOM_COOLDOWN_DAYS`
 - Cooldown uses live history; weighting uses the startup snapshot
 
@@ -613,7 +614,8 @@ See `.env.example` for full descriptions.
 - `EXCLUDED_TABS` — tabs left out of requests, random picks and the link finder, comma-separated.
   Unset = `待練勿點`; empty = none. Read through `config.EXCLUDED_TABS` (a getter, so it follows .env)
 - `PORT` — default 3000
-- `RANDOM_PICK_MODE` — `weighted` or `pure`
+- `RANDOM_PICK_MODE` — `weighted` or `pure`. Song Queue ⚙ sets it and `EXCLUDED_TABS` (Sheet tabs: a tick per
+  tab from sheets.getTabs(); server/song-tabs.js keeps the left-out tabs in order, the first being the practice tab)
 - `RANDOM_COOLDOWN_DAYS`, `OVERLAY_PANEL_BG_ALPHA`, `OVERLAY_TEXT_BRIGHTNESS`, `OVERLAY_LANGUAGE` (`en` / `zh-TW`) — also adjustable from the dashboard
 - `DASHBOARD_THEME`, `OVERLAY_THEME` (`neon` / `daylight` / `contrast` / `ocean` / `coffee`), `DASHBOARD_TEXT_SCALE` (0.85–1.4), `OVERLAY_SONG_TEXT_SCALE` (0.8–1.25), `OVERLAY_BREAK_TEXT_SCALE` (0.8–1.1) — 🎨 Look & overlays (top bar; the app-wide panel #config-app: themes, overlay opacity / brightness / language, Browser Source addresses, version)
 - Themes: pages use only the tokens in `shared/themes.css` (test/themes.test.js fails on a typed colour; black / white / greys and lines marked `any theme` are allowed). A new page links themes.css + theme.js; an overlay sets `<html data-surface="overlay">`; text that should follow a size setting uses `calc(Npx * var(--ts))`
