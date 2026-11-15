@@ -1022,7 +1022,8 @@
   <section>
     <h3 data-i18n="dash.set.versionTitle">Version</h3>
     <p class="setting-hint"><span id="app-version">…</span> ·
-      <a href="https://github.com/sheng7337/twitch-song-request-system/releases" target="_blank" rel="noopener" data-i18n="dash.set.releases">What's new in each release</a></p>
+      <a href="https://github.com/sheng7337/twitch-song-request-system/releases" target="_blank" rel="noopener" data-i18n="dash.set.releases">What's new in each release</a> ·
+      <a href="#" onclick="openLogs(event)" data-i18n="dash.set.logs" data-i18n-title="dash.set.logsTip">📂 This run's logs</a></p>
   </section>
 </div>
 
@@ -3874,6 +3875,19 @@ function onAlertMessage(a) {
   if (!alertsView.status || a.replay) return;
   alertsView.status.recent = [a, ...alertsView.status.recent].slice(0, 20);
   if (currentTab === 'alerts') paintAlerts();
+}
+
+// 📂 This run's log folder (server/app-log.js), opened in File Explorer on the PC running the song queue
+async function openLogs(e) {
+  e.preventDefault();
+  try {
+    const res = await fetch('/api/logs/open', { method: 'POST' });
+    const body = await res.json();
+    if (!res.ok) throw new Error(I18N.server(body, 'dash.toast.requestFailed'));
+    showToast(t('dash.toast.logsOpened', { folder: body.folder }));
+  } catch (err) {
+    showToast(err.message, true);
+  }
 }
 
 // ── 🎟️ Reward effects (server/reward-effects.js, overlay/reward-effects.html) ─────

@@ -441,6 +441,7 @@ vtuber-song-queue/
 ├── song-links.json           ← songs linked to Leihu by hand
 ├── link-search.json          ← link finder progress and decisions
 ├── chat-logs/                ← Chat tab log, one file per day (kept CHAT_LOG_DAYS days)
+├── logs/                     ← one folder per start: app.log (the console) and leihu.log (kept 30 runs / 14 days)
 ├── ending-credits.json       ← when !endingtk last ran
 ├── reward-takeovers.json     ← rewards handed over to the app (Chat ⚙)
 ├── stream-session.json       ← when the stream last went live (Chat tab, what to announce)
@@ -465,6 +466,10 @@ vtuber-song-queue/
 - History sheet **updates within ~2 seconds** of each request
 - Your Twitch connection **renews itself automatically** — no token to babysit, no tunnel to restart
 - When an update needs a new Twitch permission, the dashboard says so with an **Authorize again →** link
+- **Reporting a problem**: 🎨 Look & overlays → **📂 This run's logs** opens that start's folder in `logs/`
+  (`app.log` is what the black window showed, `leihu.log` is Leihu's). Earlier starts are the folders next to
+  it, named by date and time — pick the one from the stream with the problem. Tokens and passwords are blanked out;
+  viewer names and song titles are in there.
 
 ---
 

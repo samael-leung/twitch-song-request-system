@@ -51,6 +51,13 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
   每次隨機一個）、放在你指定位置的圖片／GIF／影片，或兩者都有，也可以顯示兌換的人。播完 → 兌換標成完成；關閉、跳過、
   排隊超過 20 個或清除 → 退還點數。可以依序播放、一起播放（最多 3 個）或跳過新的。「**⏸ 暫停**」—— 或勾選「**🎟️ 這個模式時
   暫停兌換特效**」的模式（新的 🎤 唱歌模式預設勾選）—— 會讓兌換先排隊。
+- **📂 Logs for bug reports**: every start now saves what the black window shows in `logs/`, one folder per
+  start named by date and time (`app.log`, plus `leihu.log` when the song queue starts Leihu), with tokens and
+  passwords blanked. The last 30 starts and anything from the last 14 days are kept. 🎨 Look & overlays →
+  **📂 This run's logs** opens the current one.
+  **📂 回報問題用的紀錄**：每次啟動都會把黑色視窗的內容存到 `logs/`，每次一個以日期時間命名的資料夾（`app.log`，點歌系統
+  啟動雷虎練唱台時還有 `leihu.log`），token 和密碼會被遮掉。保留最近 30 次啟動，以及 14 天內的全部。「🎨 外觀與疊加層」→
+  「**📂 這次執行的紀錄**」會打開目前這個。
 
 ---
 

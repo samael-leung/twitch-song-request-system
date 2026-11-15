@@ -416,6 +416,7 @@ vtuber-song-queue/
 ├── song-links.json             ← 手動連結到雷虎練唱台的歌曲
 ├── link-search.json            ← YouTube 連結搜尋的進度和決定
 ├── chat-logs/                  ← 聊天室分頁的紀錄，每天一個檔案（保留 CHAT_LOG_DAYS 天）
+├── logs/                       ← 每次啟動一個資料夾：app.log（黑色視窗的內容）和 leihu.log（保留 30 次／14 天）
 ├── ending-credits.json         ← 上次執行 !endingtk 的時間
 ├── reward-takeovers.json       ← 交給點歌系統管理的兌換項目（聊天 ⚙）
 ├── stream-session.json         ← 上次開台的時間（聊天室分頁的要宣讀標示）
@@ -440,6 +441,9 @@ vtuber-song-queue/
 - 點歌紀錄**約 2 秒內寫入**試算表（有防抖設計，不會頻繁呼叫 API）
 - Twitch 連線會**自動續約** — 不需要手動更新權杖，也不需要重啟通道
 - 更新後需要新的 Twitch 權限時，控制台會顯示「**重新授權 →**」連結
+- **回報問題**：「🎨 外觀與疊加層」→「**📂 這次執行的紀錄**」會打開 `logs/` 裡這次啟動的資料夾（`app.log` 是黑色視窗的內容，
+  `leihu.log` 是雷虎練唱台的）。之前的啟動是旁邊以日期時間命名的資料夾 —— 選出問題那場直播的。token 和密碼會被遮掉；
+  裡面有觀眾名字和歌名。
 
 ---
 

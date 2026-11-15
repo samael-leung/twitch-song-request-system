@@ -1,5 +1,7 @@
 // server/index.js
 require('dotenv').config();
+const appLog = require('./app-log');
+appLog.start();   // first: this run's log folder gets everything after (app-log.js)
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -653,6 +655,15 @@ app.post('/api/pending/add-to-sheet', async (req, res) => {
 app.get('/api/history', (req, res) => res.json(getHistory()));
 app.get('/api/node-status', (req, res) => res.json(nodeStatus()));
 app.get('/api/version', (req, res) => res.json({ version: APP_VERSION }));
+// This run's log folder (app-log.js): where it is, and open it in File Explorer for a bug report
+app.get('/api/logs', (req, res) => res.json({ folder: appLog.current() }));
+app.post('/api/logs/open', (req, res) => {
+  const folder = appLog.current();
+  if (!folder) return res.status(404).json({ error: 'No log folder this run' });
+  const opener = process.platform === 'win32' ? 'explorer.exe' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+  require('child_process').spawn(opener, [folder], { detached: true, stdio: 'ignore' }).on('error', () => {}).unref();
+  res.json({ ok: true, folder });
+});
 app.get('/api/songs', (req, res) => {
   const { getSongs } = require('./sheets');
   res.json(getSongs());

@@ -393,6 +393,8 @@
         clearTitle: 'Clear the queue',
         versionTitle: 'Version',
         releases: 'What\'s new in each release',
+        logs: '📂 This run\u2019s logs',
+        logsTip: 'Opens this run\u2019s log folder on the PC (logs/, one folder per start) — send it with a bug report. It has viewer names and song titles, never passwords or tokens.',
         clearHint: 'Removes Now Playing and every song in Up Next, e.g. to start a new stream fresh. Played and Pending Review stay. Nothing is recorded as sung.',
         leihuTitle: 'Leihu Singsing',
         leihuOn: 'Connected — queued songs show their backing-track status.',
@@ -524,6 +526,7 @@
       },
       toast: {
         enterTitleFirst: 'enter a song title first',
+        logsOpened: 'Opened on the PC: {folder}',
         added: 'added: {title}',
         copied: 'copied: {title}',
         copyFailed: 'copy failed',
@@ -969,6 +972,8 @@
         clearTitle: '清空歌單',
         versionTitle: '版本',
         releases: '各版本更新內容',
+        logs: '📂 這次執行的紀錄',
+        logsTip: '在電腦上打開這次執行的紀錄資料夾（logs/，每次啟動一個資料夾）—— 回報問題時附上它。裡面有觀眾名字和歌名，但不會有密碼或 token。',
         clearHint: '移除正在演唱和待唱歌單裡的所有歌，例如新的一場直播要從頭開始時。已唱歌單和待審核不受影響，也不會記錄成唱過。',
         leihuTitle: '雷虎練唱台（Leihu Singsing）',
         leihuOn: '已連線 — 歌單上的歌曲會顯示伴奏準備狀態。',
@@ -1100,6 +1105,7 @@
       },
       toast: {
         enterTitleFirst: '請先輸入歌名',
+        logsOpened: '已在電腦上打開：{folder}',
         added: '已加入：{title}',
         copied: '已複製：{title}',
         copyFailed: '複製失敗',

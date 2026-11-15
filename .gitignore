@@ -17,6 +17,7 @@ package-lock.json
 clip-player/sponsor-voice.wav
 clip-player/sponsor-voice.mp3
 chat-logs/
+logs/
 ending-credits.json
 reward-takeovers.json
 stream-session.json

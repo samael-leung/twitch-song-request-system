@@ -56,13 +56,14 @@ vtuber-song-queue/
 │   ├── queue.js           Queue state, broadcast to clients, persisted to queue-state.json
 │   ├── random.js          Weighted/pure random picker with tab filter and cooldown
 │   ├── leihu.js           Optional link to Leihu Singsing (backing tracks + lyrics), song-links.json
-│   ├── leihu-launcher.js  Starts Leihu without its window (dashboard Leihu tab), leihu-home.json
+│   ├── leihu-launcher.js  Starts Leihu without its window (dashboard Leihu tab), leihu-home.json; output → Leihu's logs/app.log + this run's leihu.log
 │   ├── link-finder.js     Finds YouTube links for the sheet (search job, review, writes the sheet)
 │   ├── link-score.js      Scores YouTube candidates against the lyric version (pure functions)
 │   ├── romaji.js          Matches romanized video titles to 漢字/かな song titles
 │   ├── data/han-readings.json  Pinyin + Japanese readings per 漢字 (generated from Unicode's Unihan)
 │   ├── history.js         Request history sheet (debounced 1.5s), startup snapshot
 │   ├── chat-router.js     Dispatches chat messages to registered commands (mods-only by default)
+│   ├── app-log.js         logs/<start time>/: app.log (the console, secrets blanked) + leihu.log; 30 runs / 14 days
 │   ├── chat-log.js        Chat + redemption log for the dashboard Chat tab, chat-logs/YYYY-MM-DD.jsonl
 │   ├── song-notes.js      Song overlay note "last sung N days ago" when chat names a sheet song
 │   ├── song-tabs.js       Song Queue ⚙: sheet tabs left out (EXCLUDED_TABS, kept in order) and the random pick mode
@@ -122,7 +123,7 @@ vtuber-song-queue/
 **Never commit** (all gitignored): `.env`, `google-credentials.json`, `song-cache.json`,
 `setup-progress.json`, `queue-state.json`, `song-links.json`, `leihu-home.json`, `chat-logs/`, `link-search.json`, `package-lock.json`,
 `ending-credits.json`, `reward-takeovers.json`, `stream-session.json`, `stream-modes.json`, `alerts.json`,
-`reward-effects.json`, `alert-media/`, `.env` backups.
+`reward-effects.json`, `alert-media/`, `logs/`, `.env` backups.
 `setup-progress.json`, `queue-state.json` and `package-lock.json` contain personal info.
 
 ---
@@ -573,6 +574,8 @@ register it in index.js.
 | POST | `/api/reward-effects/test` | `{ rewardId }` — plays it on stream only |
 | POST | `/api/reward-effects/skip` | End the ones playing (done) |
 | POST | `/api/reward-effects/clear` | Refund the waiting ones |
+| GET | `/api/logs` | `{ folder }` — this run's log folder (app-log.js) |
+| POST | `/api/logs/open` | Opens this run's log folder in File Explorer on the PC |
 | GET | `/api/chat/days` | Days with a chat log, newest first |
 | GET | `/api/chat/log?day=YYYY-MM-DD` | One day's chat records, with deletions, redemption statuses, first messages and ✓ marks applied |
 | GET | `/api/credits` | `{follows, lastAt, groups}` — who `!endingtk` would thank now; follows: `on` / `no-permission` / `failed` |

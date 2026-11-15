@@ -336,4 +336,6 @@ Then double-click `start.bat` as usual.
 | Mods' commands do nothing | Only mods and you can use them; the clip player source must be in OBS to see them |
 
 Still stuck? Post on [GitHub Issues](https://github.com/sheng7337/twitch-song-request-system/issues) with the error
-from the black window (but **never** the contents of `.env` or the .json key).
+from the black window (but **never** the contents of `.env` or the .json key). The window is saved too: in the
+song queue folder, `logs` has one folder per start, named by date and time — attach that stream's `app.log`
+(🎨 Look & overlays → **📂 This run's logs** opens the current one).
