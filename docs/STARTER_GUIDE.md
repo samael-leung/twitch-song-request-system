@@ -130,7 +130,7 @@ of each tab holds the column names:
 - **Tabs**: sort songs however you like; rename tabs or add new ones. A random reward can draw from one
   tab only (e.g. "Random Japanese song")
 - **The 待練勿點 tab** (Chinese for "still practising — don't request"): songs here **can't be requested**.
-  Keep that exact name; it's the one tab left out by default
+  It's the one tab left out by default; choose others under 🎵 Song Queue → ⚙ → Sheet tabs
 
 The songs in the template are examples: **replace them with yours** before going on.
 
@@ -239,7 +239,7 @@ You add **two** Browser sources:
 2. URL: `http://localhost:3000/clip-player/index.html`, Width `1920`, Height `1080`, same Custom CSS
 3. Put it at the **top** of the source list, covering the whole screen. It's see-through until something plays
 
-> The overlay's language (English / 中文) is set on the dashboard: Song Queue tab **⚙ Settings → Overlay language**.
+> The overlay's language (English / 中文) is set on the dashboard: **🎨 Look & overlays** (top) **→ Overlay language**.
 
 ---
 

@@ -1,6 +1,7 @@
 // server/history.js
 // Records song request history to a separate Google Sheet.
-// Each row = one unique song. Updated on every confirmed request.
+// Each row = one song (title + artist: songs with the same title by different artists have a row
+// each, shared/song-key.js). Updated on every confirmed request.
 //
 // Sheet columns:
 //   title | artist | total_requests | last_requested_at | last_requester
@@ -11,6 +12,8 @@ const { google } = require('googleapis');
 const path = require('path');
 const fs = require('fs');
 
+const { songKey, findKey } = require('../shared/song-key');
+
 const CREDENTIALS_PATH = path.join(__dirname, '..', 'google-credentials.json');
 const HEADERS = [
   'title', 'artist', 'total_requests',
@@ -20,7 +23,7 @@ const HEADERS = [
   'top3_requester', 'top3_count',
 ];
 
-// In-memory store: title_lower → { rowIndex, data }
+// In-memory store: songKey(title, artist) → row number / record
 let rowMap = {};
 let rowData = {};
 let startupSnapshot = {};  // frozen at startup — never updated during session
@@ -89,10 +92,10 @@ async function init() {
       // Load existing rows into memory
       const dataRows = rows.slice(1);
       dataRows.forEach((row, i) => {
-        const title = (row[0] || '').toLowerCase().trim();
-        if (!title) return;
-        rowMap[title] = i + 2;
-        rowData[title] = parseRow(row);
+        if (!(row[0] || '').trim()) return;
+        const key = songKey(row[0], row[1]);
+        rowMap[key] = i + 2;
+        rowData[key] = parseRow(row);
       });
       // Freeze a snapshot of what was in the sheet at startup
       startupSnapshot = JSON.parse(JSON.stringify(rowData));
@@ -195,12 +198,14 @@ function scheduleWrite(rowIndex, record) {
 async function recordRequest({ title, artist, requester }) {
   if (!initialized || !historySheetId) return;
 
-  const key = title.toLowerCase().trim();
+  const found = findKey(rowData, title, artist);
+  const key = found || songKey(title, artist);
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
-  if (rowMap[key]) {
-    // Update existing row
+  if (found) {
+    // Update existing row (a row without an artist gets this one)
     const record = rowData[key];
+    if (!record.artist && artist) record.artist = artist;
     record.total_requests += 1;
     record.last_requested_at = now;
     record.last_requester = requester;
@@ -249,9 +254,9 @@ async function recordRequest({ title, artist, requester }) {
 // Live lookup (unlike getHistory(), which returns the frozen startup snapshot) —
 // used by the random picker's cooldown check, which must see requests made
 // earlier in the current session too.
-function getLastRequestedAt(title) {
-  const rec = rowData[title.toLowerCase().trim()];
-  return rec ? rec.last_requested_at : null;
+function getLastRequestedAt(title, artist) {
+  const key = findKey(rowData, title, artist);
+  return key ? rowData[key].last_requested_at : null;
 }
 
 // The history sheet is loaded: getLastRequestedAt() null then means "never requested", not "unknown"

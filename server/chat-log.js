@@ -87,8 +87,8 @@ function songsIn(text) {
 }
 
 // When the song was last sung (history.js keeps "YYYY-MM-DD HH:MM:SS" in UTC), as ms; null = never
-function lastSungAt(title) {
-  const s = history.getLastRequestedAt(title);
+function lastSungAt(title, artist) {
+  const s = history.getLastRequestedAt(title, artist);
   const ms = s ? Date.parse(s.replace(' ', 'T') + 'Z') : NaN;
   return Number.isFinite(ms) ? ms : null;
 }
@@ -125,7 +125,7 @@ function fromChat(e, at = Date.now()) {
   if (e.cheer?.bits) rec.bits = e.cheer.bits;
   if (e.reply) rec.reply = { name: e.reply.parent_user_name || e.reply.parent_user_login, text: e.reply.parent_message_body || '' };
   const songs = text.startsWith('!') ? [] : songsIn(text);
-  if (songs.length) rec.songs = history.isReady() ? songs.map(s => ({ ...s, lastAt: lastSungAt(s.title) })) : songs;
+  if (songs.length) rec.songs = history.isReady() ? songs.map(s => ({ ...s, lastAt: lastSungAt(s.title, s.artist) })) : songs;
   return rec;
 }
 

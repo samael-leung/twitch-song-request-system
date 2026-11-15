@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-surface="overlay">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,8 +12,8 @@
      The clock starts when the page loads: tick "Refresh browser when scene becomes active" or
      "Shutdown source when not visible" so it starts again on every break.
      lang="en" like the song overlay: under zh-TW, OBS's browser picks a different (serif) font for Chinese. -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/themes.css">
+<script src="/shared/theme.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -23,62 +23,60 @@
     zoom: 2;   /* rendered at 2x; the Browser Source is scaled to 50% for sharp text */
   }
 
-  :root {
-    --bg-panel: rgba(8, 8, 20, 0.92);
-    --border: rgba(120, 60, 220, 0.3);
-    --purple: #b06aff;
-    --amber: #ffb84a;
-    --title: #f0e6ff;
-    --text-dim: #7a6a9a;
+  /* Colours and fonts: shared/themes.css (🎨 Look & overlays → overlay theme, or ?theme= in the URL) */
+  :root[data-surface="overlay"] {   /* outranks the theme's own --bg-panel (themes.css) */
+    --bg-panel: rgba(var(--panel-rgb), 0.92);
+    --ts: 1;   /* text size (🎨 Look & overlays → Break card text) */
   }
 
   html, body {
     width: 480px;
     background: transparent !important;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: var(--font-body);
     overflow: hidden;
   }
 
   body { padding: 6px; }
 
-  body.opening { --amber: #4aff9a; }   /* the opening card: the song overlay's green */
-  body.opening .title-en { letter-spacing: 3px; }   /* "STARTING SOON" on one line */
+  body.opening { --warn: var(--good); }   /* the opening card: the song overlay's green */
+  body.opening .title-en { letter-spacing: calc(3px / var(--ts)); }   /* "STARTING SOON" on one line */
 
   .panel {
     display: flex; align-items: center; gap: 18px;
     background: var(--bg-panel);
     border: 1px solid var(--border);
-    border-left: 4px solid var(--amber);
+    border-left: 4px solid var(--warn);
     border-radius: 8px;
-    padding: 14px 20px 14px 22px;
+    padding: calc(14px / var(--ts) / var(--ts)) 20px calc(14px / var(--ts) / var(--ts)) 22px;   /* larger text, less padding: the card keeps its height */
     position: relative;
     backdrop-filter: blur(8px);
     animation: enter .6s cubic-bezier(.2,.8,.2,1) both;
   }
   .panel::before, .panel::after { content: ''; position: absolute; width: 10px; height: 10px; }
-  .panel::before { top: -1px; left: -4px; border-top: 2px solid var(--purple); border-left: 2px solid var(--purple); }
-  .panel::after  { bottom: -1px; right: -1px; border-bottom: 2px solid var(--purple); border-right: 2px solid var(--purple); }
+  .panel::before { top: -1px; left: -4px; border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+  .panel::after  { bottom: -1px; right: -1px; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); }
   @keyframes enter { from { opacity: 0; transform: translateY(8px); } }
 
   .words { flex: 1; min-width: 0; }
   .title {
-    font-size: 58px; font-weight: 400; line-height: 1; letter-spacing: 10px;
-    color: var(--title); text-shadow: 0 0 18px rgba(176, 106, 255, 0.55);
+    white-space: nowrap;
+    font-size: calc(58px * var(--ts)); font-weight: 400; line-height: 1; letter-spacing: calc(10px * var(--ts));
+    color: var(--title); text-shadow: 0 0 18px rgba(var(--glow-rgb), calc(0.55 * var(--glow-k)));
   }
   .title-en {
-    display: flex; align-items: center; gap: 10px; margin-top: 8px;
-    font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: 500; letter-spacing: 7px;
-    color: var(--amber); white-space: nowrap;
+    display: flex; align-items: center; gap: 10px; margin-top: calc(8px / var(--ts)); line-height: 1.2;
+    font-family: var(--font-display); font-size: calc(20px * var(--ts)); font-weight: 500; letter-spacing: calc(7px / var(--ts));
+    color: var(--warn); white-space: nowrap;
   }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); animation: blink 2s ease-in-out infinite; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); animation: blink 2s ease-in-out infinite; }
   @keyframes blink { 0%,100% { opacity: 1 } 50% { opacity: .2 } }
 
-  .side { text-align: right; }
-  .clock { font-family: 'Orbitron', sans-serif; font-size: 26px; font-weight: 500; color: var(--amber); letter-spacing: 2px; }
-  .back { margin-top: 6px; font-size: 13px; color: var(--text-dim); white-space: nowrap; }
+  .side { text-align: right; min-width: 0; }
+  .clock { font-family: var(--font-display); font-size: calc(26px * var(--ts)); line-height: 1.2; font-weight: 500; color: var(--warn); letter-spacing: 2px; }
+  .back { margin-top: 6px; font-size: calc(13px * var(--ts)); line-height: 1.3; color: var(--text-dim); }   /* wraps before the title would */
 
-  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(120, 60, 220, 0.18); overflow: hidden; }
-  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--purple), var(--amber)); transform-origin: left; }
+  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(var(--accent-deep-rgb), 0.18); overflow: hidden; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--warn)); transform-origin: left; }
   .bar[hidden] { display: none; }
 </style>
 </head>
@@ -135,6 +133,18 @@
   }
   tick();
   setInterval(tick, 1000);
+
+  // The overlay theme and this card's text size (🎨 Look & overlays), now and when they change
+  function applyLook(s) {
+    if (s.overlayTheme) Theme.apply(s.overlayTheme);
+    if (s.breakTextScale) Theme.scale(s.breakTextScale);
+  }
+  fetch('/api/settings').then(r => r.json()).then(applyLook).catch(() => {});
+  (function listen() {
+    const ws = new WebSocket(`ws://${location.host}`);
+    ws.onmessage = (e) => { try { const m = JSON.parse(e.data); if (m.type === 'settings') applyLook(m); } catch (_) {} };
+    ws.onclose = () => setTimeout(listen, 3000);
+  })();
 </script>
 </body>
 </html>

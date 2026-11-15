@@ -2,10 +2,105 @@
 
 Versions are `YYYY.MM-W`: the year, the month (two digits) and which release weekend of that month it
 is, counted by its Saturday. A hotfix between weekends adds `.N` (`2026.11-1.1`). The version shows in
-the dashboard under 🎵 Song Queue → ⚙ Settings. Read **⚠ Action needed** before updating.
+the dashboard under **🎨 Look & overlays** (at the top). Read **⚠ Action needed** before updating.
 
 版本號是 `YYYY.MM-W`：年、月（兩位數），以及這是該月第幾個發佈週末（以週六算）。兩個週末之間的緊急修正
-會加上 `.N`（`2026.11-1.1`）。目前的版本顯示在控制台「🎵 點歌佇列 → ⚙ 設定」。更新前請先看「⚠ 需要動手」。
+會加上 `.N`（`2026.11-1.1`）。目前的版本顯示在控制台最上面的「**🎨 外觀與疊加層**」。更新前請先看「⚠ 需要動手」。
+
+---
+
+## 2026.11-2 — 2026-11-15
+
+**Works with:** Node.js LTS · Leihu Singsing 1.6.x–2.0.x (checked with 2.0.0) · for modes, Streamlabs
+Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
+**搭配**：Node.js LTS · 雷虎練唱台 1.6.x–2.0.x（以 2.0.0 確認過）· 模式需要 Streamlabs Desktop 或 OBS Studio 30
+以上 · 換裝需要 veadotube mini 2.1 以上。
+
+### ⚠ Action needed / 需要動手
+
+- **Restart** the app (close it, run `start.bat` / `start_zh.bat` again) and refresh the dashboard.
+  **重新啟動**程式（關掉後再執行 `start.bat`／`start_zh.bat`），並重新整理控制台。
+- **Refresh each Browser Source** in OBS / Streamlabs once (its properties → **Refresh cache of current
+  page**): the song list, break card and clip player load the new theme files. They look as before until
+  you pick another theme.
+  在 OBS／Streamlabs 把每個**瀏覽器來源重新整理**一次（內容 →「**重新整理目前頁面的快取**」）：歌單、休息卡和
+  Clip 播放器要載入新的主題檔案。在你選別的主題之前，看起來都和原本一樣。
+- The overlays' panel opacity, brightness and language moved from 🎵 Song Queue → ⚙ to **🎨 Look & overlays**
+  at the top; your values stay. Everything new is optional: nothing else to change.
+  疊加層的面板不透明度、亮度和語言從「🎵 點歌佇列 → ⚙」移到最上面的「**🎨 外觀與疊加層**」；原本的數值不變。新功能都是
+  選用的：其他什麼都不用改。
+- The terminal setup wizard (`setup.bat` / `setup.ps1`, `setup_zh.*`) is gone: use the web wizard
+  (`start.bat` opens it) or [SETUP_MANUAL.md](SETUP_MANUAL.md). Your `.env` stays as it is; the old
+  files left in your folder can be deleted.
+  終端機版安裝精靈（`setup.bat`／`setup.ps1`、`setup_zh.*`）已移除：請用網頁版精靈（`start_zh.bat` 會開啟）或
+  [SETUP_MANUAL.md](SETUP_MANUAL.md)。你的 `.env` 不受影響；資料夾裡留下的舊檔案可以刪掉。
+
+### What's new / 新功能
+
+- **🎨 Themes and text sizes** (**🎨 Look & overlays** at the top, beside EN / 中文): five themes — **Neon** (the original),
+  **Daylight**, **High contrast**, **Ocean**, **Cream & coffee** — chosen apart for the dashboard and the
+  overlays; the dashboard's text size (85–140%, the same on every browser and phone), the song list's and
+  the break card's. Overlays change at once and keep their size in OBS; `?theme=…` on an overlay URL gives
+  it its own theme.
+  **🎨 主題和文字大小**（最上面、EN／中文旁邊的「**🎨 外觀與疊加層**」）：五個主題 ——「**霓虹**」（原本的樣子）、「**日光**」、
+  「**高對比**」、「**海洋**」、「**奶油咖啡**」—— 控制台和疊加層分開選；控制台的文字大小（85–140%，每個瀏覽器和
+  手機都一樣）、歌單和休息卡的文字大小。疊加層立刻改變，在 OBS 裡的大小不變；疊加層網址加上 `?theme=…`
+  可以單獨用別的主題。
+- **💬 Chat on stream** (`/overlay/chat.html`), instead of OneComme: four styles (panel, bubbles, plain
+  lines, one row), Twitch badges and emotes, redemptions and subs / gifts / raids / follows; deleted
+  messages and banned viewers leave at once. Modes that used OneComme offer **Pick a replacement…**.
+  **💬 直播畫面上的聊天室**（`/overlay/chat.html`），取代 OneComme：四種樣式（面板、對話泡泡、簡單列表、橫向一排）、
+  Twitch 徽章和表情符號、兌換和訂閱／贈訂／揪團／追隨；被刪除的訊息和被封鎖的觀眾會立刻消失。用過 OneComme 的模式
+  會提供「**選擇替代…**」。
+- **👕 Outfits** with veadotube mini: viewers redeem a reward, a card pops up (not over the Leihu tab) and
+  you click the outfit to wear; the redemption is completed, or refunded. A default outfit (☆) and
+  **Back to the default after N minutes**.
+  **👕 換裝**（veadotube mini）：觀眾兌換獎勵後會跳出卡片（雷虎練唱台分頁不會跳），點一下要穿的衣服；兌換會自動
+  完成，或退還。可以設定預設服裝（☆）和「**N 分鐘後換回預設服裝**」。
+- **🚀 Raid with the ending roll**: 🛡 Moderate → Raid with **🎬 With the ending roll** plays the
+  `!endingtk` roll so the raid goes 10 seconds after it ends. Cancel, or someone raiding you meanwhile,
+  stops both.
+  **🚀 搭配片尾名單揪團**：🛡 管理 → 揪團，勾選「**🎬 搭配片尾名單**」會播 `!endingtk` 的片尾名單，名單結束 10 秒後
+  出發。取消揪團，或這段期間有人揪團過來，兩個都會停止。
+- **準備中 / STARTING SOON** card for the opening (`/overlay/break.html?card=opening`); both cards count
+  down with `?min=10` or `?at=20:00`.
+  開場用的「**準備中／STARTING SOON**」卡片（`/overlay/break.html?card=opening`）；兩種卡片都可以用 `?min=10` 或
+  `?at=20:00` 倒數。
+- **Sheet tabs and random pick in the dashboard** (🎵 Song Queue → ⚙): tick which tabs viewers can request,
+  and choose weighted or pure random — no more editing `.env`.
+  **歌單分頁和抽歌方式改在控制台設定**（🎵 點歌佇列 → ⚙）：勾選哪些分頁可以點歌，選擇加權或完全隨機 —— 不用再改 `.env`。
+- **License:** the song queue is now released under the [MIT License](LICENSE).
+  **授權**：點歌系統現在以 [MIT 授權](LICENSE) 釋出。
+
+### Fixes / 修正
+
+- Two songs with the same title by different artists now each keep their own request history (last
+  requested, by whom, the random cooldown). Before, requesting one updated the other's; past requests
+  already mixed in the history sheet stay as they are.
+  同名但不同歌手的兩首歌，現在各自有自己的點歌紀錄（上次被點、被誰點、隨機點歌冷卻）。之前點其中一首會算到另一首；
+  歷史試算表裡已經混在一起的舊紀錄不會改變。
+- Song-request and random-song redemptions no longer show as "to announce" in the 💬 Chat tab (the queue
+  already has them).
+  點歌和隨機點歌的兌換不會再出現在 💬 聊天室分頁的「要宣讀」（歌單裡已經有了）。
+- Stopping a clip no longer blanks a sponsor roll that starts right after it.
+  停止 Clip 後馬上播的感謝名單不會再被清掉。
+- In the dashboard's Leihu tab, Leihu now plays on the output device chosen in its settings, like its own
+  window. Before, the browser refused that and Leihu played on Windows' default device. If the singing on
+  stream fell slightly behind the music in the Leihu tab (but not in Leihu's own window), this should fix it.
+  控制台的雷虎練唱台分頁現在會用它設定裡選的輸出裝置播放，和它自己的視窗一樣。之前瀏覽器不允許，雷虎練唱台只能用
+  Windows 預設裝置播放。如果在雷虎練唱台分頁唱歌時，直播上的歌聲會稍微落後音樂（在它自己的視窗不會），這應該能修正。
+- Switching EN / 中文 no longer shows the top bar's Leihu as offline until the next check.
+  切換 EN／中文時，最上面的雷虎練唱台狀態不會再暫時顯示成未開啟。
+- On a phone the dashboard fits the screen: the top bar and the manual request bar wrap, and a long song
+  title no longer makes the page wider than the screen.
+  在手機上控制台不會超出畫面：最上面一列和手動點歌列會換行，很長的歌名也不會讓頁面變寬。
+
+### Leihu Singsing 2.0 / 雷虎練唱台 2.0
+
+Works as before. Its new global hotkeys belong to Leihu's own window: they don't work when Leihu is
+started from the dashboard (**▶ Start Leihu**), and act on Leihu's window, not the dashboard's Leihu tab.
+照常運作。它新的全域快捷鍵屬於雷虎練唱台自己的視窗：從控制台啟動（「**▶ 啟動雷虎練唱台**」）時沒有作用，而且控制的是
+雷虎練唱台的視窗，不是控制台的雷虎練唱台分頁。
 
 ---
 

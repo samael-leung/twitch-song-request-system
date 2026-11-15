@@ -16,6 +16,9 @@ const { registerCommand, handleChatEvent } = require('./chat-router');
 const chatLog = require('./chat-log');
 const chatBadges = require('./chat-badges');
 const songNotes = require('./song-notes');
+const look = require('./look');
+const songTabs = require('./song-tabs');
+const config = require('./config');
 const registerShoutout = require('./commands/shoutout');
 const registerWatch = require('./commands/watch');
 const registerReplay = require('./commands/replay');
@@ -23,6 +26,7 @@ const registerStop = require('./commands/stop');
 const registerThanks = require('./commands/thanks');
 const registerEndingThanks = require('./commands/ending-thanks');
 const endingCredits = require('./ending-credits');
+const endingRaid = require('./ending-raid');
 const redemptions = require('./redemptions');
 const firstChat = require('./first-chat');
 const chatSend = require('./chat-send');
@@ -148,7 +152,9 @@ setChatHandler((event) => {
 setModerationHandler(chatLog.onModeration);
 // Subs, gifts, raids and follows: shown in the Chat tab, thanked by !endingtk (ending-credits.js)
 setNoticeHandler((event) => {
-  try { chatLog.addNotice(event); } catch (err) { console.error('[chat-log] Could not log a chat notice:', err.message); }
+  let rec = null;
+  try { rec = chatLog.addNotice(event); } catch (err) { console.error('[chat-log] Could not log a chat notice:', err.message); }
+  endingRaid.onRecord(rec);   // a raid coming in stops ours with the ending roll
 });
 setFollowHandler((event) => {
   try { chatLog.addFollow(event); } catch (err) { console.error('[chat-log] Could not log a follow:', err.message); }
@@ -164,6 +170,7 @@ setRedemptionHook(redemptions.settle);
 setStreamHandler(streamSession.onEvent);
 streamSession.init(session => sendChat({ type: 'chat-session', ...session }));
 modes.init(msg => sendChat(msg));   // after mediaQueue.init: a mode may hold clips
+endingRaid.init(msg => sendChat(msg));
 outfits.init({ send: msg => sendChat(msg), saveEnv: values => setupRouter.writeEnvValues(values) });
 alerts.init(msg => sendAlerts(msg));
 
@@ -198,13 +205,9 @@ setEventHandler(async (event) => {
   const matchedRandom = parseRandomReward(rewardId);
   if (matchedRandom) {
     const { queue, nowPlaying, playedSongs } = getState();
-    const excludeTitles = [
-      ...(nowPlaying ? [nowPlaying.title] : []),
-      ...queue.map(s => s.title),
-      ...playedSongs.map(s => s.title),
-    ];
+    const exclude = [...(nowPlaying ? [nowPlaying] : []), ...queue, ...playedSongs];
     const allowedTabs = matchedRandom.tabs || [];
-    const picked = pickRandom(excludeTitles, allowedTabs);
+    const picked = pickRandom(exclude, allowedTabs);
     if (picked) {
       addSong({ title: picked.title, artist: picked.artist, key: picked.key || '', requester, isRandom: true, tabs: allowedTabs, redemption });
       const tabInfo = allowedTabs.length > 0 ? ` [${allowedTabs.join('/')}]` : '';
@@ -303,14 +306,10 @@ app.post('/api/redraw', (req, res) => {
 
   // Exclude everything currently in the queue (including the song being replaced,
   // so it won't be re-drawn on the next pick)
-  const excludeTitles = [
-    ...(state.nowPlaying ? [state.nowPlaying.title] : []),
-    ...state.queue.map(s => s.title),
-    ...state.playedSongs.map(s => s.title),
-  ];
+  const exclude = [...(state.nowPlaying ? [state.nowPlaying] : []), ...state.queue, ...state.playedSongs];
 
   const tabs = currentSong.tabs || [];
-  const picked = pickRandom(excludeTitles, tabs);
+  const picked = pickRandom(exclude, tabs);
   if (!picked) return res.status(400).json(message('noRedraw', {}, 'no songs available to redraw'));
 
   const ok = redrawSong(zone, index, { ...picked, requester: currentSong.requester, tabs, redemption: currentSong.redemption });
@@ -713,10 +712,14 @@ app.get('/api/settings', (req, res) => {
     songNotes: songNotes.enabled(),
     overlayLanguage: overlayLanguage(),
     chatOverlay: chatOverlaySettings(),
+    randomPickMode: songTabs.pickMode(),
+    excludedTabs: config.EXCLUDED_TABS,
+    sheetTabs: require('./sheets').getTabs(),
+    ...look.read(),   // themes and text sizes (look.js)
   });
 });
 
-app.post('/api/settings', (req, res) => {
+app.post('/api/settings', async (req, res) => {
   const updates = {};
 
   if (req.body.randomCooldownDays !== undefined) {
@@ -726,6 +729,18 @@ app.post('/api/settings', (req, res) => {
     }
     updates.randomCooldownDays = days;
     setupRouter.writeEnvValues({ RANDOM_COOLDOWN_DAYS: String(days) });
+  }
+
+  if (req.body.randomPickMode !== undefined) {
+    try { updates.randomPickMode = songTabs.parsePickMode(req.body.randomPickMode); } catch (err) { return res.status(400).json(errorBody(err)); }
+    setupRouter.writeEnvValues({ RANDOM_PICK_MODE: updates.randomPickMode });
+  }
+
+  // Sheet tabs left out of requests, random picks and the link finder; the song list is read again
+  if (req.body.excludedTabs !== undefined) {
+    try { updates.excludedTabs = songTabs.excludedList(req.body.excludedTabs); } catch (err) { return res.status(400).json(errorBody(err)); }
+    setupRouter.writeEnvValues({ EXCLUDED_TABS: updates.excludedTabs.join(',') });
+    updates.songCount = (await require('./sheets').fetchSongs()).length;
   }
 
   if (req.body.panelBgAlpha !== undefined) {
@@ -791,6 +806,15 @@ app.post('/api/settings', (req, res) => {
     setupRouter.writeEnvValues({ LEIHU_AUTOSTART: updates.leihuAutoStart ? '1' : '0' });
   }
 
+  // Themes and text sizes: { look: { dashboardTheme?, overlayTheme?, …TextScale? } }; every page follows at once
+  if (req.body.look !== undefined) {
+    let parsed;
+    try { parsed = look.parse(req.body.look); } catch (err) { return res.status(400).json(errorBody(err)); }
+    setupRouter.writeEnvValues(parsed.env);
+    Object.assign(updates, parsed.values);
+    broadcastSettings(parsed.values);
+  }
+
   res.json({ ok: true, ...updates });
 });
 
@@ -835,14 +859,17 @@ function modRoute(fn) {
 }
 app.get('/api/chat/mod', async (req, res) => {
   const can = await chatMod.permissions();
-  res.json({ can, pinned: can.pin ? await chatMod.pinned() : null });
+  res.json({ can, pinned: can.pin ? await chatMod.pinned() : null, endingRaid: endingRaid.status() });
 });
 app.get('/api/chat/mod/channel', modRoute((b, req) => chatMod.channel(req.query.login)));
 app.post('/api/chat/mod/ban', modRoute(b => chatMod.ban(b.login, { seconds: b.seconds, reason: b.reason })));
 app.post('/api/chat/mod/unban', modRoute(b => chatMod.unban(b.login)));
 app.post('/api/chat/mod/shoutout', modRoute(b => registerShoutout.shoutout(b.login)));   // Twitch's Shoutout + the !so clip
 app.post('/api/chat/mod/raid', modRoute(b => chatMod.raid(b.login)));
-app.post('/api/chat/mod/raid/cancel', modRoute(() => chatMod.cancelRaid()));
+app.post('/api/chat/mod/raid/cancel', modRoute(() => endingRaid.active() ? endingRaid.stop('canceled') : chatMod.cancelRaid()));
+// Raid with the ending roll (ending-raid.js): GET → the channel and when the roll and the raid would go; POST starts it
+app.get('/api/chat/mod/raid/roll', modRoute((b, req) => endingRaid.plan(req.query.login)));
+app.post('/api/chat/mod/raid/roll', modRoute(b => endingRaid.start(b.login)));
 app.post('/api/chat/mod/pin', modRoute(b => chatMod.pin(b.id, b.seconds)));
 app.post('/api/chat/mod/unpin', modRoute(b => chatMod.unpin(b.id)));
 

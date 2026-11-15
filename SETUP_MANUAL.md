@@ -61,6 +61,7 @@ You need a **Service Account** so the server can read/write your Google Sheets.
 
 Your existing sheet with songs. The server reads it at startup and every 5 minutes.
 
+- Copy its sheet ID (see [Getting a Sheet ID](#getting-a-sheet-id)) into `.env` as `GOOGLE_SHEET_ID`
 - Must have a header row with at least a title column and an artist column
 - Column names must match `SHEET_SONG_COLUMN` and `SHEET_ARTIST_COLUMN` in `.env`
 - Optional: a `key` column with numeric values (e.g. `3`, `-2`) for key transposition display
@@ -75,9 +76,10 @@ Your existing sheet with songs. The server reads it at startup and every 5 minut
 | ロキ | みきとP | -2 |
 | Ghost Rule | DECO*27 | 3 |
 
-**Tabs:** All tabs are included except those listed in `EXCLUDED_TABS` in `.env`, comma-separated
-(`EXCLUDED_TABS=待練勿點,草稿`). When the line isn't there, the tab `待練勿點` is excluded;
-`EXCLUDED_TABS=` with nothing after it uses every tab.
+**Tabs:** All tabs are included except the ones unticked in the dashboard (🎵 Song Queue → ⚙ → Sheet tabs),
+saved as `EXCLUDED_TABS` in `.env`, comma-separated (`EXCLUDED_TABS=待練勿點,草稿`). When the line isn't there,
+the tab `待練勿點` is excluded; `EXCLUDED_TABS=` with nothing after it uses every tab. The first one listed is
+where Pending's "＋ Add to" puts songs.
 
 ### History sheet
 
@@ -289,7 +291,8 @@ Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/refresh-songs
 |---|---|
 | `.env` | Credentials, IDs, URLs — see `.env.example` for descriptions |
 | `server/config.js` | Matching thresholds, random weights, Leihu recognition language per tab |
-| `overlay/index.html` | CSS variables at top — font sizes, list height; `SCROLL_PX_PER_SEC` — scroll speed |
+| Dashboard **🎨 Look & overlays** | Themes and text sizes of the dashboard and overlays (`shared/themes.css` holds the colours) |
+| `overlay/index.html` | `--list-height` at the top — list height; `SCROLL_PX_PER_SEC` — scroll speed |
 
 ---
 
@@ -307,7 +310,7 @@ Tune in `server/config.js`: `AUTO_ACCEPT_THRESHOLD`, `MATCH_THRESHOLD` (0.2 stri
 
 ## Random song modes
 
-Set `RANDOM_PICK_MODE` in `.env`:
+Choose in the dashboard (🎵 Song Queue → ⚙ → Pick), saved as `RANDOM_PICK_MODE` in `.env`:
 - `weighted` — favors songs not played recently (recommended)
 - `pure` — truly random
 

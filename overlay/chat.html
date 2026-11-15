@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-surface="overlay">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,8 +15,8 @@
 <script src="/shared/i18n.js"></script>
 <script src="/shared/i18n-viewer.js"></script>
 <script src="/shared/chat-bots.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/themes.css">
+<script src="/shared/theme.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -26,26 +26,21 @@
     zoom: 2;   /* rendered at 2x; the Browser Source is scaled to 50% for sharp text */
   }
 
-  :root {
+  /* Colours and fonts: shared/themes.css (🎨 Look & overlays → overlay theme, or ?theme= in the URL).
+     The list and row styles keep white text with an outline in every theme: they sit over a game or video. */
+  :root[data-surface="overlay"] {   /* outranks the theme's own --bg-panel (themes.css) */
     --panel-bg-alpha: 0.92;
     --text-brightness: 1;
     --size: 1;   /* text size from the settings, 1 = 100% */
-    --bg-panel: rgba(8, 8, 20, var(--panel-bg-alpha));
-    --bg-card: rgba(15, 10, 30, 0.85);
-    --border: rgba(120, 60, 220, 0.3);
-    --purple: #b06aff;
-    --purple-dim: #7b4fb5;
-    --amber: #ffb84a;
-    --green: #4aff9a;
-    --text: #d4c8f0;
-    --text-dim: #7a6a9a;
+    --bg-panel: rgba(var(--panel-rgb), var(--panel-bg-alpha));
+    --bg-card: rgba(var(--card-rgb), 0.85);
     --fs: calc(20px * var(--size));
   }
 
   /* The page is half the Browser Source in each direction (zoom 2); placeChat() sets it */
   html, body {
     background: transparent !important;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: var(--font-body);
     color: var(--text);
     overflow: hidden;
   }
@@ -65,8 +60,8 @@
   .badge { height: 1.1em; vertical-align: -0.18em; margin-right: 3px; }
   .name { font-weight: 700; }
   .emote { height: 1.75em; vertical-align: middle; margin: -0.3em 1px; }
-  .mention { color: var(--purple); font-weight: 700; }
-  .cheer { color: var(--amber); font-weight: 700; }
+  .mention { color: var(--accent); font-weight: 700; }
+  .cheer { color: var(--warn); font-weight: 700; }
   .reply { display: block; font-size: 0.78em; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .event-icon { margin-right: 4px; }
   .quote { display: block; color: var(--text); }
@@ -77,37 +72,37 @@
     backdrop-filter: blur(8px);
   }
   .style-panel .frame::before, .style-panel .frame::after { content: ''; position: absolute; width: 10px; height: 10px; }
-  .style-panel .frame::before { top: -1px; left: -1px; border-top: 2px solid var(--purple); border-left: 2px solid var(--purple); }
-  .style-panel .frame::after  { bottom: -1px; right: -1px; border-bottom: 2px solid var(--purple); border-right: 2px solid var(--purple); }
+  .style-panel .frame::before { top: -1px; left: -1px; border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+  .style-panel .frame::after  { bottom: -1px; right: -1px; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); }
   .style-panel .header {
     position: absolute; top: 6px; left: 6px; right: 6px; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 14px;
     border-bottom: 1px solid var(--border);
   }
-  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .status-dot.disconnected { background: #ff4a6a; box-shadow: 0 0 6px #ff4a6a; }
-  .header-title { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 500; letter-spacing: 3px; color: var(--purple-dim); text-transform: uppercase; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--good); box-shadow: 0 0 6px var(--good); }
+  .status-dot.disconnected { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+  .header-title { font-family: var(--font-display); font-size: 12px; font-weight: 500; letter-spacing: 3px; color: var(--accent-dim); text-transform: uppercase; }
   .style-panel .chat { top: 46px; left: 16px; right: 16px; bottom: 16px; }
-  .style-panel .msg { background: var(--bg-card); border: 1px solid var(--border); border-left: 2px solid var(--name-color, var(--purple)); border-radius: 4px; padding: 5px 9px; }
-  .style-panel .msg.event { border-left-color: var(--green); color: var(--green); }
-  .style-panel .msg.redeem { border-left-color: var(--amber); color: var(--amber); }
+  .style-panel .msg { background: var(--bg-card); border: 1px solid var(--border); border-left: 2px solid var(--name-color, var(--accent)); border-radius: 4px; padding: 5px 9px; }
+  .style-panel .msg.event { border-left-color: var(--good); color: var(--good); }
+  .style-panel .msg.redeem { border-left-color: var(--warn); color: var(--warn); }
 
   /* ── bubble: speech bubbles, no panel ── */
   .style-bubble .chat { inset: 8px; gap: 9px; align-items: flex-start; }
   .style-bubble .msg { display: flex; flex-direction: column; align-items: flex-start; max-width: 100%; }
   .style-bubble .who {
     display: inline-flex; align-items: center; gap: 3px; margin: 0 0 -4px 10px; padding: 1px 10px; border-radius: 10px;
-    background: var(--name-color, var(--purple)); color: #0b0b16; font-size: 0.82em; font-weight: 700; position: relative; z-index: 1;
+    background: var(--name-color, var(--accent)); color: var(--on-name); font-size: 0.82em; font-weight: 700; position: relative; z-index: 1;
     max-width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .style-bubble .who .name { color: inherit !important; }
   .style-bubble .body {
-    background: rgba(8, 8, 20, calc(var(--panel-bg-alpha) * 0.92)); border: 1px solid var(--border); border-radius: 14px;
-    padding: 8px 13px 6px; max-width: 100%; box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    background: rgba(var(--panel-rgb), calc(var(--panel-bg-alpha) * 0.92)); border: 1px solid var(--border); border-radius: 14px;
+    padding: 8px 13px 6px; max-width: 100%; box-shadow: 0 4px 14px rgba(var(--shadow-rgb), calc(0.35 * var(--shadow-k)));
   }
   .style-bubble .msg.new { animation-name: pop; }
   @keyframes pop { from { opacity: 0; transform: translateX(-14px) scale(.96); } }
-  .style-bubble .msg.event .body { border-color: rgba(74,255,154,0.5); color: var(--green); }
-  .style-bubble .msg.redeem .body { border-color: rgba(255,184,74,0.55); color: var(--amber); }
+  .style-bubble .msg.event .body { border-color: rgba(var(--good-rgb), 0.5); color: var(--good); }
+  .style-bubble .msg.redeem .body { border-color: rgba(var(--warn-rgb), 0.55); color: var(--warn); }
 
   /* ── list: plain lines with an outline ── */
   .style-list .chat { inset: 8px; gap: 3px; -webkit-mask-image: none; mask-image: none; }
@@ -116,8 +111,8 @@
     text-shadow: 0 0 2px #000, 0 0 2px #000, 1px 1px 2px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000;
   }
   .style-list .name { text-shadow: inherit; }
-  .style-list .msg.event { color: var(--green); }
-  .style-list .msg.redeem { color: var(--amber); }
+  .style-list .msg.event { color: var(--good); }
+  .style-list .msg.redeem { color: var(--warn); }
   .style-list .reply { color: #ccc; }
   .style-list .quote { color: #fff; }
 
@@ -132,14 +127,15 @@
   @keyframes slide { from { opacity: 0; transform: translateX(40px); } }
   .style-row .line, .style-row .who {
     color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    /* any theme: white with a teal glow over the stream */
     text-shadow: 0 0 2px #06363a, 0 0 2px #06363a, 0 0 3px #06363a, 0 0 8px rgba(70, 235, 225, 0.85), 0 0 14px rgba(70, 235, 225, 0.45);
   }
   .style-row .line { font-size: 1.45em; font-weight: 700; line-height: 1.6; }
   .style-row .line .emote { height: 1.35em; margin: 0 1px; vertical-align: -0.28em; }
   .style-row .who { display: flex; align-items: center; gap: 3px; font-size: 0.95em; padding-left: 2px; }
   .style-row .who .name { color: #fff !important; font-weight: 400; margin-right: 2px; }
-  .style-row .msg.event .line { color: #c9ffe4; }
-  .style-row .msg.redeem .line { color: #ffe6b8; }
+  .style-row .msg.event .line { color: #c9ffe4; }   /* any theme */
+  .style-row .msg.redeem .line { color: #ffe6b8; }   /* any theme */
   .style-row .quote { display: inline; margin-left: 8px; }
 </style>
 </head>
@@ -158,7 +154,7 @@ if (style !== 'panel') for (const el of document.querySelectorAll('.frame, .head
 const EVENT_NOTICES = ['sub', 'resub', 'sub_gift', 'community_sub_gift', 'gift_paid_upgrade', 'prime_paid_upgrade',
   'pay_it_forward', 'raid', 'watch_streak', 'bits_badge_tier', 'charity_donation', 'announcement'];
 const EVENT_ICONS = { raid: '🚀', sub_gift: '🎁', community_sub_gift: '🎁', charity_donation: '💗', bits_badge_tier: '💎', announcement: '📣', watch_streak: '🔥' };
-// Twitch's own name colours, for viewers who never picked one
+// Twitch's own name colours, for viewers who never picked one (any theme: Theme.nameColor adjusts them)
 const NAME_COLORS = ['#FF4A6A', '#5A9AFF', '#4AFF9A', '#B06AFF', '#FFB84A', '#FF7F50', '#9ACD32', '#FF69B4', '#1E90FF', '#00FF7F', '#DAA520', '#D2691E'];
 
 const view = { max: 10, bots: false, commands: false, redeems: true, events: true };
@@ -226,7 +222,7 @@ function eventLine(rec) {
 
 // One record as a line: who, then what (chat), or an event / redemption line
 function msgHtml(rec, fresh) {
-  const color = nameColor(rec.user);
+  const color = style === 'panel' || style === 'bubble' ? Theme.nameColor(nameColor(rec.user)) : nameColor(rec.user);
   const name = `<span class="name" style="color:${esc(color)}">${esc(rec.user.name)}</span>`;
   let kind = '', who = `${badgesHtml(rec.user)}${name}`, what, reply = '';
   if (rec.kind === 'chat') {
@@ -279,7 +275,8 @@ function remove(del) {
   }
 }
 
-function applySettings({ panelBgAlpha, textBrightness, overlayLanguage, chatOverlay }) {
+function applySettings({ panelBgAlpha, textBrightness, overlayLanguage, chatOverlay, overlayTheme }) {
+  if (overlayTheme && overlayTheme !== Theme.current) { Theme.apply(overlayTheme); drawAll(); }   // name colours follow
   if (overlayLanguage) { I18N.setLang(overlayLanguage, { save: false, tagPage: false }); drawAll(); }
   if (panelBgAlpha != null) document.documentElement.style.setProperty('--panel-bg-alpha', panelBgAlpha);
   if (textBrightness != null) document.documentElement.style.setProperty('--text-brightness', textBrightness);
