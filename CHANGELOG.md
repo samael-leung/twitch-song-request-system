@@ -67,6 +67,9 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
   and choose weighted or pure random — no more editing `.env`.
   **歌單分頁和抽歌方式改在控制台設定**（🎵 點歌佇列 → ⚙）：勾選哪些分頁可以點歌，選擇加權或完全隨機 —— 不用再改 `.env`。
 
+- **License:** the song queue is now released under the [MIT License](LICENSE).
+  **授權**：點歌系統現在以 [MIT 授權](LICENSE) 釋出。
+
 ### Fixes / 修正
 
 - Song-request and random-song redemptions no longer show as "to announce" in the 💬 Chat tab (the queue

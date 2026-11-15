@@ -55,3 +55,8 @@ body { background-color: rgba(0, 0, 0, 0) !important; margin: 0px auto; overflow
 2. 重新啟動伺服器
 
 > 若資料夾內沒有圖片，背景顯示為深色。
+
+## 授權 / License
+
+[MIT](LICENSE)。雷虎練唱台（Leihu Singsing）是另一個軟體，有它自己的授權。
+MIT — see [LICENSE](LICENSE). Leihu Singsing is separate software with its own license.
