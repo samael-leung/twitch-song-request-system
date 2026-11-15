@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alerts</title>
+<!-- 🔔 Alerts on stream (server/alerts.js): follows, subs, gifts, cheers, raids and chosen redemptions,
+     one at a time, in the song overlay's look. Transparent while none shows.
+     ?layout=vertical (default): picture above, words below — Browser Source 800 × 600.
+     ?layout=horizontal: picture left, words right — Browser Source 1600 × 300.
+     Scale it to 50% (it renders at 2x like the song overlay) and place it where you like.
+     The dashboard's 🔔 Alerts tab sets what shows, for how long, and the pictures and sounds
+     (files in the alert-media folder). The sound follows the source's own volume / mute in OBS.
+     lang="en" like the song overlay: under zh-TW, OBS's browser picks a serif font for Chinese. -->
+<script src="/shared/i18n.js"></script>
+<script src="/shared/i18n-viewer.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    background: transparent !important;
+    zoom: 2;   /* rendered at 2x; the Browser Source is scaled to 50% for sharp text */
+  }
+
+  :root {
+    --panel-bg-alpha: 0.92;
+    --text-brightness: 1;
+    --bg-panel: rgba(8, 8, 20, var(--panel-bg-alpha));
+    --border: rgba(120, 60, 220, 0.3);
+    --purple: #b06aff;
+    --title: #f0e6ff;
+    --text: #d4c8f0;
+    --text-dim: #7a6a9a;
+    --accent: var(--purple);
+  }
+
+  /* The page is half the Browser Source in each direction (zoom 2); place() sets it */
+  html, body {
+    background: transparent !important;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text);
+    overflow: hidden;
+  }
+  body { position: relative; display: flex; align-items: center; justify-content: center; filter: brightness(var(--text-brightness)); }
+
+  .alert {
+    position: relative; display: flex; align-items: center; gap: 10px;
+    max-width: calc(100% - 12px); max-height: calc(100% - 12px);
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px 18px 12px 16px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 25%, transparent);
+    animation: enter .5s cubic-bezier(.2,.9,.25,1.2) both;
+  }
+  .alert.leave { animation: leave .45s ease-in both; }
+  .alert::before, .alert::after { content: ''; position: absolute; width: 10px; height: 10px; }
+  .alert::before { top: -1px; left: -4px; border-top: 2px solid var(--purple); border-left: 2px solid var(--purple); }
+  .alert::after  { bottom: -1px; right: -1px; border-bottom: 2px solid var(--purple); border-right: 2px solid var(--purple); }
+  @keyframes enter { from { opacity: 0; transform: scale(.85) translateY(10px); } }
+  @keyframes leave { to { opacity: 0; transform: scale(.95) translateY(-6px); } }
+
+  .media { flex: none; display: flex; align-items: center; justify-content: center; }
+  .media img, .media video { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+  .media .icon { font-size: 54px; line-height: 1; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 60%, transparent)); }
+  .media .avatar { border-radius: 50%; border: 2px solid var(--accent); }
+
+  .words { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .tag {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 4px; color: var(--accent);
+  }
+  .tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: blink 1.4s ease-in-out infinite; }
+  @keyframes blink { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+  .headline { font-size: 22px; line-height: 1.3; color: var(--title); text-shadow: 0 0 14px rgba(176, 106, 255, 0.45); overflow-wrap: anywhere; }
+  .headline .name { color: var(--accent); }
+  .message {
+    font-size: 14px; line-height: 1.45; color: var(--text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  }
+  .message .emote { height: 1.5em; vertical-align: -0.4em; margin: 0 1px; }
+
+  /* Vertical: picture above, words below, centered */
+  .layout-vertical .alert { flex-direction: column; text-align: center; padding: 14px 20px; }
+  .layout-vertical .media { width: 100%; height: 130px; }
+  .layout-vertical .tag { justify-content: center; }
+  /* Horizontal: picture left, words right */
+  .layout-horizontal .media { width: 110px; height: 110px; }
+  .layout-horizontal .media .icon { font-size: 60px; }
+  .layout-horizontal .alert { min-width: 60%; }
+
+  /* The big version: larger words, a pulsing glow */
+  .alert.big .headline { font-size: 28px; }
+  .alert.big { border-width: 2px; border-left-width: 6px; border-color: color-mix(in srgb, var(--accent) 60%, transparent); animation: enter .6s cubic-bezier(.2,.9,.25,1.3) both, pulse 1.6s ease-in-out .6s infinite; }
+  .alert.big.leave { animation: leave .45s ease-in both; }
+  .layout-vertical .alert.big .media { height: 150px; }
+  @keyframes pulse { 50% { box-shadow: 0 0 44px color-mix(in srgb, var(--accent) 55%, transparent); } }
+
+  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; overflow: hidden; border-radius: 0 0 8px 8px; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--purple), var(--accent)); transform-origin: left; animation: drain linear both; }
+  @keyframes drain { to { transform: scaleX(0); } }
+</style>
+</head>
+<body>
+<script>
+const t = I18N.t;
+const params = new URLSearchParams(location.search);
+const layout = params.get('layout') === 'horizontal' ? 'horizontal' : 'vertical';
+document.body.classList.add('layout-' + layout);
+
+const LOOK = {
+  follow: { icon: '💜', tag: 'NEW FOLLOWER', color: '#5a9aff' },
+  sub:    { icon: '⭐', tag: 'SUBSCRIBER',   color: '#b06aff' },
+  gift:   { icon: '🎁', tag: 'GIFT SUB',     color: '#ff6ad5' },
+  cheer:  { icon: '💎', tag: 'CHEER',        color: '#ffb84a' },
+  raid:   { icon: '🚀', tag: 'RAID',         color: '#4aff9a' },
+  redeem: { icon: '🎟', tag: 'REDEEM',       color: '#ffb84a' },
+};
+const VIDEO = /\.(mp4|webm)$/i;
+const WS_URL = `ws://${location.host}`;
+let ws, reconnectTimer;
+const queue = [];
+let current = null;   // { el, timer, sounds }
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const media = f => '/alert-media/' + encodeURIComponent(f);
+
+function place() {
+  document.body.style.width = `${innerWidth / 2}px`;
+  document.body.style.height = `${innerHeight / 2}px`;
+}
+addEventListener('resize', place);
+
+// The headline in the overlay language, the name in the kind's colour
+function headline(a) {
+  const NAME = '\u0001';
+  const name = a.anonymous || !a.name ? t('chatOverlay.anonymous') : a.name;
+  let line;
+  if (a.kind === 'follow') line = t('alerts.follow', { name: NAME });
+  else if (a.kind === 'cheer') line = t('alerts.cheer', { name: NAME, bits: a.bits });
+  else if (a.kind === 'raid') line = t('chatOverlay.notice.raid', { name: NAME, viewers: a.viewers });
+  else if (a.kind === 'redeem') line = t('chatOverlay.redeemed', { name: NAME, reward: a.reward });
+  else if (a.kind === 'gift' && a.count > 1) line = t('chatOverlay.notice.community_sub_gift', { name: NAME, count: a.count });
+  else if (a.kind === 'gift') line = a.recipient ? t('chatOverlay.notice.sub_gift', { name: NAME, recipient: a.recipient }) : t('alerts.giftOne', { name: NAME });
+  else {
+    const tier = a.tier ? t('chatOverlay.tier.' + a.tier) : '';
+    line = I18N.has('chatOverlay.notice.' + a.notice) ? t('chatOverlay.notice.' + a.notice, { name: NAME, tier, months: a.months }) : t('chatOverlay.notice.sub', { name: NAME, tier });
+  }
+  return esc(line).replace(NAME, `<span class="name">${esc(name)}</span>`);
+}
+
+function messageHtml(a) {
+  const parts = a.parts && a.parts.length ? a.parts : a.text ? [{ t: 'text', text: a.text }] : [];
+  return parts.map(p => p.t === 'emote'
+    ? `<img class="emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${encodeURIComponent(p.id)}/default/dark/2.0" alt="${esc(p.text)}" onerror="this.replaceWith(this.alt)">`
+    : esc(p.text)).join('').trim();
+}
+
+// The built-in chime (sound '@chime'): a few soft notes per kind, made here — no sound file.
+// The big version climbs one note higher and ends on a held chord.
+const CHIME = { follow: [659, 988], sub: [523, 659, 784], gift: [784, 1047, 1319], cheer: [880, 1319, 1760], raid: [392, 523, 659, 784], redeem: [587, 880] };
+let audioCtx;
+
+function chime(kind, big, volume) {
+  try {
+    audioCtx = audioCtx || new AudioContext();
+    audioCtx.resume().catch(() => {});
+    const notes = CHIME[kind] || CHIME.sub;
+    const out = audioCtx.createGain();
+    out.gain.value = volume * 0.4;
+    out.connect(audioCtx.destination);
+    const t0 = audioCtx.currentTime + 0.05;
+    const step = big ? 0.15 : 0.12;
+    const run = big ? [...notes, notes[notes.length - 1] * 2] : notes;
+    run.forEach((f, i) => note(f, t0 + i * step, i === run.length - 1 ? 1.1 : 0.45, out));
+    if (big) for (const f of notes) note(f, t0 + run.length * step, 1.8, out, 0.5);
+    return { pause() { try { out.disconnect(); } catch (_) {} } };
+  } catch (_) {
+    return null;
+  }
+}
+
+// A bell-like note: a sine with a quiet overtone, a quick start and a long fade
+function note(freq, at, length, out, level = 1) {
+  for (const [type, mult, gain] of [['sine', 1, 1], ['triangle', 2, 0.2]]) {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type;
+    o.frequency.value = freq * mult;
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(gain * level, at + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + length);
+    o.connect(g).connect(out);
+    o.start(at);
+    o.stop(at + length + 0.05);
+  }
+}
+
+function mediaHtml(a, look) {
+  if (a.image && VIDEO.test(a.image)) return `<video src="${esc(media(a.image))}" autoplay playsinline></video>`;
+  if (a.image) return `<img src="${esc(media(a.image))}" alt="">`;
+  if (a.kind === 'raid' && a.avatar) return `<img class="avatar" src="${esc(a.avatar)}" alt="" style="width:96px;height:96px">`;
+  return `<span class="icon">${look.icon}</span>`;
+}
+
+function play(a) {
+  const look = LOOK[a.kind] || LOOK.sub;
+  const el = document.createElement('div');
+  el.className = 'alert' + (a.big ? ' big' : '');
+  el.style.setProperty('--accent', look.color);
+  const msg = messageHtml(a);
+  el.innerHTML = `<div class="media">${mediaHtml(a, look)}</div>`
+    + `<div class="words"><div class="tag"><span class="dot"></span>${esc(a.big ? 'BIG ' + look.tag : look.tag)}</div>`
+    + `<div class="headline">${headline(a)}</div>${msg ? `<div class="message">${msg}</div>` : ''}</div>`
+    + `<div class="bar"><div class="bar-fill" style="animation-duration:${a.seconds}s"></div></div>`;
+  document.body.appendChild(el);
+  const volume = Math.max(0, Math.min(1, (a.volume ?? 80) / 100));
+  const sounds = [];
+  const video = el.querySelector('video');
+  if (video) { video.volume = volume; sounds.push(video); video.play().catch(() => { video.muted = true; video.play().catch(() => {}); }); }
+  if (a.sound === '@chime') {
+    const c = chime(a.kind, a.big, volume);
+    if (c) sounds.push(c);
+  } else if (a.sound) {
+    const audio = new Audio(media(a.sound));
+    audio.volume = volume;
+    audio.play().catch(() => {});
+    sounds.push(audio);
+  }
+  current = { el, sounds, timer: setTimeout(finish, Math.max(2, a.seconds || 6) * 1000) };
+}
+
+function finish() {
+  if (!current) return;
+  const { el, sounds, timer } = current;
+  current = null;
+  clearTimeout(timer);
+  for (const s of sounds) { try { s.pause(); } catch(_) {} }
+  el.classList.add('leave');
+  setTimeout(() => { el.remove(); next(); }, 450);
+}
+
+function next() {
+  if (current || !queue.length) return;
+  play(queue.shift());
+}
+
+function add(a) {
+  queue.push(a);
+  next();
+}
+
+function applySettings({ panelBgAlpha, textBrightness, overlayLanguage }) {
+  if (overlayLanguage) I18N.setLang(overlayLanguage, { save: false, tagPage: false });
+  if (panelBgAlpha != null) document.documentElement.style.setProperty('--panel-bg-alpha', panelBgAlpha);
+  if (textBrightness != null) document.documentElement.style.setProperty('--text-brightness', textBrightness);
+}
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => { clearTimeout(reconnectTimer); ws.send(JSON.stringify({ type: 'alerts-subscribe' })); };
+  ws.onclose = () => { reconnectTimer = setTimeout(connect, 3000); };
+  ws.onmessage = (e) => {
+    try {
+      const m = JSON.parse(e.data);
+      if (m.type === 'alert') add(m.alert);
+      if (m.type === 'alert-skip') finish();
+      if (m.type === 'settings') applySettings(m);
+    } catch(_) {}
+  };
+}
+
+I18N.setLang('en', { save: false, tagPage: false });
+place();
+fetch('/api/settings').then(r => r.json()).then(applySettings).catch(() => {});
+connect();
+</script>
+</body>
+</html>

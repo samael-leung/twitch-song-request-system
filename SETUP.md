@@ -301,6 +301,27 @@ Streamlabs Desktop or OBS Studio back the way you saved the mode and does this a
 
 ---
 
+## Alerts (🔔 Alerts tab)
+
+Follows, subs, gifts, cheers and raids on stream — instead of Streamlabs' Alert Box. One at a time, in
+the song list's look, worded in the overlay language. A gift of several subs is one alert.
+
+1. Add a new source → **Browser**, one of two layouts (🔔 Alerts lists them with **Copy**):
+   - `http://localhost:3000/overlay/alerts.html?layout=vertical` — picture above: Width `800`, Height `600`
+   - `http://localhost:3000/overlay/alerts.html?layout=horizontal` — picture on the left: Width `1600`, Height `300`
+2. Scale it to 50% and place it where you like (it renders at 2x). It's transparent while no alert shows.
+3. Pictures, GIFs, videos and sounds: put the files in the `alert-media` folder (in the song request folder),
+   then press **↻ Read the folder again** and pick them per kind. Without your own files, each kind shows
+   a built-in icon and plays a built-in chime (or pick *(no sound)*)
+4. Per kind: on / off, a minimum (bits, raid viewers…), how long it shows, the volume, and a **big version**
+   from an amount up (e.g. raids from 50 viewers): larger, longer, with its own picture and sound
+5. **▶ Test** shows a made-up alert on stream only — nothing is posted to Twitch. **↻ Replay** shows a recent one again.
+
+The sound follows the source's own volume and mute, so a mode that mutes the source (🎤 singing) shows alerts
+silently. Moving from Streamlabs: run both for one stream with the Alert Box muted, then remove the Alert Box.
+
+---
+
 ## Outfits (👕 Outfits tab)
 
 Viewers redeem a reward, you pick the outfit: your avatar's state in veadotube mini (2.1 or newer).

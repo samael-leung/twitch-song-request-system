@@ -79,6 +79,7 @@ vtuber-song-queue/
 │   ├── chat-badges.js     Badge pictures for the chat on stream (Helix /chat/badges, global + channel, read once)
 │   ├── veadotube.js       veadotube mini windows (~/.veadotube/instances → WebSocket): avatar states, set, thumbnails
 │   ├── outfits.js         👕 Outfit rewards: redemptions wait for the streamer's pick; time limit back to the default
+│   ├── alerts.js          🔔 Alerts from chat-log records (follow / sub / gift / cheer / raid / chosen redemptions); alerts.json
 │   ├── modes.js           Modes (🎛 tab, top-bar buttons): save / apply the streaming app's state + this app's part
 │   ├── stream-app.js      Streamlabs Desktop (Remote Control JSON-RPC) / OBS (obs-websocket 5) on this PC
 │   ├── stream-session.js  When the stream went live (stream.online / Helix /streams), for "to announce"
@@ -90,6 +91,7 @@ vtuber-song-queue/
 ├── setup/                 Web setup wizard (index.html, setup.css, setup.js, i18n.js — EN + zh-TW)
 ├── overlay/index.html     OBS Browser Source — song queue, cyberpunk dark/neon style
 ├── overlay/chat.html      OBS Browser Source — the chat on stream (?style=panel | bubble | list | row)
+├── overlay/alerts.html    OBS Browser Source — 🔔 alerts, one at a time (?layout=vertical 800×600 | horizontal 1600×300)
 ├── overlay/break.html     OBS Browser Source — "休息中 / ON BREAK" card; ?card=opening "準備中 / STARTING SOON" (?min=N / ?at=HH:MM count down)
 ├── dashboard/index.html   Streamer control panel — tabs (Song Queue: 2×2 panels, drag/drop, history, manual add; Leihu; Chat), ⚙ per tab
 ├── dashboard/links.html   YouTube link finder review page
@@ -554,6 +556,11 @@ register it in index.js.
 | POST | `/api/outfits/drop` | `{ id, refund }` — refund a waiting redemption, or just close its card |
 | POST | `/api/outfits/keep` | Stop the time limit |
 | POST | `/api/outfits/settings` | `{ rewards?, default?, window?, minutes? }` (OUTFIT_* in .env) |
+| GET | `/api/alerts` | 🔔 Per-kind settings, chosen rewards, alert-media files and folder, the latest alerts (alerts.js) |
+| POST | `/api/alerts/settings` | `{ kinds?: { follow?: { on?, min?, seconds?, image?, sound?, volume?, bigAt?, bigSeconds?, bigImage?, bigSound? } }, rewards? }` |
+| POST | `/api/alerts/test` | `{ kind, big? }` — a made-up alert on stream only |
+| POST | `/api/alerts/replay` | `{ id }` — show a recent alert again |
+| POST | `/api/alerts/skip` | End the alert showing now |
 | GET | `/api/chat/days` | Days with a chat log, newest first |
 | GET | `/api/chat/log?day=YYYY-MM-DD` | One day's chat records, with deletions, redemption statuses, first messages and ✓ marks applied |
 | GET | `/api/credits` | `{follows, lastAt, groups}` — who `!endingtk` would thank now; follows: `on` / `no-permission` / `failed` |

@@ -26,6 +26,7 @@ Twitch 頻道點數點歌，附 OBS 顯示層與連麥 Shoutout 功能。
 | 歌單顯示層 | `http://localhost:3000/overlay/index.html` | 960×1470，縮小至 50%（480×735） |
 | Clip Player | `http://localhost:3000/clip-player/index.html` | 1920×1080 |
 | 聊天室 | `http://localhost:3000/overlay/chat.html?style=panel`（或 `bubble`、`list`、`row` 橫向一排） | 例如 960×1080（`row`：3840×200），縮小至 50% |
+| 通知 | `http://localhost:3000/overlay/alerts.html?layout=vertical`（或 `horizontal`） | 800×600（`horizontal`：1600×300），縮小至 50% |
 
 歌單顯示層 Custom CSS：
 ```css

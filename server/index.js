@@ -29,6 +29,7 @@ const chatSend = require('./chat-send');
 const chatMod = require('./chat-mod');
 const modes = require('./modes');
 const outfits = require('./outfits');
+const alerts = require('./alerts');
 const streamApp = require('./stream-app');
 const streamSession = require('./stream-session');
 const { generateIfMissing: generateSponsorVoice } = require('./sponsor-voice');
@@ -72,6 +73,7 @@ app.use('/overlay', express.static(path.join(__dirname, '..', 'overlay')));
 app.use('/dashboard', express.static(path.join(__dirname, '..', 'dashboard')));
 app.use('/setup', express.static(path.join(__dirname, '..', 'setup')));
 app.use('/clip-player', express.static(path.join(__dirname, '..', 'clip-player')));
+app.use('/alert-media', express.static(alerts.MEDIA_DIR));   // the alerts' pictures and sounds (alerts.js)
 app.use('/shared', express.static(path.join(__dirname, '..', 'shared')));   // language helper + strings
 app.use('/docs', express.static(path.join(__dirname, '..', 'docs')));       // starter guide, song list template
 
@@ -163,6 +165,7 @@ setStreamHandler(streamSession.onEvent);
 streamSession.init(session => sendChat({ type: 'chat-session', ...session }));
 modes.init(msg => sendChat(msg));   // after mediaQueue.init: a mode may hold clips
 outfits.init({ send: msg => sendChat(msg), saveEnv: values => setupRouter.writeEnvValues(values) });
+alerts.init(msg => sendAlerts(msg));
 
 // Returns the matching random-reward config object if the given rewardId is
 // a configured random reward, or null if it isn't.
@@ -925,6 +928,25 @@ app.post('/api/outfits/settings', (req, res) => {
   }
 });
 
+// 🔔 Alerts (server/alerts.js): settings, the alert-media files, the latest alerts; test, replay, skip
+app.get('/api/alerts', (req, res) => res.json(alerts.status()));
+app.post('/api/alerts/settings', (req, res) => {
+  try {
+    res.json(alerts.update(req.body || {}));
+  } catch (err) {
+    res.status(err.messageCode ? 400 : 500).json(errorBody(err));
+  }
+});
+app.post('/api/alerts/test', (req, res) => {
+  try {
+    res.json({ ok: true, alert: alerts.test(String(req.body.kind || ''), !!req.body.big) });
+  } catch (err) {
+    res.status(err.messageCode ? 400 : 500).json(errorBody(err));
+  }
+});
+app.post('/api/alerts/replay', (req, res) => res.json({ ok: !!alerts.replay(String(req.body.id || '')) }));
+app.post('/api/alerts/skip', (req, res) => { alerts.skip(); res.json({ ok: true }); });
+
 // Chat ⚙: every reward, and taking over one made on Twitch ({ id, action: 'start' | 'finish' | 'cancel' })
 app.get('/api/rewards', async (req, res) => {
   try {
@@ -951,6 +973,14 @@ function sendChat(msg) {
   }
 }
 
+// Alerts go to the alert overlays (overlay/alerts.html) and the dashboards (their list of the latest)
+function sendAlerts(msg) {
+  const str = JSON.stringify(msg);
+  for (const client of wss.clients) {
+    if ((client.wantsAlerts || client.wantsChat) && client.readyState === 1) client.send(str);
+  }
+}
+
 // ── WebSocket (overlay + clip-player + dashboard) ────────────────────────────
 wss.on('connection', (ws, req) => {
   console.log(`[ws] Client connected from ${req.socket.remoteAddress}`);
@@ -960,6 +990,7 @@ wss.on('connection', (ws, req) => {
       const msg = JSON.parse(data.toString());
       if (msg.type === 'media-ended') mediaQueue.onEnded(msg.mediaId);
       if (msg.type === 'chat-subscribe') ws.wantsChat = true;
+      if (msg.type === 'alerts-subscribe') ws.wantsAlerts = true;
     } catch {}
   });
 });
@@ -980,7 +1011,14 @@ async function start() {
   }
 
   generateSponsorVoice();
-  await chatLog.init(sendChat).catch(err => console.error('[chat-log] Could not read the chat log:', err.message));
+  // Every new chat-log record may be an alert (a follow, sub, gift, cheer, raid, chosen redemption)
+  const sendChatAndAlert = (msg) => {
+    sendChat(msg);
+    if (msg.type !== 'chat') return;
+    try { alerts.fromRecord(msg.record); } catch (err) { console.error('[alerts] Could not make an alert:', err.message); }
+  };
+  await chatLog.init(sendChatAndAlert).catch(err => console.error('[chat-log] Could not read the chat log:', err.message));
+  fs.mkdirSync(alerts.MEDIA_DIR, { recursive: true });
   leihu.start();
 
   server.listen(PORT, () => {

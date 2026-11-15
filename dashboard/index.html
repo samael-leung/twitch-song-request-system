@@ -767,6 +767,22 @@
   .picker-item .st { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
   .picker-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
+  /* 🔔 Alerts tab */
+  .al-kinds { display: flex; flex-direction: column; gap: 8px; }
+  .al-kind { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .al-kind.off { opacity: .6; }
+  .al-row { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; font-size: 13px; color: var(--text-dim); }
+  .al-row label { display: inline-flex; align-items: center; gap: 5px; }
+  .al-row .al-name { min-width: 150px; font-size: 14px; color: var(--text); }
+  .al-row .modes-input { max-width: 190px; font-size: 12px; }
+  .al-row .btn { font-size: 12px; padding: 3px 10px; margin-left: auto; }
+  .al-big { padding-left: 22px; border-top: 1px dashed var(--border); padding-top: 6px; }
+  .al-rewards { display: flex; flex-wrap: wrap; gap: 4px 14px; padding-left: 22px; font-size: 13px; }
+  .al-recent { display: flex; flex-direction: column; gap: 4px; }
+  .al-recent-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .al-recent-row .st { color: var(--text-dim); font-size: 12px; }
+  .al-recent-row .btn { font-size: 12px; padding: 2px 9px; margin-left: auto; }
+
   /* 👕 Outfits: the tab, and the pick card that pops up on any tab for a waiting redemption */
   .outfit-grid { display: flex; flex-wrap: wrap; gap: 8px; }
   .outfit {
@@ -932,6 +948,7 @@
   <button class="tab" role="tab" id="tabbtn-chat" data-tab="chat" aria-controls="tab-chat" onclick="showTab('chat')"><span data-i18n="dash.tab.chat">💬 Chat</span><span class="tab-count" id="chat-unread" hidden></span></button>
   <button class="tab" role="tab" id="tabbtn-modes" data-tab="modes" aria-controls="tab-modes" onclick="showTab('modes')" data-i18n="dash.tab.modes">🎛 Modes</button>
   <button class="tab" role="tab" id="tabbtn-outfits" data-tab="outfits" aria-controls="tab-outfits" onclick="showTab('outfits')"><span data-i18n="dash.tab.outfits">👕 Outfits</span><span class="tab-count" id="outfit-count" hidden></span></button>
+  <button class="tab" role="tab" id="tabbtn-alerts" data-tab="alerts" aria-controls="tab-alerts" onclick="showTab('alerts')" data-i18n="dash.tab.alerts">🔔 Alerts</button>
   <!-- The chat beside the other tabs: open / close (placeChat) -->
   <button class="tab dock-btn" id="dock-btn" type="button" onclick="toggleChatDock()" aria-pressed="false">💬<span class="tab-count" id="dock-unread" hidden></span> <span id="dock-arrow">◂</span></button>
 </nav>
@@ -1117,6 +1134,30 @@
     <p class="setting-hint" data-i18n="dash.modes.intro"></p>
     <div class="modes-row" id="modes-presets" hidden></div>
     <div class="modes-list" id="modes-list"></div>
+  </div>
+</div>
+
+<div class="tab-page" id="tab-alerts" role="tabpanel" aria-labelledby="tabbtn-alerts" hidden>
+  <div class="modes-page">
+    <section class="modes-box">
+      <h3 data-i18n="dash.alerts.title">Alerts on stream</h3>
+      <p class="setting-hint" data-i18n="dash.alerts.intro"></p>
+      <div id="al-urls"></div>
+      <div class="modes-row">
+        <button class="btn" type="button" onclick="alertPost('/api/alerts/skip')" data-i18n="dash.alerts.skip">⏭ Skip the one showing</button>
+        <button class="btn" type="button" onclick="loadAlerts()" data-i18n="dash.alerts.reload">↻ Read the folder again</button>
+      </div>
+      <p class="setting-hint" id="al-folder"></p>
+    </section>
+    <section class="modes-box">
+      <h3 data-i18n="dash.alerts.kindsTitle">What shows</h3>
+      <p class="setting-hint" data-i18n="dash.alerts.kindsHint"></p>
+      <div class="al-kinds" id="al-kinds"></div>
+    </section>
+    <section class="modes-box">
+      <h3 data-i18n="dash.alerts.recentTitle">Latest alerts</h3>
+      <div class="al-recent" id="al-recent"></div>
+    </section>
   </div>
 </div>
 
@@ -1310,6 +1351,7 @@ function connect() {
       else if (m.type === 'chat-session') loadChatSession().then(() => { linkSession(); rerenderChat(); });
       else if (m.type === 'modes') onModesMessage(m);
       else if (m.type === 'outfits') { outfits.status = m; paintOutfits(); }
+      else if (m.type === 'alert') onAlertMessage(m.alert);
     } catch(_){}
   };
 }
@@ -2083,7 +2125,7 @@ async function pollLeihu() {
 
 // ── Tabs ── Each tab is a button in .tabs and a .tab-page; #leihu in the address keeps the tab
 // on reload. Planned: chat room, rewards, OBS / Streamlabs control — add them here and in the markup.
-const TABS = ['queue', 'leihu', 'chat', 'modes', 'outfits'];
+const TABS = ['queue', 'leihu', 'chat', 'modes', 'outfits', 'alerts'];
 let currentTab = 'queue';
 
 function showTab(name) {
@@ -2103,6 +2145,7 @@ function showTab(name) {
   if (name === 'chat') loadChatDays();
   if (name === 'modes') loadModes(true);
   if (name === 'outfits') { loadOutfits(); loadOutfitRewards(); }
+  if (name === 'alerts') loadAlerts();
   paintOutfitPick();
 }
 
@@ -3485,6 +3528,131 @@ I18N.onChange(() => {
   paintModeBar();
   if (currentTab === 'modes') paintModes();
 });
+
+// ── 🔔 Alerts (server/alerts.js, overlay/alerts.html) ──────────────────────────
+// Per kind: on, minimum, seconds, picture, sound, volume, and the big version from an amount up.
+// Test shows a made-up one on stream only; the latest real ones can be replayed.
+const ALERT_KINDS = ['follow', 'sub', 'gift', 'cheer', 'raid', 'redeem'];
+const ALERT_AMOUNT = { sub: 'months', gift: 'count', cheer: 'bits', raid: 'viewers' };
+const ALERT_ICONS = { follow: '💜', sub: '⭐', gift: '🎁', cheer: '💎', raid: '🚀', redeem: '🎟' };
+const ALERT_LAYOUTS = { vertical: '800 × 600', horizontal: '1600 × 300' };
+const alertsView = { status: null, rewards: null };
+
+async function loadAlerts() {
+  try {
+    alertsView.status = await (await fetch('/api/alerts')).json();
+  } catch(_) { return; }
+  paintAlerts();
+  if (!alertsView.rewards) loadAlertRewards();
+}
+
+async function loadAlertRewards() {
+  try {
+    const res = await fetch('/api/rewards');
+    const body = await res.json();
+    if (res.ok) alertsView.rewards = body.rewards;
+  } catch(_) {}
+  paintAlerts();
+}
+
+function alertFileOptions(selected, sound) {
+  const files = alertsView.status.files.filter(f => sound ? /\.(mp3|wav|ogg|m4a)$/i.test(f) : !/\.(mp3|wav|ogg|m4a)$/i.test(f));
+  return `<option value="">${esc(t(sound ? 'dash.alerts.noSound' : 'dash.alerts.noPicture'))}</option>`
+    + (sound ? `<option value="@chime"${selected === '@chime' ? ' selected' : ''}>${esc(t('dash.alerts.chime'))}</option>` : '')
+    + files.map(f => `<option value="${esc(f)}"${f === selected ? ' selected' : ''}>${esc(f)}</option>`).join('');
+}
+
+function paintAlerts() {
+  const st = alertsView.status;
+  if (!st) return;
+  document.getElementById('al-urls').innerHTML = Object.entries(ALERT_LAYOUTS).map(([layout, size]) => {
+    const url = `${location.origin}/overlay/alerts.html?layout=${layout}`;
+    return `<div class="co-url"><b>${esc(t('dash.alerts.layout.' + layout, { size }))}</b><code title="${esc(url)}">${esc(url)}</code>`
+      + `<button class="btn" type="button" data-url="${esc(url)}">${esc(t('dash.chat.overlayCopy'))}</button></div>`;
+  }).join('');
+  document.getElementById('al-folder').textContent = t('dash.alerts.folder', { folder: st.folder });
+  document.getElementById('al-kinds').innerHTML = ALERT_KINDS.map((k) => {
+    const c = st.kinds[k];
+    const amount = ALERT_AMOUNT[k];
+    const num = (key, min, max) => `<input type="number" class="cooldown-input" data-k="${k}" data-key="${key}" min="${min}" max="${max}" step="1" value="${Number(c[key]) || 0}">`;
+    const unit = amount ? esc(t('dash.alerts.unit.' + k)) : '';
+    let html = `<div class="al-kind${c.on ? '' : ' off'}">`
+      + `<div class="al-row"><label class="al-name"><input type="checkbox" data-k="${k}" data-key="on"${c.on ? ' checked' : ''}> ${ALERT_ICONS[k]} ${esc(t('dash.alerts.kind.' + k))}</label>`
+      + (k === 'cheer' || k === 'raid' ? `<label>${esc(t('dash.alerts.min'))} ${num('min', 0, 1000000)} ${unit}</label>` : '')   // subs and gifts: every one
+      + `<label>${num('seconds', 2, 60)} ${esc(t('dash.alerts.seconds'))}</label>`
+      + `<select class="modes-input" data-k="${k}" data-key="image" title="${esc(t('dash.alerts.picture'))}">${alertFileOptions(c.image, false)}</select>`
+      + `<select class="modes-input" data-k="${k}" data-key="sound" title="${esc(t('dash.alerts.sound'))}">${alertFileOptions(c.sound, true)}</select>`
+      + `<label title="${esc(t('dash.alerts.volume'))}">🔊 <input type="range" class="opacity-slider" min="0" max="100" step="5" data-k="${k}" data-key="volume" value="${Number(c.volume) || 0}"></label>`
+      + `<button class="btn" type="button" data-test="${k}">${esc(t('dash.alerts.test'))}</button></div>`;
+    if (amount) {
+      html += `<div class="al-row al-big"><label>${esc(t('dash.alerts.bigFrom'))} ${num('bigAt', 0, 1000000)} ${unit}</label>`
+        + `<label>${num('bigSeconds', 2, 60)} ${esc(t('dash.alerts.seconds'))}</label>`
+        + `<select class="modes-input" data-k="${k}" data-key="bigImage" title="${esc(t('dash.alerts.picture'))}">${alertFileOptions(c.bigImage, false).replace(esc(t('dash.alerts.noPicture')), esc(t('dash.alerts.samePicture')))}</select>`
+        + `<select class="modes-input" data-k="${k}" data-key="bigSound" title="${esc(t('dash.alerts.sound'))}">${alertFileOptions(c.bigSound, true).replace(esc(t('dash.alerts.noSound')), esc(t('dash.alerts.sameSound')))}</select>`
+        + `<button class="btn" type="button" data-test="${k}" data-big="1"${c.bigAt ? '' : ' disabled'}>${esc(t('dash.alerts.testBig'))}</button></div>`;
+    }
+    if (k === 'redeem') {
+      const rewards = (alertsView.rewards || []).filter(r => r.role !== 'song' && r.role !== 'random');
+      html += `<div class="al-rewards">${rewards.length ? rewards.map(r =>
+        `<label><input type="checkbox" data-alert-reward="${esc(r.id)}"${st.rewards.includes(r.id) ? ' checked' : ''}> ${esc(r.title)}</label>`).join('')
+        : esc(t(alertsView.rewards ? 'dash.chat.rewardsNone' : 'dash.chat.rewardsLoading'))}</div>`;
+    }
+    return html + '</div>';
+  }).join('');
+  document.getElementById('al-recent').innerHTML = st.recent.length ? st.recent.map(a => {
+    const time = new Date(a.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const amount = ALERT_AMOUNT[a.kind] && a[ALERT_AMOUNT[a.kind]] ? ` · ${a[ALERT_AMOUNT[a.kind]]} ${t('dash.alerts.unit.' + a.kind)}` : '';
+    return `<div class="al-recent-row"><span class="st">${esc(time)}</span><span>${ALERT_ICONS[a.kind] || ''} ${esc(a.name || t('dash.alerts.anonymous'))}${esc(amount)}</span>`
+      + (a.big ? `<span class="chat-tag">${esc(t('dash.alerts.big'))}</span>` : '') + (a.test ? `<span class="chat-tag">${esc(t('dash.alerts.testTag'))}</span>` : '')
+      + `<button class="btn" type="button" data-replay="${esc(a.id)}">${esc(t('dash.alerts.replay'))}</button></div>`;
+  }).join('') : `<p class="setting-hint">${esc(t('dash.alerts.noneYet'))}</p>`;
+}
+
+async function alertPost(url, body) {
+  try {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+    const out = await res.json();
+    if (!res.ok) throw new Error(I18N.server(out, 'dash.toast.requestFailed'));
+    return out;
+  } catch (err) {
+    showToast(err.message, true);
+    loadAlerts();
+    return null;
+  }
+}
+
+document.getElementById('tab-alerts').addEventListener('change', async (e) => {
+  const el = e.target;
+  if (el.dataset.alertReward !== undefined) {
+    const ids = [...document.querySelectorAll('[data-alert-reward]')].filter(x => x.checked).map(x => x.dataset.alertReward);
+    const out = await alertPost('/api/alerts/settings', { rewards: ids });
+    if (out) { alertsView.status = out; paintAlerts(); }
+    return;
+  }
+  if (!el.dataset.k) return;
+  const value = el.type === 'checkbox' ? el.checked : el.type === 'number' || el.type === 'range' ? Number(el.value) : el.value;
+  const out = await alertPost('/api/alerts/settings', { kinds: { [el.dataset.k]: { [el.dataset.key]: value } } });
+  if (out) { alertsView.status = out; paintAlerts(); }
+});
+
+document.getElementById('tab-alerts').addEventListener('click', async (e) => {
+  const copy = e.target.closest('[data-url]');
+  if (copy) {
+    try { await navigator.clipboard.writeText(copy.dataset.url); showToast(t('dash.chat.overlayCopied')); } catch(_) { showToast(copy.dataset.url, true); }
+    return;
+  }
+  const test = e.target.closest('[data-test]');
+  if (test) { await alertPost('/api/alerts/test', { kind: test.dataset.test, big: !!test.dataset.big }); return; }
+  const replay = e.target.closest('[data-replay]');
+  if (replay) { await alertPost('/api/alerts/replay', { id: replay.dataset.replay }); return; }
+});
+
+// A new alert (real or test): the tab's list of the latest
+function onAlertMessage(a) {
+  if (!alertsView.status || a.replay) return;
+  alertsView.status.recent = [a, ...alertsView.status.recent].slice(0, 20);
+  if (currentTab === 'alerts') paintAlerts();
+}
 
 // ── 👕 Outfits (server/outfits.js, veadotube.js) ───────────────────────────────
 // veadotube's windows and their avatar states as pictures: a click wears one, ☆ makes it the default
