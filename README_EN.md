@@ -38,7 +38,7 @@ Works with [Leihu Singsing](https://github.com/LeihuTW/Leihu-singsing), which ma
 Instead of Streamlabs' Alert Box: follows, subs, gift subs, cheers and raids, one at a time, in the overlay
 theme and language.
 - Each kind has on / off, a minimum, how long it shows, and a picture, GIF, video and sound from the
-  `alert-media` folder (or a built-in chime).
+  `alert-media` folder (or a built-in chime); one default sound for all, unless a kind picks its own.
 - A **big version** from an amount up (e.g. raids from 50 viewers); a gift of several subs is one alert.
 - **▶ Test** shows on stream only — nothing goes to Twitch.
 

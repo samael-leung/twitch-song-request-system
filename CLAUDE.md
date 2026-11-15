@@ -564,8 +564,8 @@ register it in index.js.
 | POST | `/api/outfits/drop` | `{ id, refund }` — refund a waiting redemption, or just close its card |
 | POST | `/api/outfits/keep` | Stop the time limit |
 | POST | `/api/outfits/settings` | `{ rewards?, default?, window?, minutes? }` (OUTFIT_* in .env) |
-| GET | `/api/alerts` | 🔔 Per-kind settings, alert-media files and folder, the latest alerts (alerts.js) |
-| POST | `/api/alerts/settings` | `{ kinds?: { follow?: { on?, min?, seconds?, image?, sound?, volume?, bigAt?, bigSeconds?, bigImage?, bigSound? } } }` |
+| GET | `/api/alerts` | 🔔 Per-kind settings (sound '@default' = defaultSound), alert-media files and folder, the latest alerts (alerts.js) |
+| POST | `/api/alerts/settings` | `{ defaultSound?, kinds?: { follow?: { on?, min?, seconds?, image?, sound?, volume?, bigAt?, bigSeconds?, bigImage?, bigSound? } } }` |
 | POST | `/api/alerts/test` | `{ kind, big? }` — a made-up alert on stream only |
 | POST | `/api/alerts/replay` | `{ id }` — show a recent alert again |
 | POST | `/api/alerts/skip` | End the alert showing now |

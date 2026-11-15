@@ -5,7 +5,8 @@
 // the alert-media folder — and a "big" version from an amount up (raid ≥ 50 viewers, ≥ 10 gifts…).
 // A gift of several subs is one alert (Twitch's line for each gift in it is left out). The overlay
 // words them in the overlay language and shows one at a time. Settings are kept in alerts.json.
-// The sound '@chime' is the overlay's own built-in chime (no file), the default for every kind.
+// The sound '@chime' is the overlay's own built-in chime (no file). '@default' is the default sound — one
+// setting every kind uses unless it picks its own (the chime, until the streamer picks another).
 
 const fs = require('fs');
 const path = require('path');
@@ -16,13 +17,14 @@ const MEDIA_DIR = process.env.ALERT_MEDIA_DIR || path.join(__dirname, '..', 'ale
 const MEDIA = /\.(png|gif|jpe?g|webp|apng|mp4|webm|mp3|wav|ogg|m4a)$/i;
 const RECENT_MAX = 20;
 const CHIME = '@chime';
+const DEFAULT = '@default';
 
 const KINDS = ['follow', 'sub', 'gift', 'cheer', 'raid'];
 // The amount the minimum and the big version go by (none for follows and redemptions)
 const AMOUNT = { sub: 'months', gift: 'count', cheer: 'bits', raid: 'viewers' };
 const SUB_NOTICES = ['sub', 'resub', 'gift_paid_upgrade', 'prime_paid_upgrade', 'pay_it_forward'];
 
-const kind = (on, seconds, extra = {}) => ({ on, min: 0, seconds, image: '', sound: CHIME, volume: 80, bigAt: 0, bigSeconds: 10, bigImage: '', bigSound: '', ...extra });
+const kind = (on, seconds, extra = {}) => ({ on, min: 0, seconds, image: '', sound: DEFAULT, volume: 80, bigAt: 0, bigSeconds: 10, bigImage: '', bigSound: '', ...extra });
 const DEFAULTS = {
   follow: kind(true, 5),
   sub: kind(true, 7, { bigAt: 12 }),
@@ -43,7 +45,9 @@ function load() {
   try { saved = JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch {}
   const kinds = {};
   for (const k of KINDS) kinds[k] = { ...DEFAULTS[k], ...(saved.kinds && saved.kinds[k]) };
-  return { kinds };
+  // Saved before there was a default sound: the chime was everyone's default, so it is the default sound now
+  if (saved.defaultSound === undefined) for (const k of KINDS) if (kinds[k].sound === CHIME) kinds[k].sound = DEFAULT;
+  return { kinds, defaultSound: typeof saved.defaultSound === 'string' ? saved.defaultSound : CHIME };
 }
 
 function save() {
@@ -60,12 +64,17 @@ function files() {
 }
 
 function status() {
-  return { kinds: data.kinds, files: files(), folder: MEDIA_DIR, recent };
+  return { kinds: data.kinds, defaultSound: data.defaultSound, files: files(), folder: MEDIA_DIR, recent };
 }
 
-// { kinds?: { follow?: { on?, min?, … } } }
+// { defaultSound?, kinds?: { follow?: { on?, min?, … } } }
 function update(updates) {
   const have = files();
+  if (updates.defaultSound !== undefined) {
+    const v = String(updates.defaultSound || '');
+    if (v && v !== CHIME && !have.includes(v)) throw new UserError('alertBadSetting', {}, `${v} is not in the alert-media folder`);
+    data.defaultSound = v;
+  }
   for (const [k, changes] of Object.entries(updates.kinds || {})) {
     if (!KINDS.includes(k) || !changes || typeof changes !== 'object') throw new UserError('alertBadSetting', {}, `unknown alert kind ${k}`);
     const next = { ...data.kinds[k] };
@@ -76,7 +85,8 @@ function update(updates) {
         if (!Number.isFinite(n) || n < LIMITS[key][0] || n > LIMITS[key][1]) throw new UserError('alertBadSetting', {}, `${k}.${key} must be from ${LIMITS[key][0]} to ${LIMITS[key][1]}`);
         next[key] = Math.round(n);
       } else if (['image', 'sound', 'bigImage', 'bigSound'].includes(key)) {
-        if (value && value !== CHIME && !have.includes(String(value))) throw new UserError('alertBadSetting', {}, `${value} is not in the alert-media folder`);
+        const sound = key === 'sound' || key === 'bigSound';
+        if (value && !(sound && (value === CHIME || value === DEFAULT)) && !have.includes(String(value))) throw new UserError('alertBadSetting', {}, `${value} is not in the alert-media folder`);
         next[key] = value ? String(value) : '';
       } else {
         throw new UserError('alertBadSetting', {}, `unknown setting ${k}.${key}`);
@@ -106,6 +116,8 @@ function alertFor(rec) {
   return null;
 }
 
+const soundOf = s => (s === DEFAULT ? data.defaultSound : s);
+
 // What the overlay shows: the event, its words' details, and how (from the kind's settings)
 function build(a, rec, test) {
   const cfg = data.kinds[a.kind];
@@ -120,7 +132,7 @@ function build(a, rec, test) {
     big,
     seconds: big ? cfg.bigSeconds : cfg.seconds,
     image: (big && cfg.bigImage) || cfg.image,
-    sound: (big && cfg.bigSound) || cfg.sound,
+    sound: soundOf((big && cfg.bigSound) || cfg.sound),
     volume: cfg.volume,
     test: !!test,
   };

@@ -67,11 +67,26 @@ test('settings are checked, saved and read back', () => {
   assert.throws(() => alerts.update({ kinds: { raid: { image: 'missing.png' } } }), { messageCode: 'alertBadSetting' });
   assert.throws(() => alerts.update({ kinds: { nope: { on: true } } }), { messageCode: 'alertBadSetting' });
   assert.throws(() => alerts.update({ kinds: { raid: { colour: 'red' } } }), { messageCode: 'alertBadSetting' });
-  assert.strictEqual(alerts.status().kinds.follow.sound, '@chime');   // the built-in chime by default
+  assert.strictEqual(alerts.status().kinds.follow.sound, '@default');   // the default sound…
+  assert.strictEqual(alerts.status().defaultSound, '@chime');           // …which is the built-in chime
+  assert.throws(() => alerts.update({ defaultSound: 'missing.mp3' }), { messageCode: 'alertBadSetting' });
+  assert.throws(() => alerts.update({ kinds: { raid: { image: '@default' } } }), { messageCode: 'alertBadSetting' });
   alerts.update({ kinds: { follow: { sound: '' }, raid: { bigSound: '@chime' } } });
   assert.deepStrictEqual([alerts.status().kinds.follow.sound, alerts.status().kinds.raid.bigSound], ['', '@chime']);
   alerts.update({ kinds: { cheer: { min: 100, volume: 40 } } });
   alerts._reset();   // from alerts.json again
   assert.deepStrictEqual([alerts.status().kinds.cheer.min, alerts.status().kinds.cheer.volume], [100, 40]);
   assert.deepStrictEqual(alerts.files(), ['horn.mp3', 'raid.gif']);
+});
+
+test('the default sound: every kind on it follows, a kind can pick its own, an old alerts.json keeps the chime', () => {
+  alerts.update({ defaultSound: 'horn.mp3', kinds: { raid: { bigAt: 50, bigSound: '' }, cheer: { sound: '' } } });
+  assert.strictEqual(alerts.fromRecord(notice('resub', { months: 2, tier: '1000' })).sound, 'horn.mp3');
+  assert.strictEqual(alerts.fromRecord(notice('raid', { viewers: 60 })).sound, 'horn.mp3');   // big: same sound = the default
+  assert.strictEqual(alerts.fromRecord({ kind: 'chat', user: user('Usagi'), bits: 100, parts: [] }).sound, '');   // its own: none
+
+  fs.writeFileSync(process.env.ALERTS_FILE, JSON.stringify({ kinds: { follow: { sound: '@chime' }, sub: { sound: 'horn.mp3' } } }));
+  alerts._reset();
+  const st = alerts.status();
+  assert.deepStrictEqual([st.defaultSound, st.kinds.follow.sound, st.kinds.sub.sound], ['@chime', '@default', 'horn.mp3']);
 });

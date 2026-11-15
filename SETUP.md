@@ -316,7 +316,8 @@ the overlay theme (🎨 Look & overlays), worded in the overlay language. A gift
 2. Scale it to 50% and place it where you like (it renders at 2x). It's transparent while no alert shows.
 3. Pictures, GIFs, videos and sounds: put the files in the `alert-media` folder (in the song request folder),
    then press **↻ Read the folder again** and pick them per kind. Without your own files, each kind shows
-   a built-in icon and plays a built-in chime (or pick *(no sound)*)
+   a built-in icon and plays a built-in chime (or pick *(no sound)*). **🔊 Default sound** (above the kinds) is the
+   sound every kind set to *(default: …)* plays — that's every kind at first — so one pick changes them all
 4. Per kind: on / off, a minimum (bits, raid viewers…), how long it shows, the volume, and a **big version**
    from an amount up (e.g. raids from 50 viewers): larger, longer, with its own picture and sound
 5. **▶ Test** shows a made-up alert on stream only — nothing is posted to Twitch. **↻ Replay** shows a recent one again.

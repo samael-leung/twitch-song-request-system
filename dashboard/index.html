@@ -783,6 +783,8 @@
   .al-row .al-name { min-width: 150px; font-size: 14px; color: var(--text); }
   .al-row .modes-input { max-width: 190px; font-size: 12px; }
   .al-row .btn { font-size: 12px; padding: 3px 10px; margin-left: auto; }
+  .al-default { margin-bottom: 8px; }
+  .al-default .modes-input { max-width: 260px; }
   .al-big { padding-left: 22px; border-top: 1px dashed var(--border); padding-top: 6px; }
   .al-row .btn + .btn { margin-left: 0; }
   .fx-state { display: inline-flex; gap: 4px; }
@@ -1240,6 +1242,7 @@
     <section class="modes-box">
       <h3 data-i18n="dash.alerts.kindsTitle">What shows</h3>
       <p class="setting-hint" data-i18n="dash.alerts.kindsHint"></p>
+      <div class="al-row al-default" id="al-default"></div>
       <div class="al-kinds" id="al-kinds"></div>
     </section>
     <section class="modes-box" id="fx-box">
@@ -3790,9 +3793,14 @@ async function loadAlerts() {
   loadEffects();
 }
 
-function alertFileOptions(selected, sound) {
+// A sound's name as the lists show it
+const alertSoundName = s => (s === '@chime' ? t('dash.alerts.chime') : s || t('dash.alerts.noSound'));
+
+// The choices for a picture or a sound; a kind's sound can also be the default sound (not the default itself)
+function alertFileOptions(selected, sound, { withDefault = sound, none } = {}) {
   const files = alertsView.status.files.filter(f => sound ? /\.(mp3|wav|ogg|m4a)$/i.test(f) : !/\.(mp3|wav|ogg|m4a)$/i.test(f));
-  return `<option value="">${esc(t(sound ? 'dash.alerts.noSound' : 'dash.alerts.noPicture'))}</option>`
+  return (withDefault ? `<option value="@default"${selected === '@default' ? ' selected' : ''}>${esc(t('dash.alerts.useDefault', { sound: alertSoundName(alertsView.status.defaultSound) }))}</option>` : '')
+    + `<option value=""${selected ? '' : ' selected'}>${esc(none || t(sound ? 'dash.alerts.noSound' : 'dash.alerts.noPicture'))}</option>`
     + (sound ? `<option value="@chime"${selected === '@chime' ? ' selected' : ''}>${esc(t('dash.alerts.chime'))}</option>` : '')
     + files.map(f => `<option value="${esc(f)}"${f === selected ? ' selected' : ''}>${esc(f)}</option>`).join('');
 }
@@ -3806,6 +3814,8 @@ function paintAlerts() {
       + `<button class="btn" type="button" data-url="${esc(url)}">${esc(t('dash.chat.overlayCopy'))}</button></div>`;
   }).join('');
   document.getElementById('al-folder').textContent = t('dash.alerts.folder', { folder: st.folder });
+  document.getElementById('al-default').innerHTML = `<label title="${esc(t('dash.alerts.defaultSoundTip'))}">${esc(t('dash.alerts.defaultSound'))} `
+    + `<select class="modes-input" data-alert-default>${alertFileOptions(st.defaultSound, true, { withDefault: false })}</select></label>`;
   document.getElementById('al-kinds').innerHTML = ALERT_KINDS.map((k) => {
     const c = st.kinds[k];
     const amount = ALERT_AMOUNT[k];
@@ -3822,8 +3832,8 @@ function paintAlerts() {
     if (amount) {
       html += `<div class="al-row al-big"><label>${esc(t('dash.alerts.bigFrom'))} ${num('bigAt', 0, 1000000)} ${unit}</label>`
         + `<label>${num('bigSeconds', 2, 60)} ${esc(t('dash.alerts.seconds'))}</label>`
-        + `<select class="modes-input" data-k="${k}" data-key="bigImage" title="${esc(t('dash.alerts.picture'))}">${alertFileOptions(c.bigImage, false).replace(esc(t('dash.alerts.noPicture')), esc(t('dash.alerts.samePicture')))}</select>`
-        + `<select class="modes-input" data-k="${k}" data-key="bigSound" title="${esc(t('dash.alerts.sound'))}">${alertFileOptions(c.bigSound, true).replace(esc(t('dash.alerts.noSound')), esc(t('dash.alerts.sameSound')))}</select>`
+        + `<select class="modes-input" data-k="${k}" data-key="bigImage" title="${esc(t('dash.alerts.picture'))}">${alertFileOptions(c.bigImage, false, { none: t('dash.alerts.samePicture') })}</select>`
+        + `<select class="modes-input" data-k="${k}" data-key="bigSound" title="${esc(t('dash.alerts.sound'))}">${alertFileOptions(c.bigSound, true, { none: t('dash.alerts.sameSound') })}</select>`
         + `<button class="btn" type="button" data-test="${k}" data-big="1"${c.bigAt ? '' : ' disabled'}>${esc(t('dash.alerts.testBig'))}</button></div>`;
     }
     return html + '</div>';
@@ -3852,6 +3862,11 @@ async function alertPost(url, body) {
 
 document.getElementById('tab-alerts').addEventListener('change', async (e) => {
   const el = e.target;
+  if (el.dataset.alertDefault !== undefined) {
+    const out = await alertPost('/api/alerts/settings', { defaultSound: el.value });
+    if (out) { alertsView.status = out; paintAlerts(); }
+    return;
+  }
   if (!el.dataset.k) return;
   const value = el.type === 'checkbox' ? el.checked : el.type === 'number' || el.type === 'range' ? Number(el.value) : el.value;
   const out = await alertPost('/api/alerts/settings', { kinds: { [el.dataset.k]: { [el.dataset.key]: value } } });
