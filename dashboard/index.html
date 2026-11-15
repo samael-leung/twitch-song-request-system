@@ -784,7 +784,16 @@
   .al-row .modes-input { max-width: 190px; font-size: 12px; }
   .al-row .btn { font-size: 12px; padding: 3px 10px; margin-left: auto; }
   .al-big { padding-left: 22px; border-top: 1px dashed var(--border); padding-top: 6px; }
-  .al-rewards { display: flex; flex-wrap: wrap; gap: 4px 14px; padding-left: 22px; font-size: 13px; }
+  .al-row .btn + .btn { margin-left: 0; }
+  .fx-state { display: inline-flex; gap: 4px; }
+  .fx-state .btn { margin-left: 0; }
+  .fx-state .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--text-strong); background: rgba(var(--accent-rgb), 0.18); }
+  .fx-sounds { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .fx-chip { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border); border-radius: 10px; padding: 1px 2px 1px 8px; font-size: 12px; color: var(--text); }
+  .fx-chip button { background: none; border: 0; color: var(--text-dim); cursor: pointer; font-size: 11px; padding: 0 4px; }
+  .fx-note { font-size: 12px; color: var(--text-dim); }
+  .fx-note.warn, .fx-status.warn { color: var(--warn); }
+  .fx-status { font-size: 13px; color: var(--text-dim); margin: 6px 0; }
   .al-recent { display: flex; flex-direction: column; gap: 4px; }
   .al-recent-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
   .al-recent-row .st { color: var(--text-dim); font-size: 12px; }
@@ -1171,7 +1180,7 @@
           oninput="document.getElementById('co-size-value').textContent = this.value + '%'" onchange="saveChatOverlay('size')" />
         <span id="co-size-value"></span>
       </label>
-      <label class="setting"><input type="checkbox" id="co-redeems" onchange="saveChatOverlay('redeems')" /> <span data-i18n="dash.chat.overlayRedeems">🎟 Channel-point redemptions</span></label>
+      <label class="setting"><input type="checkbox" id="co-redeems" onchange="saveChatOverlay('redeems')" /> <span data-i18n="dash.chat.overlayRedeems">🎟️ Channel-point redemptions</span></label>
       <label class="setting"><input type="checkbox" id="co-events" onchange="saveChatOverlay('events')" /> <span data-i18n="dash.chat.overlayEvents">⭐ Subs, gifts, raids and follows</span></label>
       <label class="setting"><input type="checkbox" id="co-commands" onchange="saveChatOverlay('commands')" /> <span data-i18n="dash.chat.overlayCommands">! Chat commands (!so, !sr…)</span></label>
       <label class="setting"><input type="checkbox" id="co-bots" onchange="saveChatOverlay('bots')" /> <span data-i18n="dash.chat.overlayBots">🤖 Bots (Nightbot, StreamElements…)</span></label>
@@ -1231,6 +1240,15 @@
       <h3 data-i18n="dash.alerts.kindsTitle">What shows</h3>
       <p class="setting-hint" data-i18n="dash.alerts.kindsHint"></p>
       <div class="al-kinds" id="al-kinds"></div>
+    </section>
+    <section class="modes-box" id="fx-box">
+      <h3 data-i18n="dash.fx.title">🎟️ Reward effects</h3>
+      <p class="setting-hint" data-i18n="dash.fx.intro"></p>
+      <div id="fx-url"></div>
+      <div class="al-row" id="fx-controls"></div>
+      <p class="fx-status" id="fx-status"></p>
+      <div class="al-kinds" id="fx-list"></div>
+      <div class="al-row"><select class="modes-input" id="fx-add"></select></div>
     </section>
     <section class="modes-box">
       <h3 data-i18n="dash.alerts.recentTitle">Latest alerts</h3>
@@ -1412,6 +1430,7 @@ function connect() {
       else if (m.type === 'modes') onModesMessage(m);
       else if (m.type === 'outfits') { outfits.status = m; paintOutfits(); }
       else if (m.type === 'alert') onAlertMessage(m.alert);
+      else if (m.type === 'reward-effects') onEffectsMessage(m.status);
       else if (m.type === 'ending-raid') onEndingRaid(m);
       else if (m.type === 'settings') applyLook(m);
     } catch(_){}
@@ -1880,6 +1899,7 @@ const OVERLAY_SOURCES = [
   ['opening', '/overlay/break.html?card=opening', '960 × 260'],
   ['alertsV', '/overlay/alerts.html?layout=vertical', '800 × 600'],
   ['alertsH', '/overlay/alerts.html?layout=horizontal', '1600 × 300'],
+  ['effects', '/overlay/reward-effects.html', '1920 × 1080'],
 ];
 
 function paintOverlaySources() {
@@ -3747,34 +3767,26 @@ I18N.onChange(() => {
   if (!document.getElementById('node-warn').hidden) paintNodeWarning();
   paintModeBar();
   if (currentTab === 'modes') paintModes();
+  if (currentTab === 'alerts') { paintAlerts(); paintEffects(); }
   paintLook();
   paintSheetTabs();
 });
 
 // ── 🔔 Alerts (server/alerts.js, overlay/alerts.html) ──────────────────────────
-// Per kind: on, minimum, seconds, picture, sound, volume, and the big version from an amount up.
+// Per kind: on, minimum, seconds, picture, sound, volume, and the big version from an amount up (redemptions: 🎟️ reward effects).
 // Test shows a made-up one on stream only; the latest real ones can be replayed.
-const ALERT_KINDS = ['follow', 'sub', 'gift', 'cheer', 'raid', 'redeem'];
+const ALERT_KINDS = ['follow', 'sub', 'gift', 'cheer', 'raid'];
 const ALERT_AMOUNT = { sub: 'months', gift: 'count', cheer: 'bits', raid: 'viewers' };
-const ALERT_ICONS = { follow: '💜', sub: '⭐', gift: '🎁', cheer: '💎', raid: '🚀', redeem: '🎟' };
+const ALERT_ICONS = { follow: '💜', sub: '⭐', gift: '🎁', cheer: '💎', raid: '🚀' };
 const ALERT_LAYOUTS = { vertical: '800 × 600', horizontal: '1600 × 300' };
-const alertsView = { status: null, rewards: null };
+const alertsView = { status: null };
 
 async function loadAlerts() {
   try {
     alertsView.status = await (await fetch('/api/alerts')).json();
   } catch(_) { return; }
   paintAlerts();
-  if (!alertsView.rewards) loadAlertRewards();
-}
-
-async function loadAlertRewards() {
-  try {
-    const res = await fetch('/api/rewards');
-    const body = await res.json();
-    if (res.ok) alertsView.rewards = body.rewards;
-  } catch(_) {}
-  paintAlerts();
+  loadEffects();
 }
 
 function alertFileOptions(selected, sound) {
@@ -3813,12 +3825,6 @@ function paintAlerts() {
         + `<select class="modes-input" data-k="${k}" data-key="bigSound" title="${esc(t('dash.alerts.sound'))}">${alertFileOptions(c.bigSound, true).replace(esc(t('dash.alerts.noSound')), esc(t('dash.alerts.sameSound')))}</select>`
         + `<button class="btn" type="button" data-test="${k}" data-big="1"${c.bigAt ? '' : ' disabled'}>${esc(t('dash.alerts.testBig'))}</button></div>`;
     }
-    if (k === 'redeem') {
-      const rewards = (alertsView.rewards || []).filter(r => r.role !== 'song' && r.role !== 'random');
-      html += `<div class="al-rewards">${rewards.length ? rewards.map(r =>
-        `<label><input type="checkbox" data-alert-reward="${esc(r.id)}"${st.rewards.includes(r.id) ? ' checked' : ''}> ${esc(r.title)}</label>`).join('')
-        : esc(t(alertsView.rewards ? 'dash.chat.rewardsNone' : 'dash.chat.rewardsLoading'))}</div>`;
-    }
     return html + '</div>';
   }).join('');
   document.getElementById('al-recent').innerHTML = st.recent.length ? st.recent.map(a => {
@@ -3845,12 +3851,6 @@ async function alertPost(url, body) {
 
 document.getElementById('tab-alerts').addEventListener('change', async (e) => {
   const el = e.target;
-  if (el.dataset.alertReward !== undefined) {
-    const ids = [...document.querySelectorAll('[data-alert-reward]')].filter(x => x.checked).map(x => x.dataset.alertReward);
-    const out = await alertPost('/api/alerts/settings', { rewards: ids });
-    if (out) { alertsView.status = out; paintAlerts(); }
-    return;
-  }
   if (!el.dataset.k) return;
   const value = el.type === 'checkbox' ? el.checked : el.type === 'number' || el.type === 'range' ? Number(el.value) : el.value;
   const out = await alertPost('/api/alerts/settings', { kinds: { [el.dataset.k]: { [el.dataset.key]: value } } });
@@ -3874,6 +3874,154 @@ function onAlertMessage(a) {
   if (!alertsView.status || a.replay) return;
   alertsView.status.recent = [a, ...alertsView.status.recent].slice(0, 20);
   if (currentTab === 'alerts') paintAlerts();
+}
+
+// ── 🎟️ Reward effects (server/reward-effects.js, overlay/reward-effects.html) ─────
+// A channel-point reward plays a sound (one of several at random), a picture / GIF / video, or both.
+// Played → its redemption is done; not played (off, skipped, queue full, cleared) → refunded. Twitch lets
+// the app do that only for the rewards it manages; the others play and stay in Twitch's queue.
+const FX_PLACES = ['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right', 'random'];
+const FX_SECONDS = [0, 3, 5, 8, 10, 15, 20, 30, 60];
+const fx = { status: null, rewards: null };
+
+async function loadEffects() {
+  try {
+    fx.status = await (await fetch('/api/reward-effects')).json();
+  } catch(_) { return; }
+  paintEffects();
+  if (!fx.rewards) loadEffectRewards();
+}
+
+async function loadEffectRewards() {
+  try {
+    const res = await fetch('/api/rewards');
+    const body = await res.json();
+    if (res.ok) fx.rewards = body.rewards;
+  } catch(_) {}
+  paintEffects();
+}
+
+const fxReward = id => (fx.rewards || []).find(r => r.id === id);
+
+// Whether the app can mark this reward's redemptions done / refund them (redemptions.js)
+function fxNote(r) {
+  if (!r) return fx.rewards ? `<span class="fx-note warn">${esc(t('dash.fx.gone'))}</span>` : '';
+  if (r.skipsQueue) return `<span class="fx-note">${esc(t('dash.chat.rewardSkipsQueue'))}</span>`;
+  if (r.manageable) return `<span class="fx-note">${esc(t('dash.fx.managed'))}</span>`;
+  return `<span class="fx-note warn" title="${esc(t('dash.chat.redeemQueueTip'))}">${esc(t('dash.fx.notManaged'))}</span>`;
+}
+
+function paintEffects() {
+  const st = fx.status;
+  if (!st) return;
+  const url = `${location.origin}/overlay/reward-effects.html`;
+  document.getElementById('fx-url').innerHTML = `<div class="co-url"><b>${esc(t('dash.app.src.effects'))}<br><small>1920 × 1080</small></b><code title="${esc(url)}">${esc(url)}</code>`
+    + `<button class="btn" type="button" data-url="${esc(url)}">${esc(t('dash.chat.overlayCopy'))}</button></div>`;
+  document.getElementById('fx-controls').innerHTML =
+    `<span class="fx-state">${['on', 'paused', 'off'].map(s => `<button class="btn" type="button" data-fx-state="${s}" aria-pressed="${st.state === s}">${esc(t('dash.fx.state.' + s))}</button>`).join('')}</span>`
+    + `<label>${esc(t('dash.fx.together'))} <select class="modes-input" data-fx="together">${['queue', 'overlap', 'skip'].map(v =>
+      `<option value="${v}"${st.together === v ? ' selected' : ''}>${esc(t('dash.fx.togetherOpt.' + v))}</option>`).join('')}</select></label>`
+    + `<label title="${esc(t('dash.alerts.volume'))}">🔊 <input type="range" class="opacity-slider" min="0" max="100" step="5" data-fx="volume" value="${st.volume}"></label>`
+    + `<button class="btn" type="button" data-fx-act="skip">${esc(t('dash.fx.skip'))}</button>`
+    + `<button class="btn" type="button" data-fx-act="clear">${esc(t('dash.fx.clear'))}</button>`;
+  const files = (list, selected, none) => `<option value="">${esc(none)}</option>`
+    + list.map(f => `<option value="${esc(f)}"${f === selected ? ' selected' : ''}>${esc(f)}</option>`).join('');
+  document.getElementById('fx-list').innerHTML = st.effects.length ? st.effects.map((e, i) => {
+    const r = fxReward(e.rewardId);
+    return `<div class="al-kind${e.on ? '' : ' off'}" data-fx-i="${i}">`
+      + `<div class="al-row"><label class="al-name"><input type="checkbox" data-f="on"${e.on ? ' checked' : ''}> 🎟️ ${esc(r ? r.title : e.title)}${r ? ` <small>(${r.cost})</small>` : ''}</label>${fxNote(r)}`
+      + `<button class="btn" type="button" data-fx-test>${esc(t('dash.alerts.test'))}</button>`
+      + `<button class="btn" type="button" data-fx-remove title="${esc(t('dash.fx.remove'))}">✕</button></div>`
+      + `<div class="al-row"><span>${esc(t('dash.fx.sounds'))}</span><span class="fx-sounds">`
+      + e.sounds.map(s => `<span class="fx-chip">${esc(s)}<button type="button" data-fx-unsound="${esc(s)}" title="${esc(t('dash.fx.remove'))}">✕</button></span>`).join('')
+      + `<select class="modes-input" data-f="addSound">${files(st.sounds.filter(s => !e.sounds.includes(s)), '', t(e.sounds.length ? 'dash.fx.addAnother' : 'dash.fx.addSound'))}</select></span>`
+      + (e.sounds.length > 1 ? `<span class="fx-note">${esc(t('dash.fx.randomOne'))}</span>` : '') + '</div>'
+      + `<div class="al-row"><select class="modes-input" data-f="image" title="${esc(t('dash.alerts.picture'))}">${files(st.pictures, e.image, t('dash.fx.noPicture'))}</select>`
+      + `<label>${esc(t('dash.fx.place'))} <select class="modes-input" data-f="place">${FX_PLACES.map(p =>
+        `<option value="${p}"${e.place === p ? ' selected' : ''}>${esc(t('dash.fx.places.' + p))}</option>`).join('')}</select></label>`
+      + `<label>${esc(t('dash.fx.size'))} <input type="range" class="opacity-slider" min="10" max="60" step="5" data-f="size" value="${e.size}"${e.image ? '' : ' disabled'}> ${e.size}%</label>`
+      + `<label>${esc(t('dash.fx.shows'))} <select class="modes-input" data-f="seconds">${FX_SECONDS.map(n =>
+        `<option value="${n}"${e.seconds === n ? ' selected' : ''}>${esc(n ? t('dash.fx.secondsN', { n }) : t('dash.fx.asLongAs'))}</option>`).join('')}</select></label>`
+      + `<label title="${esc(t('dash.alerts.volume'))}">🔊 <input type="range" class="opacity-slider" min="0" max="100" step="5" data-f="volume" value="${e.volume}"></label>`
+      + `<label><input type="checkbox" data-f="showName"${e.showName ? ' checked' : ''}> ${esc(t('dash.fx.showName'))}</label></div></div>`;
+  }).join('') : `<p class="setting-hint">${esc(t('dash.fx.none'))}</p>`;
+  const used = new Set(st.effects.map(e => e.rewardId));
+  const can = (fx.rewards || []).filter(r => !r.role && !used.has(r.id));   // song, random and outfit rewards have their own
+  document.getElementById('fx-add').innerHTML = `<option value="">${esc(t(!fx.rewards ? 'dash.chat.rewardsLoading' : can.length ? 'dash.fx.add' : 'dash.fx.addNone'))}</option>`
+    + can.map(r => `<option value="${esc(r.id)}">${esc(r.title)} (${r.cost})</option>`).join('');
+  paintEffectStatus();
+}
+
+// The line under the controls: no overlay, paused, what's playing and waiting
+function paintEffectStatus() {
+  const st = fx.status;
+  const el = document.getElementById('fx-status');
+  if (!st || !el) return;
+  const parts = [];
+  if (!st.overlays) parts.push(t('dash.fx.noOverlay'));
+  if (st.state === 'off') parts.push(t('dash.fx.offNote'));
+  else if (st.state === 'paused') parts.push(t('dash.fx.pausedHere'));
+  else if (st.modePaused) parts.push(t('dash.fx.pausedMode'));
+  parts.push(t('dash.fx.queue', { playing: st.playing, waiting: st.queue.length }));
+  el.textContent = parts.join(' · ');
+  el.classList.toggle('warn', !st.overlays && st.state !== 'off');
+  const skip = document.querySelector('[data-fx-act="skip"]');
+  const clear = document.querySelector('[data-fx-act="clear"]');
+  if (skip) skip.disabled = !st.playing;
+  if (clear) clear.disabled = !st.queue.length;
+}
+
+async function saveEffects(changes) {
+  const out = await alertPost('/api/reward-effects/settings', changes);
+  if (out) { fx.status = out; paintEffects(); }
+}
+
+// The whole list, with each reward's name as Twitch has it now (the overlay shows it under the picture)
+const saveEffectList = list => saveEffects({ effects: list.map(e => ({ ...e, title: (fxReward(e.rewardId) || e).title })) });
+
+document.getElementById('fx-box').addEventListener('change', (e) => {
+  const el = e.target;
+  if (el.id === 'fx-add') {
+    const r = fxReward(el.value);
+    if (r) saveEffectList([...fx.status.effects, { rewardId: r.id, title: r.title }]);
+    return;
+  }
+  if (el.dataset.fx) { saveEffects({ [el.dataset.fx]: el.type === 'range' ? Number(el.value) : el.value }); return; }
+  const row = el.closest('[data-fx-i]');
+  const f = el.dataset.f;
+  if (!row || !f) return;
+  const list = fx.status.effects.map(x => ({ ...x }));
+  const one = list[row.dataset.fxI];
+  if (f === 'addSound') { if (!el.value) return; one.sounds = [...one.sounds, el.value]; }
+  else if (el.type === 'checkbox') one[f] = el.checked;
+  else if (el.type === 'range' || f === 'seconds') one[f] = Number(el.value);
+  else one[f] = el.value;
+  saveEffectList(list);
+});
+
+document.getElementById('fx-box').addEventListener('click', async (e) => {
+  const state = e.target.closest('[data-fx-state]');
+  if (state) { saveEffects({ state: state.dataset.fxState }); return; }
+  const act = e.target.closest('[data-fx-act]');
+  if (act) {
+    const out = await alertPost('/api/reward-effects/' + act.dataset.fxAct);
+    if (out) { fx.status = out; paintEffectStatus(); }
+    return;
+  }
+  const row = e.target.closest('[data-fx-i]');
+  if (!row) return;
+  const list = fx.status.effects.map(x => ({ ...x }));
+  const i = Number(row.dataset.fxI);
+  if (e.target.closest('[data-fx-test]')) { await alertPost('/api/reward-effects/test', { rewardId: list[i].rewardId }); return; }
+  if (e.target.closest('[data-fx-remove]')) { list.splice(i, 1); saveEffectList(list); return; }
+  const unsound = e.target.closest('[data-fx-unsound]');
+  if (unsound) { list[i].sounds = list[i].sounds.filter(s => s !== unsound.dataset.fxUnsound); saveEffectList(list); }
+});
+
+// From the server: an effect started or ended, the queue changed, a mode paused them
+function onEffectsMessage(status) {
+  fx.status = status;
+  if (currentTab === 'alerts') paintEffectStatus();
 }
 
 // ── 👕 Outfits (server/outfits.js, veadotube.js) ───────────────────────────────
@@ -4037,7 +4185,7 @@ for (const id of ['outfit-windows', 'outfit-pick']) {
 // they're made. view = GET /api/modes: live = what the streaming app shows (read when the tab opens,
 // or ↻), issues = what each mode no longer finds and what's new in its scenes.
 const modes = { view: null, open: new Set(), busy: false, dragging: false };
-const MODE_PRESETS = [['🎤', 'sing', { holdClips: true, tab: 'queue' }], ['💬', 'talk', { tab: 'chat' }], ['☕', 'break', {}]];
+const MODE_PRESETS = [['🎤', 'sing', { holdClips: true, pauseEffects: true, tab: 'queue' }], ['💬', 'talk', { tab: 'chat' }], ['☕', 'break', {}]];
 const appName = app => ({ streamlabs: 'Streamlabs Desktop', obs: 'OBS Studio' })[app] || app;
 const modeById = id => modes.view && modes.view.modes.find(m => m.id === id);
 const modeUnit = m => m.app === 'obs' ? 'dB' : '%';
@@ -4342,6 +4490,7 @@ function modeAppPart(m) {
     <div class="modes-row"><span>${esc(t('dash.modes.chat'))}</span>
       <input class="modes-input mode-chat" data-f="chat" maxlength="500" value="${esc(m.chat)}" placeholder="${esc(t('dash.modes.chatPlaceholder'))}"></div>
     <label class="setting"><input type="checkbox" data-f="holdClips"${m.holdClips ? ' checked' : ''}> <span>${esc(t('dash.modes.hold'))}</span></label>
+    <label class="setting"><input type="checkbox" data-f="pauseEffects"${m.pauseEffects ? ' checked' : ''}> <span>${esc(t('dash.modes.pauseEffects'))}</span></label>
     <p class="setting-hint">${esc(t('dash.modes.holdHint'))}</p>
     <div class="modes-row"><span>${esc(t('dash.modes.tab'))}</span>
       <select class="lang-select" data-f="tab">${['', 'queue', 'leihu', 'chat'].map(tab =>

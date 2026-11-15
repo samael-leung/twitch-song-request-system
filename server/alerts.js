@@ -1,6 +1,6 @@
 // server/alerts.js
 // 🔔 Alerts on stream (overlay/alerts.html), instead of Streamlabs' Alert Box: follows, subs, gifts,
-// cheers, raids and chosen channel-point rewards, from the chat log's records (chat-log.js). Each kind
+// cheers and raids, from the chat log's records (chat-log.js); redemptions are reward effects'. Each kind
 // has its own settings — on/off, a minimum, how long it shows, a picture / GIF / video and a sound from
 // the alert-media folder — and a "big" version from an amount up (raid ≥ 50 viewers, ≥ 10 gifts…).
 // A gift of several subs is one alert (Twitch's line for each gift in it is left out). The overlay
@@ -17,7 +17,7 @@ const MEDIA = /\.(png|gif|jpe?g|webp|apng|mp4|webm|mp3|wav|ogg|m4a)$/i;
 const RECENT_MAX = 20;
 const CHIME = '@chime';
 
-const KINDS = ['follow', 'sub', 'gift', 'cheer', 'raid', 'redeem'];
+const KINDS = ['follow', 'sub', 'gift', 'cheer', 'raid'];
 // The amount the minimum and the big version go by (none for follows and redemptions)
 const AMOUNT = { sub: 'months', gift: 'count', cheer: 'bits', raid: 'viewers' };
 const SUB_NOTICES = ['sub', 'resub', 'gift_paid_upgrade', 'prime_paid_upgrade', 'pay_it_forward'];
@@ -29,7 +29,6 @@ const DEFAULTS = {
   gift: kind(true, 7, { bigAt: 10 }),
   cheer: kind(true, 7, { min: 1, bigAt: 1000 }),
   raid: kind(true, 8, { min: 1, bigAt: 50 }),
-  redeem: kind(false, 5),
 };
 const LIMITS = { min: [0, 1e6], seconds: [2, 60], volume: [0, 100], bigAt: [0, 1e6], bigSeconds: [2, 60] };
 
@@ -44,7 +43,7 @@ function load() {
   try { saved = JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch {}
   const kinds = {};
   for (const k of KINDS) kinds[k] = { ...DEFAULTS[k], ...(saved.kinds && saved.kinds[k]) };
-  return { kinds, rewards: Array.isArray(saved.rewards) ? saved.rewards.map(String) : [] };
+  return { kinds };
 }
 
 function save() {
@@ -61,10 +60,10 @@ function files() {
 }
 
 function status() {
-  return { kinds: data.kinds, rewards: data.rewards, files: files(), folder: MEDIA_DIR, recent };
+  return { kinds: data.kinds, files: files(), folder: MEDIA_DIR, recent };
 }
 
-// { kinds?: { follow?: { on?, min?, … } }, rewards?: [id] }
+// { kinds?: { follow?: { on?, min?, … } } }
 function update(updates) {
   const have = files();
   for (const [k, changes] of Object.entries(updates.kinds || {})) {
@@ -85,10 +84,6 @@ function update(updates) {
     }
     data.kinds[k] = next;
   }
-  if (updates.rewards !== undefined) {
-    if (!Array.isArray(updates.rewards)) throw new UserError('alertBadSetting', {}, 'rewards must be a list');
-    data.rewards = updates.rewards.map(String).filter(s => /^[\w-]+$/.test(s));
-  }
   save();
   return status();
 }
@@ -103,7 +98,6 @@ function alertFor(rec) {
     return { kind: 'follow' };
   }
   if (rec.kind === 'chat' && rec.bits) return { kind: 'cheer', bits: rec.bits };
-  if (rec.kind === 'redeem' && data.rewards.includes(rec.rewardId)) return { kind: 'redeem', reward: rec.reward };
   if (rec.kind !== 'notice') return null;
   if (SUB_NOTICES.includes(rec.notice)) return { kind: 'sub', notice: rec.notice, months: rec.months || 0, tier: rec.tier || '' };
   if (rec.notice === 'sub_gift' && !rec.communityGift) return { kind: 'gift', count: 1, tier: rec.tier || '', recipient: rec.recipient ? rec.recipient.name : '' };
@@ -154,9 +148,8 @@ function test(k, big) {
   const a = { kind: k, [AMOUNT[k] || 'x']: amount };
   if (k === 'sub') Object.assign(a, { notice: amount > 1 ? 'resub' : 'sub', tier: '1000' });
   if (k === 'gift') a.tier = '1000';
-  if (k === 'redeem') a.reward = 'Hydrate';
   delete a.x;
-  const text = { sub: 'love the stream!', cheer: 'Cheer!', redeem: '' }[k] || '';
+  const text = { sub: 'love the stream!', cheer: 'Cheer!' }[k] || '';
   const rec = { kind: k === 'cheer' ? 'chat' : 'notice', user: { name: 'TestViewer' }, text, parts: text ? [{ t: 'text', text }] : [] };
   return show(build(a, rec, true));
 }

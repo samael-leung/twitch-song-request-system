@@ -324,6 +324,27 @@ the overlay theme (🎨 Look & overlays), worded in the overlay language. A gift
 The sound follows the source's own volume and mute, so a mode that mutes the source (🎤 singing) shows alerts
 silently. Moving from Streamlabs: run both for one stream with the Alert Box muted, then remove the Alert Box.
 
+### 🎟️ Reward effects (instead of TriggerFyre)
+
+A channel-point reward plays a sound, a picture / GIF / video, or both. In 🔔 Alerts → **🎟️ Reward effects**:
+
+1. Add a new source → **Browser**: `http://localhost:3000/overlay/reward-effects.html`, Width `1920`, Height `1080`,
+   over your whole scene (on top). It's transparent while nothing plays, and has its own volume and mute.
+2. **＋ Add a reward…**, then pick its sounds (several = one at random each time), a picture, GIF or video,
+   where it shows and how big, how long (or as long as the sound), and **Show who redeemed it**. **▶ Test** plays
+   it on stream only. Song, random-song and outfit rewards aren't in the list: they have their own.
+3. **Two at once**: one after the other, play together (up to 3), or skip the new one.
+
+When an effect has played, its redemption is marked done. One that doesn't play — **🔇 Off**, skipped, more than
+20 waiting, or **🗑 Clear the queue** — is refunded. **⏸ Pause** (or a mode with **🎟️ Pause reward effects**, e.g.
+🎤 singing) keeps them waiting; they play when it ends. With no reward-effects source open in OBS they wait too,
+and the tab says so. Twitch lets the app mark done or refund only the rewards it manages: a reward made on Twitch
+still plays, and can be handed over in 💬 Chat → ⚙ → Channel-point rewards. Waiting ones aren't kept over a
+restart: they stay in Twitch's own reward queue.
+
+Moving from TriggerFyre: save your sounds and pictures into `alert-media`, set the rewards up here, then turn
+each one off (or delete it) in TriggerFyre — or it plays twice.
+
 ---
 
 ## Outfits (👕 Outfits tab)

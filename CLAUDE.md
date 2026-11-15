@@ -82,7 +82,8 @@ vtuber-song-queue/
 │   ├── chat-badges.js     Badge pictures for the chat on stream (Helix /chat/badges, global + channel, read once)
 │   ├── veadotube.js       veadotube mini windows (~/.veadotube/instances → WebSocket): avatar states, set, thumbnails
 │   ├── outfits.js         👕 Outfit rewards: redemptions wait for the streamer's pick; time limit back to the default
-│   ├── alerts.js          🔔 Alerts from chat-log records (follow / sub / gift / cheer / raid / chosen redemptions); alerts.json
+│   ├── alerts.js          🔔 Alerts from chat-log records (follow / sub / gift / cheer / raid); alerts.json
+│   ├── reward-effects.js  🎟️ Reward effects: a reward plays sounds / a picture (queue, pause, done / refund); reward-effects.json
 │   ├── modes.js           Modes (🎛 tab, top-bar buttons): save / apply the streaming app's state + this app's part
 │   ├── stream-app.js      Streamlabs Desktop (Remote Control JSON-RPC) / OBS (obs-websocket 5) on this PC
 │   ├── stream-session.js  When the stream went live (stream.online / Helix /streams), for "to announce"
@@ -97,6 +98,7 @@ vtuber-song-queue/
 ├── overlay/index.html     OBS Browser Source — song queue, in the overlay theme (Neon: cyberpunk dark/neon)
 ├── overlay/chat.html      OBS Browser Source — the chat on stream (?style=panel | bubble | list | row)
 ├── overlay/alerts.html    OBS Browser Source — 🔔 alerts, one at a time (?layout=vertical 800×600 | horizontal 1600×300)
+├── overlay/reward-effects.html  OBS Browser Source — 🎟️ reward effects over the whole scene (1920×1080)
 ├── overlay/break.html     OBS Browser Source — "休息中 / ON BREAK" card; ?card=opening "準備中 / STARTING SOON" (?min=N / ?at=HH:MM count down)
 ├── dashboard/index.html   Streamer control panel — tabs (Song Queue: 2×2 panels, drag/drop, history, manual add; Leihu; Chat), ⚙ per tab
 ├── dashboard/links.html   YouTube link finder review page
@@ -119,7 +121,8 @@ vtuber-song-queue/
 
 **Never commit** (all gitignored): `.env`, `google-credentials.json`, `song-cache.json`,
 `setup-progress.json`, `queue-state.json`, `song-links.json`, `leihu-home.json`, `chat-logs/`, `link-search.json`, `package-lock.json`,
-`ending-credits.json`, `reward-takeovers.json`, `stream-session.json`, `stream-modes.json`, `.env` backups.
+`ending-credits.json`, `reward-takeovers.json`, `stream-session.json`, `stream-modes.json`, `alerts.json`,
+`reward-effects.json`, `alert-media/`, `.env` backups.
 `setup-progress.json`, `queue-state.json` and `package-lock.json` contain personal info.
 
 ---
@@ -560,11 +563,16 @@ register it in index.js.
 | POST | `/api/outfits/drop` | `{ id, refund }` — refund a waiting redemption, or just close its card |
 | POST | `/api/outfits/keep` | Stop the time limit |
 | POST | `/api/outfits/settings` | `{ rewards?, default?, window?, minutes? }` (OUTFIT_* in .env) |
-| GET | `/api/alerts` | 🔔 Per-kind settings, chosen rewards, alert-media files and folder, the latest alerts (alerts.js) |
-| POST | `/api/alerts/settings` | `{ kinds?: { follow?: { on?, min?, seconds?, image?, sound?, volume?, bigAt?, bigSeconds?, bigImage?, bigSound? } }, rewards? }` |
+| GET | `/api/alerts` | 🔔 Per-kind settings, alert-media files and folder, the latest alerts (alerts.js) |
+| POST | `/api/alerts/settings` | `{ kinds?: { follow?: { on?, min?, seconds?, image?, sound?, volume?, bigAt?, bigSeconds?, bigImage?, bigSound? } } }` |
 | POST | `/api/alerts/test` | `{ kind, big? }` — a made-up alert on stream only |
 | POST | `/api/alerts/replay` | `{ id }` — show a recent alert again |
 | POST | `/api/alerts/skip` | End the alert showing now |
+| GET | `/api/reward-effects` | 🎟️ `{ state, together, volume, effects, modePaused, overlays, playing, queue, sounds, pictures, folder }` (reward-effects.js) |
+| POST | `/api/reward-effects/settings` | `{ state?: on/paused/off, together?: queue/overlap/skip, volume?, effects?: [{ rewardId, title, on, sounds, image, place, size, seconds, volume, showName }] }` |
+| POST | `/api/reward-effects/test` | `{ rewardId }` — plays it on stream only |
+| POST | `/api/reward-effects/skip` | End the ones playing (done) |
+| POST | `/api/reward-effects/clear` | Refund the waiting ones |
 | GET | `/api/chat/days` | Days with a chat log, newest first |
 | GET | `/api/chat/log?day=YYYY-MM-DD` | One day's chat records, with deletions, redemption statuses, first messages and ✓ marks applied |
 | GET | `/api/credits` | `{follows, lastAt, groups}` — who `!endingtk` would thank now; follows: `on` / `no-permission` / `failed` |

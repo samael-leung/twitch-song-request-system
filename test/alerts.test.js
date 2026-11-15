@@ -30,7 +30,6 @@ test('which records are alerts: follows once, subs, gifts, cheers, raids', () =>
   assert.deepStrictEqual(alerts.alertFor({ kind: 'chat', user: user('Usagi'), bits: 100, parts: [] }), { kind: 'cheer', bits: 100 });
   assert.strictEqual(alerts.alertFor({ kind: 'chat', user: user('Usagi'), parts: [] }), null);
   assert.strictEqual(alerts.alertFor(notice('announcement')), null);
-  assert.strictEqual(alerts.alertFor({ kind: 'redeem', user: user('Mika'), rewardId: 'r1', reward: 'Hydrate' }), null);   // not chosen
 });
 
 test('minimums, the big version and its own picture; the message without the cheermotes', () => {
@@ -49,10 +48,9 @@ test('minimums, the big version and its own picture; the message without the che
   assert.strictEqual(alerts.fromRecord({ kind: 'follow', user: user('Kuma') }), null);
 });
 
-test('chosen redemptions; tests, replays and skips go to the overlays', () => {
-  alerts.update({ kinds: { redeem: { on: true } }, rewards: ['r1'] });
-  const r = alerts.fromRecord({ kind: 'redeem', user: user('Mika'), rewardId: 'r1', reward: 'Hydrate', text: '' });
-  assert.deepStrictEqual([r.kind, r.reward], ['redeem', 'Hydrate']);
+test('redemptions are not alerts (reward effects play them); tests, replays and skips go to the overlays', () => {
+  assert.strictEqual(alerts.fromRecord({ kind: 'redeem', user: user('Mika'), rewardId: 'r1', reward: 'Hydrate', text: '' }), null);
+  assert.throws(() => alerts.update({ kinds: { redeem: { on: true } } }), { messageCode: 'alertBadSetting' });
 
   const t = alerts.test('gift', true);
   assert.deepStrictEqual([t.test, t.big, t.count], [true, true, 10]);
@@ -61,7 +59,7 @@ test('chosen redemptions; tests, replays and skips go to the overlays', () => {
   assert.notStrictEqual(sent.at(-1).alert.id, t.id);
   alerts.skip();
   assert.deepStrictEqual(sent.at(-1), { type: 'alert-skip' });
-  assert.deepStrictEqual(alerts.status().recent.map(a => a.kind), ['gift', 'redeem']);
+  assert.deepStrictEqual(alerts.status().recent.map(a => a.kind), ['gift']);
 });
 
 test('settings are checked, saved and read back', () => {

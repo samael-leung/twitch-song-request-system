@@ -34,6 +34,7 @@ const chatMod = require('./chat-mod');
 const modes = require('./modes');
 const outfits = require('./outfits');
 const alerts = require('./alerts');
+const rewardEffects = require('./reward-effects');
 const streamApp = require('./stream-app');
 const streamSession = require('./stream-session');
 const { generateIfMissing: generateSponsorVoice } = require('./sponsor-voice');
@@ -173,6 +174,7 @@ modes.init(msg => sendChat(msg));   // after mediaQueue.init: a mode may hold cl
 endingRaid.init(msg => sendChat(msg));
 outfits.init({ send: msg => sendChat(msg), saveEnv: values => setupRouter.writeEnvValues(values) });
 alerts.init(msg => sendAlerts(msg));
+rewardEffects.init({ toOverlays: msg => sendEffects(msg), toDashboards: msg => sendChat(msg) });
 
 // Returns the matching random-reward config object if the given rewardId is
 // a configured random reward, or null if it isn't.
@@ -974,6 +976,25 @@ app.post('/api/alerts/test', (req, res) => {
 app.post('/api/alerts/replay', (req, res) => res.json({ ok: !!alerts.replay(String(req.body.id || '')) }));
 app.post('/api/alerts/skip', (req, res) => { alerts.skip(); res.json({ ok: true }); });
 
+// 🎟 Reward effects (server/reward-effects.js): settings, the queue; test, skip, clear
+app.get('/api/reward-effects', (req, res) => res.json(rewardEffects.status()));
+app.post('/api/reward-effects/settings', (req, res) => {
+  try {
+    res.json(rewardEffects.update(req.body || {}));
+  } catch (err) {
+    res.status(err.messageCode ? 400 : 500).json(errorBody(err));
+  }
+});
+app.post('/api/reward-effects/test', (req, res) => {
+  try {
+    res.json({ ok: true, effect: rewardEffects.test(String(req.body.rewardId || '')) });
+  } catch (err) {
+    res.status(err.messageCode ? 400 : 500).json(errorBody(err));
+  }
+});
+app.post('/api/reward-effects/skip', (req, res) => { rewardEffects.skip(); res.json(rewardEffects.status()); });
+app.post('/api/reward-effects/clear', (req, res) => { rewardEffects.clear(); res.json(rewardEffects.status()); });
+
 // Chat ⚙: every reward, and taking over one made on Twitch ({ id, action: 'start' | 'finish' | 'cancel' })
 app.get('/api/rewards', async (req, res) => {
   try {
@@ -1001,6 +1022,13 @@ function sendChat(msg) {
 }
 
 // Alerts go to the alert overlays (overlay/alerts.html) and the dashboards (their list of the latest)
+// Reward effects go to the reward-effects overlays (overlay/reward-effects.html)
+function sendEffects(msg) {
+  const str = JSON.stringify(msg);
+  for (const client of wss.clients) if (client.wantsEffects && client.readyState === 1) client.send(str);
+}
+const countEffectOverlays = () => rewardEffects.setOverlays([...wss.clients].filter(c => c.wantsEffects && c.readyState === 1).length);
+
 function sendAlerts(msg) {
   const str = JSON.stringify(msg);
   for (const client of wss.clients) {
@@ -1018,8 +1046,11 @@ wss.on('connection', (ws, req) => {
       if (msg.type === 'media-ended') mediaQueue.onEnded(msg.mediaId);
       if (msg.type === 'chat-subscribe') ws.wantsChat = true;
       if (msg.type === 'alerts-subscribe') ws.wantsAlerts = true;
+      if (msg.type === 'reward-effects-subscribe') { ws.wantsEffects = true; countEffectOverlays(); }
+      if (msg.type === 'reward-effect-ended') rewardEffects.ended(String(msg.id || ''));
     } catch {}
   });
+  ws.on('close', () => { if (ws.wantsEffects) countEffectOverlays(); });
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
@@ -1043,6 +1074,7 @@ async function start() {
     sendChat(msg);
     if (msg.type !== 'chat') return;
     try { alerts.fromRecord(msg.record); } catch (err) { console.error('[alerts] Could not make an alert:', err.message); }
+    try { rewardEffects.fromRecord(msg.record); } catch (err) { console.error('[reward-effects] Could not start an effect:', err.message); }
   };
   await chatLog.init(sendChatAndAlert).catch(err => console.error('[chat-log] Could not read the chat log:', err.message));
   fs.mkdirSync(alerts.MEDIA_DIR, { recursive: true });

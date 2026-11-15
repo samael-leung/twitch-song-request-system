@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-surface="overlay">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reward Effects</title>
+<!-- 🎟 Reward effects on stream (server/reward-effects.js): a channel-point reward's sound, picture / GIF /
+     video, or both, where the dashboard puts it (🔔 Alerts tab → 🎟 Reward effects). Transparent while none plays.
+     Browser Source: width 1920, height 1080, over the whole scene. Its own source, so its own volume and mute
+     in OBS — apart from the alerts'. The files are in the alert-media folder.
+     The server marks a redemption done when this page says its effect ended; with no page open, they wait.
+     The name under the picture uses the overlay theme (🎨 Look & overlays, or ?theme= in the URL). -->
+<link rel="stylesheet" href="/shared/themes.css">
+<script src="/shared/theme.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root[data-surface="overlay"] {   /* outranks the theme's own --bg-panel (themes.css) */
+    --panel-bg-alpha: 0.92;
+    --bg-panel: rgba(var(--panel-rgb), var(--panel-bg-alpha));
+  }
+
+  html, body {
+    width: 100vw; height: 100vh;
+    background: transparent !important;
+    font-family: var(--font-body);
+    color: var(--text);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* One effect: the picture (if any) with the name under it (if shown). place() sets where. */
+  .fx {
+    position: absolute;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    animation: enter .45s cubic-bezier(.2,.9,.25,1.25) both;
+  }
+  .fx.leave { animation: leave .4s ease-in both; }
+  @keyframes enter { from { opacity: 0; scale: .6; } }
+  @keyframes leave { to { opacity: 0; scale: .85; } }
+
+  .fx img, .fx video { display: block; width: 100%; height: auto; max-height: 90vh; object-fit: contain; }
+
+  .cap {
+    max-width: 640px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 18px;
+    text-align: center;
+    box-shadow: 0 0 18px rgba(var(--glow-rgb), calc(0.35 * var(--glow-k)));
+  }
+  .cap .who { font-size: 34px; line-height: 1.3; color: var(--title); }
+  .cap .who b { font-weight: 500; color: var(--accent); }
+  .cap .reward { font-family: var(--font-display); font-size: 20px; color: var(--text-dim); letter-spacing: 2px; margin-left: 10px; }
+  .cap .text { font-size: 26px; line-height: 1.4; color: var(--text); overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
+</head>
+<body>
+<script>
+const VIDEO = /\.(mp4|webm)$/i;
+const SHOW_SECONDS = 5;   // a picture without a sound and without a set time
+const MARGIN = 3;         // % of the screen from the edges
+const media = f => '/alert-media/' + encodeURIComponent(f);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const playing = new Map();   // id → { el, stop }
+let ws;
+
+// Where on screen: a corner, an edge's middle, the centre, or anywhere (random)
+function place(el, where, size) {
+  const [v, h] = where === 'center' ? ['middle', 'center']
+    : where === 'top' || where === 'bottom' ? [where, 'center']
+    : where === 'left' || where === 'right' ? ['middle', where]
+    : where.split('-');
+  if (where === 'random') {
+    el.style.left = `${MARGIN + Math.random() * Math.max(0, 100 - 2 * MARGIN - size)}vw`;
+    el.style.top = `${MARGIN + Math.random() * 55}vh`;
+    return;
+  }
+  const x = { left: [`${MARGIN}vw`, '0'], center: ['50vw', '-50%'], right: [`${100 - MARGIN}vw`, '-100%'] }[h];
+  const y = { top: [`${MARGIN}vh`, '0'], middle: ['50vh', '-50%'], bottom: [`${100 - MARGIN}vh`, '-100%'] }[v];
+  el.style.left = x[0];
+  el.style.top = y[0];
+  el.style.translate = `${x[1]} ${y[1]}`;
+}
+
+function play(e) {
+  const el = document.createElement('div');
+  el.className = 'fx';
+  if (e.image) el.style.width = `${e.size}vw`;
+  const video = e.image && VIDEO.test(e.image);
+  el.innerHTML = (e.image ? (video ? `<video src="${esc(media(e.image))}" playsinline></video>` : `<img src="${esc(media(e.image))}" alt="">`) : '')
+    + (e.name ? `<div class="cap"><div class="who"><b>${esc(e.name)}</b><span class="reward">${esc(e.reward)}</span></div>`
+      + (e.text ? `<div class="text">${esc(e.text)}</div>` : '') + '</div>' : '');
+  place(el, e.place || 'center', e.image ? e.size : 30);
+  const volume = Math.max(0, Math.min(1, (e.volume ?? 80) / 100));
+
+  // It ends when its sound and video have both ended (or at its set time); then the server hears of it
+  let waiting = 0;
+  let done = false;
+  const timers = [];
+  const sounds = [];
+  const finish = () => {
+    if (done) return;
+    done = true;
+    timers.forEach(clearTimeout);
+    sounds.forEach(s => { try { s.pause(); } catch (_) {} });
+    playing.delete(e.id);
+    el.classList.add('leave');
+    setTimeout(() => el.remove(), 400);
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'reward-effect-ended', id: e.id }));
+  };
+  const oneEnded = () => { if (--waiting <= 0 && !e.seconds) finish(); };
+  // A sound or video that can't play (missing file, or a browser that blocks sound until a click):
+  // the picture still shows its usual time
+  const oneFailed = () => { if (--waiting <= 0 && !e.seconds) timers.push(setTimeout(finish, e.image || e.name ? SHOW_SECONDS * 1000 : 0)); };
+  const start = (m) => {
+    m.volume = volume;
+    sounds.push(m);
+    waiting++;
+    let over = false;
+    const once = fn => () => { if (!over) { over = true; fn(); } };
+    m.addEventListener('ended', once(oneEnded));
+    const fail = once(oneFailed);
+    m.addEventListener('error', fail);
+    m.play().catch(fail);
+  };
+
+  document.body.appendChild(el);
+  if (video) start(el.querySelector('video'));
+  if (e.sound) start(new Audio(media(e.sound)));
+  if (e.seconds) timers.push(setTimeout(finish, e.seconds * 1000));
+  else if (!waiting) timers.push(setTimeout(finish, SHOW_SECONDS * 1000));
+  else timers.push(setTimeout(finish, 60000));   // the longest an effect plays
+  playing.set(e.id, { finish });
+}
+
+// The overlay theme and panel opacity (🎨 Look & overlays), now and when they change
+function applySettings({ overlayTheme, panelBgAlpha }) {
+  if (overlayTheme) Theme.apply(overlayTheme);
+  if (panelBgAlpha != null) document.documentElement.style.setProperty('--panel-bg-alpha', panelBgAlpha);
+}
+
+function connect() {
+  ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = () => ws.send(JSON.stringify({ type: 'reward-effects-subscribe' }));
+  ws.onclose = () => setTimeout(connect, 3000);
+  ws.onmessage = (m) => {
+    try {
+      const msg = JSON.parse(m.data);
+      if (msg.type === 'reward-effect') play(msg.effect);
+      if (msg.type === 'reward-effect-stop' && playing.has(msg.id)) playing.get(msg.id).finish();
+      if (msg.type === 'settings') applySettings(msg);
+    } catch (_) {}
+  };
+}
+
+fetch('/api/settings').then(r => r.json()).then(applySettings).catch(() => {});
+connect();
+</script>
+</body>
+</html>

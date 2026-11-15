@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alerts</title>
-<!-- 🔔 Alerts on stream (server/alerts.js): follows, subs, gifts, cheers, raids and chosen redemptions,
+<!-- 🔔 Alerts on stream (server/alerts.js): follows, subs, gifts, cheers and raids,
      one at a time, in the overlay theme (🎨 Look & overlays, or ?theme= in the URL). Transparent while none shows.
      ?layout=vertical (default): picture above, words below — Browser Source 800 × 600.
      ?layout=horizontal: picture left, words right — Browser Source 1600 × 300.
@@ -116,7 +116,6 @@ const LOOK = {
   gift:   { icon: '🎁', tag: 'GIFT SUB',     color: 'var(--vip)' },
   cheer:  { icon: '💎', tag: 'CHEER',        color: 'var(--warn)' },
   raid:   { icon: '🚀', tag: 'RAID',         color: 'var(--good)' },
-  redeem: { icon: '🎟', tag: 'REDEEM',       color: 'var(--hot)' },
 };
 const VIDEO = /\.(mp4|webm)$/i;
 const WS_URL = `ws://${location.host}`;
@@ -141,7 +140,6 @@ function headline(a) {
   if (a.kind === 'follow') line = t('alerts.follow', { name: NAME });
   else if (a.kind === 'cheer') line = t('alerts.cheer', { name: NAME, bits: a.bits });
   else if (a.kind === 'raid') line = t('chatOverlay.notice.raid', { name: NAME, viewers: a.viewers });
-  else if (a.kind === 'redeem') line = t('chatOverlay.redeemed', { name: NAME, reward: a.reward });
   else if (a.kind === 'gift' && a.count > 1) line = t('chatOverlay.notice.community_sub_gift', { name: NAME, count: a.count });
   else if (a.kind === 'gift') line = a.recipient ? t('chatOverlay.notice.sub_gift', { name: NAME, recipient: a.recipient }) : t('alerts.giftOne', { name: NAME });
   else {
@@ -160,7 +158,7 @@ function messageHtml(a) {
 
 // The built-in chime (sound '@chime'): a few soft notes per kind, made here — no sound file.
 // The big version climbs one note higher and ends on a held chord.
-const CHIME = { follow: [659, 988], sub: [523, 659, 784], gift: [784, 1047, 1319], cheer: [880, 1319, 1760], raid: [392, 523, 659, 784], redeem: [587, 880] };
+const CHIME = { follow: [659, 988], sub: [523, 659, 784], gift: [784, 1047, 1319], cheer: [880, 1319, 1760], raid: [392, 523, 659, 784] };
 let audioCtx;
 
 function chime(kind, big, volume) {

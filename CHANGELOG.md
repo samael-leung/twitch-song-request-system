@@ -20,6 +20,10 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
 
 - **Restart** the app (close it, run `start.bat` / `start_zh.bat` again) and refresh the dashboard.
   **重新啟動**程式（關掉後再執行 `start.bat`／`start_zh.bat`），並重新整理控制台。
+- Moving from **TriggerFyre** to 🎟️ reward effects: save your sounds and pictures into `alert-media`, set the
+  rewards up, then turn each one off in TriggerFyre — or it plays twice.
+  從 **TriggerFyre** 換成 🎟️ 兌換特效：把音效和圖片存到 `alert-media`，設定好兌換項目，再到 TriggerFyre 把每一個關掉 ——
+  否則會播兩次。
 - Alerts are optional: nothing new shows on stream until you add their Browser Source. If you keep
   Streamlabs' Alert Box (or another alert service) too, mute or hide one of them, or each alert shows twice.
   通知是選用的：加入它的瀏覽器來源之前，直播畫面上不會多出任何東西。如果你同時保留 Streamlabs 的 Alert Box
@@ -28,17 +32,25 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
 ### What's new / 新功能
 
 - **🔔 Alerts on stream** (`/overlay/alerts.html`), instead of Streamlabs' Alert Box: follows, subs, gift
-  subs, cheers, raids and the channel-point rewards you choose, one at a time, in the overlay theme and
-  language; a gift of several subs is one alert. In the new **🔔 Alerts** tab each kind has on / off, a
+  subs, cheers and raids, one at a time, in the overlay theme and language; a gift of several subs is one alert. In the new **🔔 Alerts** tab each kind has on / off, a
   minimum, how long it shows, a picture / GIF / video and a sound from the `alert-media` folder (or a
   built-in chime), and a **big version** from an amount up (e.g. raids from 50 viewers). **▶ Test** shows a
   made-up alert on stream only; **↻ Replay** shows a recent one again. Two layouts — picture above (800 × 600)
   or on the left (1600 × 300) — both listed under 🎨 Look & overlays with **Copy**.
-  **🔔 直播畫面上的通知**（`/overlay/alerts.html`），取代 Streamlabs 的 Alert Box：追隨、訂閱、贈訂、小奇點、揪團和
-  你選的頻道點數兌換，一次一則，用疊加層的主題和語言；一次送出多份訂閱只顯示一則。在新的「**🔔 通知**」分頁，每一種
+  **🔔 直播畫面上的通知**（`/overlay/alerts.html`），取代 Streamlabs 的 Alert Box：追隨、訂閱、贈訂、小奇點和揪團，
+  一次一則，用疊加層的主題和語言；一次送出多份訂閱只顯示一則。在新的「**🔔 通知**」分頁，每一種
   都可以設定開關、最低門檻、顯示多久、`alert-media` 資料夾裡的圖片／GIF／影片和音效（或內建的提示音），以及到達
   一定數量時的**大型通知**（例如 50 人以上的揪團）。「**▶ 測試**」只在直播畫面上顯示一則假的通知；「**↻ 重播**」再顯示
   一次最近的通知。兩種版面 —— 圖在上（800 × 600）或圖在左（1600 × 300）—— 都列在「🎨 外觀與疊加層」，可以「**複製**」。
+- **🎟️ Reward effects** (`/overlay/reward-effects.html`, in the 🔔 Alerts tab), instead of TriggerFyre: a
+  channel-point reward plays a sound (several = one at random), a picture / GIF / video where you put it, or
+  both, and can show who redeemed it. Played → the redemption is marked done; turned off, skipped, past 20
+  waiting or cleared → refunded. One after the other, together (up to 3) or skip the new one. **⏸ Pause** — or a
+  mode with **🎟️ Pause reward effects** (new 🎤 singing modes have it) — keeps them waiting.
+  **🎟️ 兌換特效**（`/overlay/reward-effects.html`，在「🔔 通知」分頁），取代 TriggerFyre：頻道點數兌換時播放音效（放好幾個 =
+  每次隨機一個）、放在你指定位置的圖片／GIF／影片，或兩者都有，也可以顯示兌換的人。播完 → 兌換標成完成；關閉、跳過、
+  排隊超過 20 個或清除 → 退還點數。可以依序播放、一起播放（最多 3 個）或跳過新的。「**⏸ 暫停**」—— 或勾選「**🎟️ 這個模式時
+  暫停兌換特效**」的模式（新的 🎤 唱歌模式預設勾選）—— 會讓兌換先排隊。
 
 ---
 
