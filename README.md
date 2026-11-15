@@ -1,65 +1,121 @@
 # 🎵 VTuber 點歌系統
 
-Twitch 頻道點數點歌，附 OBS 顯示層與連麥 Shoutout 功能。
+給 Twitch 實況主的點歌系統：觀眾用頻道點數點歌，歌單顯示在直播畫面上，你在一個控制台裡管理點歌、聊天室和直播場景。
+在你自己的電腦上執行，免費、開放原始碼。
+
+**[English](README_EN.md)** · **[新手入門（從零開始）](docs/STARTER_GUIDE_zh_TW.md)** · **[下載最新版本](https://github.com/sheng7337/twitch-song-request-system/releases/latest)** · **[更新紀錄](CHANGELOG.md)**
+
+![控制台：點歌佇列和聊天室](docs/images/dashboard-queue-zh.png)
+
+---
+
+## 可以做什麼
+
+### 🎵 頻道點數點歌
+- 觀眾兌換「點歌」並打上歌名，系統會比對你 Google 試算表裡的歌單：完全相同、打錯字、羅馬拼音、假名都找得到。
+  找不到的歌先放到「待審核」，由你決定。
+- **隨機點歌**獎勵：可以只從某個分頁抽（例如「隨機日語歌」），最近唱過的歌會冷卻幾天；很久沒被點的歌比較容易抽到。
+- 每首歌記錄上次被點的時間和點歌的人，卡片上直接看得到；直播中重新啟動也不會弄丟歌單。
+- 在控制台勾選哪些分頁可以被點（還在練的歌放在「待練勿點」就不會被點到）。
+
+<img src="docs/images/overlay-zh.png" width="320" alt="直播畫面上的歌單">
+
+### 🎤 雷虎練唱台（選用）
+搭配 [雷虎練唱台 Leihu Singsing](https://github.com/LeihuTW/Leihu-singsing)：從 YouTube 做出伴奏和時間軸歌詞。
+- 點歌進來可以自動準備伴奏，按「**🎤 練唱**」直接在雷虎練唱台打開這首歌，連 KEY 都調好。
+- 雷虎練唱台的畫面就在控制台的分頁裡；也可以一次準備整份歌單，並替歌單找好 YouTube 連結。
+
+### 💬 聊天室
+- 每個分頁旁邊都有即時聊天室：搜尋、篩選、看之前的直播。要感謝或打招呼的事件（第一次發言、訂閱、小奇點、揪團、兌換）會標出來。
+- 直接在控制台發言、回覆、封鎖／禁言、Shoutout、揪團、置頂訊息，以及完成或退還兌換。
+- **直播畫面上的聊天室**（取代 OneComme）：四種樣式，有 Twitch 徽章和表情符號；被刪除的訊息會立刻消失。
+
+<img src="docs/images/chat-overlay-zh.png" width="640" alt="直播畫面上的聊天室：面板和對話泡泡">
+
+### 🎛 模式
+「🎤 唱歌」「💬 聊天」「☕ 休息」……按一下就設定好 Streamlabs Desktop 或 OBS：場景、要顯示哪些來源、位置和音訊；
+還可以暫停 Clip、在聊天室發一則訊息、切換控制台分頁。
+
+### 🎬 Clip、感謝名單與揪團
+- `!so` 送出 Shoutout 並播放對方的 Clip；`!watch` 播放 Twitch Clip 或 YouTube。
+- `!tk` 感謝名單、`!endingtk` 片尾名單：揪團、訂閱、小奇點、新追隨、兌換、點歌和最活躍的觀眾。
+- **搭配片尾名單揪團**：系統算好時間播片尾名單，名單結束 10 秒後剛好出發。
+
+### 👕 換裝（veadotube mini）
+觀眾兌換獎勵後跳出卡片，點一下要穿的衣服；可以設定幾分鐘後換回預設服裝。
+
+### ☕ 休息中／準備中卡片
+放在直播畫面上的倒數卡片，網址加上 `?min=10` 或 `?at=20:00` 就會倒數。
+
+<img src="docs/images/cards.png" width="480" alt="休息中和準備中卡片">
+
+### 🎨 主題和文字大小
+五種主題（霓虹、日光、高對比、海洋、奶油咖啡），控制台和疊加層可以分開選，文字大小也可以調，版面不會跑掉。
+控制台在手機上也能用，中英文介面。
+
+<img src="docs/images/themes.png" alt="歌單疊加層的五種主題">
+
+---
+
+## 需要什麼
+
+- Windows 電腦，以及 [Node.js LTS](https://nodejs.org)
+- Twitch 帳號（要開啟雙重驗證，才能建立 Twitch 應用程式）
+- Google 帳號：歌單放在 Google 試算表
+- OBS Studio 或 Streamlabs Desktop
+- 選用：[雷虎練唱台](https://github.com/LeihuTW/Leihu-singsing)、veadotube mini
 
 ---
 
 ## 開始使用
 
 **第一次用、還沒有歌單？** 從 [新手入門（從零開始）](docs/STARTER_GUIDE_zh_TW.md) 開始 —— 不需要會寫程式。
-（English: [Starter Guide](docs/STARTER_GUIDE.md)）
 
 **首次安裝**：安裝 [Node.js LTS](https://nodejs.org)，然後雙擊 `start_zh.bat`，跟著瀏覽器的安裝精靈走即可。
 
-**每次直播**：雙擊 `start_zh.bat`，就這樣。
+**每次直播**：雙擊 `start_zh.bat`，就這樣。控制台在 `http://localhost:3000/dashboard`。
 
 **更新到新版本**：到[最新版本](https://github.com/sheng7337/twitch-song-request-system/releases/latest)先看「⚠ 需要動手」，再照[新手入門第 12 章](docs/STARTER_GUIDE_zh_TW.md#12-更新到新版本)的步驟 —— 你的設定不會被覆蓋。
-（English: read **⚠ Action needed** in [the latest release](https://github.com/sheng7337/twitch-song-request-system/releases/latest), then follow [Updating to a new version](docs/STARTER_GUIDE.md#12-updating-to-a-new-version).）
 
-**控制台**：`http://localhost:3000/dashboard` — 點歌佇列、雷虎練唱台，以及聊天室（篩選、標示要宣讀的訊息、直接發言和回覆、封鎖／禁言／Shoutout／揪團／置頂、完成或退還兌換），以及模式（一鍵切換 Streamlabs／OBS 的場景、顯示項目、音訊，並暫停 Clip、在聊天室發言）。
-
-> 完整說明請見 [SETUP_zh_TW.md](SETUP_zh_TW.md)
+> 完整說明請見 [SETUP_zh_TW.md](SETUP_zh_TW.md)；不用安裝精靈的手動設定見 [SETUP_MANUAL.md](SETUP_MANUAL.md)。
 
 ---
 
 ## OBS 瀏覽器來源
 
+控制台最上面的「**🎨 外觀與疊加層**」列出每一個網址和大小，可以直接「**複製**」。
+
 | 來源 | 網址 | 尺寸 |
 |---|---|---|
-| 歌單顯示層 | `http://localhost:3000/overlay/index.html` | 960×1470，縮小至 50%（480×735） |
-| Clip Player | `http://localhost:3000/clip-player/index.html` | 1920×1080 |
-| 聊天室 | `http://localhost:3000/overlay/chat.html?style=panel`（或 `bubble`、`list`、`row` 橫向一排） | 例如 960×1080（`row`：3840×200），縮小至 50% |
+| 歌單 | `http://localhost:3000/overlay/index.html` | 960×1470，在場景裡縮小到 50%（480×735） |
+| Clip 播放器 | `http://localhost:3000/clip-player/index.html` | 1920×1080 |
+| 聊天室 | `http://localhost:3000/overlay/chat.html?style=panel`（或 `bubble`、`list`、`row` 橫向一排） | 例如 960×1080（`row`：3840×200），縮小到 50% |
+| 休息中卡片 | `http://localhost:3000/overlay/break.html` | 960×260，縮小到 50% |
+| 準備中卡片 | `http://localhost:3000/overlay/break.html?card=opening` | 960×260，縮小到 50% |
 
-歌單顯示層 Custom CSS：
+歌單的自訂 CSS：
 ```css
 body { background-color: rgba(0, 0, 0, 0) !important; margin: 0px auto; overflow: hidden; }
 ```
 
 ---
 
-## 聊天指令（版主 / 台主限定）
+## 聊天指令（版主／台主限定）
 
 | 指令 | 說明 |
 |---|---|
-| `!so <帳號>` | 送出 Twitch 的 Shoutout，播放指定頻道的隨機 Clip，並記錄至感謝名單 |
+| `!so <帳號>` | 送出 Twitch 的 Shoutout，播放指定頻道的隨機 Clip，並記錄到感謝名單 |
 | `!tk` | 播放感謝名單，列出本場所有 `!so` 的頻道 |
 | `!endingtk` | 片尾感謝名單：揪團、訂閱、小奇點、新追隨、兌換、點歌和最活躍的聊天觀眾 |
 | `!watch <網址>` | 播放 Twitch Clip、YouTube 或影片連結 |
 | `!replay` | 重播上一個片段 |
-| `!stop` | 立即停止當前播放 |
+| `!stop` | 立即停止目前的播放 |
+
+**感謝名單的背景圖**：把圖片（jpg／png／gif／webp）放進 `clip-player/sponsor-bgs/`，可以放很多張，每次隨機選一張；
+重新啟動後生效。資料夾裡沒有圖片時，背景是深色。
 
 ---
-
-## !tk 背景圖設定
-
-每次呼叫 `!tk` 或 `!endingtk` 時，系統會從資料夾中隨機選取一張背景圖片。
-
-1. 將背景圖片（jpg / png / gif / webp）放入 `clip-player/sponsor-bgs/` 資料夾，可放多張
-2. 重新啟動伺服器
-
-> 若資料夾內沒有圖片，背景顯示為深色。
 
 ## 授權 / License
 
 [MIT](LICENSE)。雷虎練唱台（Leihu Singsing）是另一個軟體，有它自己的授權。
-MIT — see [LICENSE](LICENSE). Leihu Singsing is separate software with its own license.

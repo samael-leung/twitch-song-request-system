@@ -89,6 +89,8 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
   stream fell slightly behind the music in the Leihu tab (but not in Leihu's own window), this should fix it.
   控制台的雷虎練唱台分頁現在會用它設定裡選的輸出裝置播放，和它自己的視窗一樣。之前瀏覽器不允許，雷虎練唱台只能用
   Windows 預設裝置播放。如果在雷虎練唱台分頁唱歌時，直播上的歌聲會稍微落後音樂（在它自己的視窗不會），這應該能修正。
+- Switching EN / 中文 no longer shows the top bar's Leihu as offline until the next check.
+  切換 EN／中文時，最上面的雷虎練唱台狀態不會再暫時顯示成未開啟。
 - On a phone the dashboard fits the screen: the top bar and the manual request bar wrap, and a long song
   title no longer makes the page wider than the screen.
   在手機上控制台不會超出畫面：最上面一列和手動點歌列會換行，很長的歌名也不會讓頁面變寬。
