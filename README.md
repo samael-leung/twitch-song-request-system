@@ -32,6 +32,14 @@
 
 <img src="docs/images/chat-overlay-zh.png" width="640" alt="直播畫面上的聊天室：面板和對話泡泡">
 
+### 🔔 通知
+取代 Streamlabs 的 Alert Box：追隨、訂閱、贈訂、小奇點、揪團和你選的頻道點數兌換，一次一則，用疊加層的主題和語言。
+- 每一種都可以設定開關、最低門檻、顯示多久，以及 `alert-media` 資料夾裡的圖片、GIF、影片和音效（沒有的話用內建的提示音）。
+- 到達一定數量就顯示**大型通知**（例如 50 人以上的揪團）；一次送出多份訂閱只顯示一則。
+- 「**▶ 測試**」只顯示在直播畫面上，不會發到 Twitch。
+
+<img src="docs/images/alerts-zh.png" width="640" alt="直播畫面上的通知：圖在上和圖在左">
+
 ### 🎛 模式
 「🎤 唱歌」「💬 聊天」「☕ 休息」……按一下就設定好 Streamlabs Desktop 或 OBS：場景、要顯示哪些來源、位置和音訊；
 還可以暫停 Clip、在聊天室發一則訊息、切換控制台分頁。
@@ -90,6 +98,7 @@
 | 歌單 | `http://localhost:3000/overlay/index.html` | 960×1470，在場景裡縮小到 50%（480×735） |
 | Clip 播放器 | `http://localhost:3000/clip-player/index.html` | 1920×1080 |
 | 聊天室 | `http://localhost:3000/overlay/chat.html?style=panel`（或 `bubble`、`list`、`row` 橫向一排） | 例如 960×1080（`row`：3840×200），縮小到 50% |
+| 通知 | `http://localhost:3000/overlay/alerts.html?layout=vertical`（或 `horizontal` 圖在左） | 800×600（`horizontal`：1600×300），縮小到 50% |
 | 休息中卡片 | `http://localhost:3000/overlay/break.html` | 960×260，縮小到 50% |
 | 準備中卡片 | `http://localhost:3000/overlay/break.html?card=opening` | 960×260，縮小到 50% |
 

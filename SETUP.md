@@ -308,7 +308,7 @@ Streamlabs Desktop or OBS Studio back the way you saved the mode and does this a
 ## Alerts (🔔 Alerts tab)
 
 Follows, subs, gifts, cheers and raids on stream — instead of Streamlabs' Alert Box. One at a time, in
-the song list's look, worded in the overlay language. A gift of several subs is one alert.
+the overlay theme (🎨 Look & overlays), worded in the overlay language. A gift of several subs is one alert.
 
 1. Add a new source → **Browser**, one of two layouts (🔔 Alerts lists them with **Copy**):
    - `http://localhost:3000/overlay/alerts.html?layout=vertical` — picture above: Width `800`, Height `600`

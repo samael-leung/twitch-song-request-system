@@ -34,6 +34,16 @@ Works with [Leihu Singsing](https://github.com/LeihuTW/Leihu-singsing), which ma
 
 <img src="docs/images/chat-overlay-en.png" width="640" alt="Chat on stream: panel and bubbles">
 
+### 🔔 Alerts
+Instead of Streamlabs' Alert Box: follows, subs, gift subs, cheers, raids and the channel-point rewards you
+choose, one at a time, in the overlay theme and language.
+- Each kind has on / off, a minimum, how long it shows, and a picture, GIF, video and sound from the
+  `alert-media` folder (or a built-in chime).
+- A **big version** from an amount up (e.g. raids from 50 viewers); a gift of several subs is one alert.
+- **▶ Test** shows on stream only — nothing goes to Twitch.
+
+<img src="docs/images/alerts-en.png" width="640" alt="Alerts on stream: picture above and picture on the left">
+
 ### 🎛 Modes
 "🎤 Singing", "💬 Talking", "☕ Break"… one click sets Streamlabs Desktop or OBS — scene, which sources show,
 positions and audio — and can hold clips, post in chat and switch the dashboard tab.
@@ -93,6 +103,7 @@ and adjustable text sizes that keep the layout. The dashboard works on a phone t
 | Song list | `http://localhost:3000/overlay/index.html` | 960×1470, scaled to 50% in your scene (480×735) |
 | Clip player | `http://localhost:3000/clip-player/index.html` | 1920×1080 |
 | Chat | `http://localhost:3000/overlay/chat.html?style=panel` (or `bubble`, `list`, `row` for one line) | e.g. 960×1080 (`row`: 3840×200), scaled to 50% |
+| Alerts | `http://localhost:3000/overlay/alerts.html?layout=vertical` (or `horizontal`, picture on the left) | 800×600 (`horizontal`: 1600×300), scaled to 50% |
 | On break card | `http://localhost:3000/overlay/break.html` | 960×260, scaled to 50% |
 | Starting soon card | `http://localhost:3000/overlay/break.html?card=opening` | 960×260, scaled to 50% |
 

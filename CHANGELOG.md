@@ -9,6 +9,39 @@ the dashboard under **🎨 Look & overlays** (at the top). Read **⚠ Action nee
 
 ---
 
+## 2026.11-3 — unreleased
+
+**Works with:** Node.js LTS · Leihu Singsing 1.6.x–2.0.x (checked with 2.0.0) · for modes, Streamlabs
+Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
+**搭配**：Node.js LTS · 雷虎練唱台 1.6.x–2.0.x（以 2.0.0 確認過）· 模式需要 Streamlabs Desktop 或 OBS Studio 30
+以上 · 換裝需要 veadotube mini 2.1 以上。
+
+### ⚠ Action needed / 需要動手
+
+- **Restart** the app (close it, run `start.bat` / `start_zh.bat` again) and refresh the dashboard.
+  **重新啟動**程式（關掉後再執行 `start.bat`／`start_zh.bat`），並重新整理控制台。
+- Alerts are optional: nothing new shows on stream until you add their Browser Source. If you keep
+  Streamlabs' Alert Box (or another alert service) too, mute or hide one of them, or each alert shows twice.
+  通知是選用的：加入它的瀏覽器來源之前，直播畫面上不會多出任何東西。如果你同時保留 Streamlabs 的 Alert Box
+  （或其他通知服務），請把其中一個靜音或隱藏，否則每則通知會出現兩次。
+
+### What's new / 新功能
+
+- **🔔 Alerts on stream** (`/overlay/alerts.html`), instead of Streamlabs' Alert Box: follows, subs, gift
+  subs, cheers, raids and the channel-point rewards you choose, one at a time, in the overlay theme and
+  language; a gift of several subs is one alert. In the new **🔔 Alerts** tab each kind has on / off, a
+  minimum, how long it shows, a picture / GIF / video and a sound from the `alert-media` folder (or a
+  built-in chime), and a **big version** from an amount up (e.g. raids from 50 viewers). **▶ Test** shows a
+  made-up alert on stream only; **↻ Replay** shows a recent one again. Two layouts — picture above (800 × 600)
+  or on the left (1600 × 300) — both listed under 🎨 Look & overlays with **Copy**.
+  **🔔 直播畫面上的通知**（`/overlay/alerts.html`），取代 Streamlabs 的 Alert Box：追隨、訂閱、贈訂、小奇點、揪團和
+  你選的頻道點數兌換，一次一則，用疊加層的主題和語言；一次送出多份訂閱只顯示一則。在新的「**🔔 通知**」分頁，每一種
+  都可以設定開關、最低門檻、顯示多久、`alert-media` 資料夾裡的圖片／GIF／影片和音效（或內建的提示音），以及到達
+  一定數量時的**大型通知**（例如 50 人以上的揪團）。「**▶ 測試**」只在直播畫面上顯示一則假的通知；「**↻ 重播**」再顯示
+  一次最近的通知。兩種版面 —— 圖在上（800 × 600）或圖在左（1600 × 300）—— 都列在「🎨 外觀與疊加層」，可以「**複製**」。
+
+---
+
 ## 2026.11-2 — 2026-11-15
 
 **Works with:** Node.js LTS · Leihu Singsing 1.6.x–2.0.x (checked with 2.0.0) · for modes, Streamlabs

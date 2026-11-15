@@ -14,7 +14,7 @@
       alerts: {
         title: 'Alerts on stream',
         intro: 'Follows, subs, gifts, cheers and raids (and the redemptions you choose), one at a time — instead of Streamlabs\u2019 Alert Box. Add one as a Browser Source, scale it to 50% and place it where you like. Its sound follows the source\u2019s volume / mute in OBS (and your modes).',
-        layout: { vertical: 'Picture above ({size})', horizontal: 'Picture on the left ({size})' },
+        layout: { vertical: 'Picture above', horizontal: 'Picture on the left' },
         skip: '⏭ Skip the one showing',
         reload: '↻ Read the folder again',
         folder: 'Pictures, GIFs, videos and sounds: put the files in {folder}, then read the folder again.',
@@ -323,7 +323,7 @@
         overlaysTitle: 'Overlays on stream',
         sourcesTitle: 'Browser Sources',
         sourcesHint: 'Add each as a Browser Source at this size, then scale it to 50% in your scene (they render at 2× for sharp text). The chat\'s addresses: 💬 Chat → ⚙.',
-        src: { song: 'Song list', clip: 'Clip player (!so, !tk…)', break: 'Break card', opening: 'Opening card' },
+        src: { song: 'Song list', clip: 'Clip player (!so, !tk…)', break: 'Break card', opening: 'Opening card', alertsV: 'Alerts (picture above)', alertsH: 'Alerts (picture left)' },
       },
       look: {
         dashTheme: 'Theme',
@@ -556,7 +556,7 @@
       alerts: {
         title: '直播畫面上的通知',
         intro: '追隨、訂閱、贈訂、小奇點和揪團（以及你選的兌換），一次顯示一則 —— 取代 Streamlabs 的 Alert Box。新增成瀏覽器來源、縮小到 50%，放在你想要的位置。音效會跟著 OBS 裡這個來源的音量／靜音（以及你的模式）。',
-        layout: { vertical: '圖片在上（{size}）', horizontal: '圖片在左（{size}）' },
+        layout: { vertical: '圖片在上', horizontal: '圖片在左' },
         skip: '⏭ 跳過目前這則',
         reload: '↻ 重新讀取資料夾',
         folder: '圖片、GIF、影片和音效：把檔案放進 {folder}，再重新讀取資料夾。',
@@ -865,7 +865,7 @@
         overlaysTitle: '直播畫面上的疊加層',
         sourcesTitle: '瀏覽器來源',
         sourcesHint: '用這個大小把每一個加成瀏覽器來源，再在場景裡縮小到 50%（以 2 倍渲染，文字比較清楚）。聊天室的網址：💬 聊天室 → ⚙。',
-        src: { song: '歌單', clip: 'Clip 播放器（!so、!tk…）', break: '休息卡', opening: '準備中卡片' },
+        src: { song: '歌單', clip: 'Clip 播放器（!so、!tk…）', break: '休息卡', opening: '準備中卡片', alertsV: '通知（圖在上）', alertsH: '通知（圖在左）' },
       },
       look: {
         dashTheme: '主題',

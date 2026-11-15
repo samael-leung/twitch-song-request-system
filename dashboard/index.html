@@ -1878,6 +1878,8 @@ const OVERLAY_SOURCES = [
   ['clip', '/clip-player/index.html', '1920 × 1080'],
   ['break', '/overlay/break.html', '960 × 260'],
   ['opening', '/overlay/break.html?card=opening', '960 × 260'],
+  ['alertsV', '/overlay/alerts.html?layout=vertical', '800 × 600'],
+  ['alertsH', '/overlay/alerts.html?layout=horizontal', '1600 × 300'],
 ];
 
 function paintOverlaySources() {
@@ -3787,7 +3789,7 @@ function paintAlerts() {
   if (!st) return;
   document.getElementById('al-urls').innerHTML = Object.entries(ALERT_LAYOUTS).map(([layout, size]) => {
     const url = `${location.origin}/overlay/alerts.html?layout=${layout}`;
-    return `<div class="co-url"><b>${esc(t('dash.alerts.layout.' + layout, { size }))}</b><code title="${esc(url)}">${esc(url)}</code>`
+    return `<div class="co-url"><b>${esc(t('dash.alerts.layout.' + layout))}<br><small>${size}</small></b><code title="${esc(url)}">${esc(url)}</code>`
       + `<button class="btn" type="button" data-url="${esc(url)}">${esc(t('dash.chat.overlayCopy'))}</button></div>`;
   }).join('');
   document.getElementById('al-folder').textContent = t('dash.alerts.folder', { folder: st.folder });

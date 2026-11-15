@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-surface="overlay">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alerts</title>
 <!-- 🔔 Alerts on stream (server/alerts.js): follows, subs, gifts, cheers, raids and chosen redemptions,
-     one at a time, in the song overlay's look. Transparent while none shows.
+     one at a time, in the overlay theme (🎨 Look & overlays, or ?theme= in the URL). Transparent while none shows.
      ?layout=vertical (default): picture above, words below — Browser Source 800 × 600.
      ?layout=horizontal: picture left, words right — Browser Source 1600 × 300.
      Scale it to 50% (it renders at 2x like the song overlay) and place it where you like.
@@ -14,8 +14,8 @@
      lang="en" like the song overlay: under zh-TW, OBS's browser picks a serif font for Chinese. -->
 <script src="/shared/i18n.js"></script>
 <script src="/shared/i18n-viewer.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/themes.css">
+<script src="/shared/theme.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,22 +25,18 @@
     zoom: 2;   /* rendered at 2x; the Browser Source is scaled to 50% for sharp text */
   }
 
-  :root {
+  /* Colours and fonts: shared/themes.css. --kind is each kind's colour (LOOK below), --accent the theme's */
+  :root[data-surface="overlay"] {   /* outranks the theme's own --bg-panel (themes.css) */
     --panel-bg-alpha: 0.92;
     --text-brightness: 1;
-    --bg-panel: rgba(8, 8, 20, var(--panel-bg-alpha));
-    --border: rgba(120, 60, 220, 0.3);
-    --purple: #b06aff;
-    --title: #f0e6ff;
-    --text: #d4c8f0;
-    --text-dim: #7a6a9a;
-    --accent: var(--purple);
+    --bg-panel: rgba(var(--panel-rgb), var(--panel-bg-alpha));
+    --kind: var(--accent);
   }
 
   /* The page is half the Browser Source in each direction (zoom 2); place() sets it */
   html, body {
     background: transparent !important;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: var(--font-body);
     color: var(--text);
     overflow: hidden;
   }
@@ -51,34 +47,34 @@
     max-width: calc(100% - 12px); max-height: calc(100% - 12px);
     background: var(--bg-panel);
     border: 1px solid var(--border);
-    border-left: 4px solid var(--accent);
+    border-left: 4px solid var(--kind);
     border-radius: 8px;
     padding: 12px 18px 12px 16px;
     backdrop-filter: blur(8px);
-    box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 25%, transparent);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--kind) calc(25% * var(--glow-k)), transparent);
     animation: enter .5s cubic-bezier(.2,.9,.25,1.2) both;
   }
   .alert.leave { animation: leave .45s ease-in both; }
   .alert::before, .alert::after { content: ''; position: absolute; width: 10px; height: 10px; }
-  .alert::before { top: -1px; left: -4px; border-top: 2px solid var(--purple); border-left: 2px solid var(--purple); }
-  .alert::after  { bottom: -1px; right: -1px; border-bottom: 2px solid var(--purple); border-right: 2px solid var(--purple); }
+  .alert::before { top: -1px; left: -4px; border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+  .alert::after  { bottom: -1px; right: -1px; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); }
   @keyframes enter { from { opacity: 0; transform: scale(.85) translateY(10px); } }
   @keyframes leave { to { opacity: 0; transform: scale(.95) translateY(-6px); } }
 
   .media { flex: none; display: flex; align-items: center; justify-content: center; }
   .media img, .media video { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
-  .media .icon { font-size: 54px; line-height: 1; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 60%, transparent)); }
-  .media .avatar { border-radius: 50%; border: 2px solid var(--accent); }
+  .media .icon { font-size: 54px; line-height: 1; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--kind) 60%, transparent)); }
+  .media .avatar { border-radius: 50%; border: 2px solid var(--kind); }
 
   .words { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
   .tag {
     display: flex; align-items: center; gap: 8px;
-    font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 4px; color: var(--accent);
+    font-family: var(--font-display); font-size: 11px; font-weight: 500; letter-spacing: 4px; color: var(--kind);
   }
-  .tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: blink 1.4s ease-in-out infinite; }
+  .tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--kind); animation: blink 1.4s ease-in-out infinite; }
   @keyframes blink { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
-  .headline { font-size: 22px; line-height: 1.3; color: var(--title); text-shadow: 0 0 14px rgba(176, 106, 255, 0.45); overflow-wrap: anywhere; }
-  .headline .name { color: var(--accent); }
+  .headline { font-size: 22px; line-height: 1.3; color: var(--title); text-shadow: 0 0 14px rgba(var(--glow-rgb), calc(0.45 * var(--glow-k))); overflow-wrap: anywhere; }
+  .headline .name { color: var(--kind); }
   .message {
     font-size: 14px; line-height: 1.45; color: var(--text);
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
@@ -96,13 +92,13 @@
 
   /* The big version: larger words, a pulsing glow */
   .alert.big .headline { font-size: 28px; }
-  .alert.big { border-width: 2px; border-left-width: 6px; border-color: color-mix(in srgb, var(--accent) 60%, transparent); animation: enter .6s cubic-bezier(.2,.9,.25,1.3) both, pulse 1.6s ease-in-out .6s infinite; }
+  .alert.big { border-width: 2px; border-left-width: 6px; border-color: color-mix(in srgb, var(--kind) 60%, transparent); animation: enter .6s cubic-bezier(.2,.9,.25,1.3) both, pulse 1.6s ease-in-out .6s infinite; }
   .alert.big.leave { animation: leave .45s ease-in both; }
   .layout-vertical .alert.big .media { height: 150px; }
-  @keyframes pulse { 50% { box-shadow: 0 0 44px color-mix(in srgb, var(--accent) 55%, transparent); } }
+  @keyframes pulse { 50% { box-shadow: 0 0 44px color-mix(in srgb, var(--kind) 55%, transparent); } }
 
   .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; overflow: hidden; border-radius: 0 0 8px 8px; }
-  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--purple), var(--accent)); transform-origin: left; animation: drain linear both; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--kind)); transform-origin: left; animation: drain linear both; }
   @keyframes drain { to { transform: scaleX(0); } }
 </style>
 </head>
@@ -113,13 +109,14 @@ const params = new URLSearchParams(location.search);
 const layout = params.get('layout') === 'horizontal' ? 'horizontal' : 'vertical';
 document.body.classList.add('layout-' + layout);
 
+// Each kind's colour is one of the theme's (shared/themes.css)
 const LOOK = {
-  follow: { icon: '💜', tag: 'NEW FOLLOWER', color: '#5a9aff' },
-  sub:    { icon: '⭐', tag: 'SUBSCRIBER',   color: '#b06aff' },
-  gift:   { icon: '🎁', tag: 'GIFT SUB',     color: '#ff6ad5' },
-  cheer:  { icon: '💎', tag: 'CHEER',        color: '#ffb84a' },
-  raid:   { icon: '🚀', tag: 'RAID',         color: '#4aff9a' },
-  redeem: { icon: '🎟', tag: 'REDEEM',       color: '#ffb84a' },
+  follow: { icon: '💜', tag: 'NEW FOLLOWER', color: 'var(--info)' },
+  sub:    { icon: '⭐', tag: 'SUBSCRIBER',   color: 'var(--accent)' },
+  gift:   { icon: '🎁', tag: 'GIFT SUB',     color: 'var(--vip)' },
+  cheer:  { icon: '💎', tag: 'CHEER',        color: 'var(--warn)' },
+  raid:   { icon: '🚀', tag: 'RAID',         color: 'var(--good)' },
+  redeem: { icon: '🎟', tag: 'REDEEM',       color: 'var(--hot)' },
 };
 const VIDEO = /\.(mp4|webm)$/i;
 const WS_URL = `ws://${location.host}`;
@@ -212,7 +209,7 @@ function play(a) {
   const look = LOOK[a.kind] || LOOK.sub;
   const el = document.createElement('div');
   el.className = 'alert' + (a.big ? ' big' : '');
-  el.style.setProperty('--accent', look.color);
+  el.style.setProperty('--kind', look.color);
   const msg = messageHtml(a);
   el.innerHTML = `<div class="media">${mediaHtml(a, look)}</div>`
     + `<div class="words"><div class="tag"><span class="dot"></span>${esc(a.big ? 'BIG ' + look.tag : look.tag)}</div>`
@@ -255,7 +252,8 @@ function add(a) {
   next();
 }
 
-function applySettings({ panelBgAlpha, textBrightness, overlayLanguage }) {
+function applySettings({ panelBgAlpha, textBrightness, overlayLanguage, overlayTheme }) {
+  if (overlayTheme) Theme.apply(overlayTheme);
   if (overlayLanguage) I18N.setLang(overlayLanguage, { save: false, tagPage: false });
   if (panelBgAlpha != null) document.documentElement.style.setProperty('--panel-bg-alpha', panelBgAlpha);
   if (textBrightness != null) document.documentElement.style.setProperty('--text-brightness', textBrightness);
