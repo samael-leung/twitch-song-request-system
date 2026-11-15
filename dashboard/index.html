@@ -8,6 +8,7 @@
 <script src="/shared/i18n-server.js"></script>
 <script src="/dashboard/i18n-dashboard.js"></script>
 <script src="/shared/chat-bots.js"></script>
+<script src="/shared/song-key.js"></script>
 <link rel="stylesheet" href="/shared/themes.css">
 <script src="/shared/theme.js"></script>
 <style>
@@ -1399,7 +1400,7 @@ function render() {
           </div>
           <div class="song-meta">
             ${nowPlaying.artist ? `<span class="song-artist">${esc(nowPlaying.artist)}</span>` : ''}
-            ${historyHtml(nowPlaying.title)}
+            ${historyHtml(nowPlaying)}
           </div>
           <div class="song-meta">
             <span class="bt-badge" data-zone="nowPlaying" data-index="0"></span>
@@ -1435,7 +1436,7 @@ function render() {
         </div>
         <div class="song-meta">
           ${item.artist ? `<span class="song-artist">${esc(item.artist)}</span>` : ''}
-          ${historyHtml(item.title)}
+          ${historyHtml(item)}
           <span class="bt-badge" data-zone="queue" data-index="${i}"></span>
         </div>
       </div>
@@ -1462,7 +1463,7 @@ function render() {
         </div>
         <div class="song-meta">
           ${item.artist ? `<span class="song-artist">${esc(item.artist)}</span>` : ''}
-          ${historyHtml(item.title)}
+          ${historyHtml(item)}
         </div>
       </div>
       ${item.key != null && item.key !== '' ? `<span class="key-badge">${item.key >= 0 ? '+' : ''}${esc(item.key)}</span>` : ''}
@@ -1752,7 +1753,7 @@ let filteredSongs = [];  // current suggest results
 let suggestActive = -1;  // keyboard nav index
 let selectedSong = null; // confirmed pick from suggest
 
-let historyData = {};  // title_lower → record
+let historyData = {};  // SongKey.songKey(title, artist) → record
 
 async function loadHistory() {
   try {
@@ -2044,8 +2045,9 @@ function daysAgo(dateStr) {
   return t('dash.history.ago', { n: diff });
 }
 
-function historyHtml(title) {
-  const rec = historyData[title.toLowerCase().trim()];
+function historyHtml(song) {
+  const key = SongKey.findKey(historyData, song.title, song.artist);
+  const rec = key ? historyData[key] : null;
   if (!rec || !rec.last_requested_at) {
     return `<div class="song-history"><span class="h-days">${esc(t('dash.history.never'))}</span></div>`;
   }

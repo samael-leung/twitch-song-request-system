@@ -202,13 +202,9 @@ setEventHandler(async (event) => {
   const matchedRandom = parseRandomReward(rewardId);
   if (matchedRandom) {
     const { queue, nowPlaying, playedSongs } = getState();
-    const excludeTitles = [
-      ...(nowPlaying ? [nowPlaying.title] : []),
-      ...queue.map(s => s.title),
-      ...playedSongs.map(s => s.title),
-    ];
+    const exclude = [...(nowPlaying ? [nowPlaying] : []), ...queue, ...playedSongs];
     const allowedTabs = matchedRandom.tabs || [];
-    const picked = pickRandom(excludeTitles, allowedTabs);
+    const picked = pickRandom(exclude, allowedTabs);
     if (picked) {
       addSong({ title: picked.title, artist: picked.artist, key: picked.key || '', requester, isRandom: true, tabs: allowedTabs, redemption });
       const tabInfo = allowedTabs.length > 0 ? ` [${allowedTabs.join('/')}]` : '';
@@ -307,14 +303,10 @@ app.post('/api/redraw', (req, res) => {
 
   // Exclude everything currently in the queue (including the song being replaced,
   // so it won't be re-drawn on the next pick)
-  const excludeTitles = [
-    ...(state.nowPlaying ? [state.nowPlaying.title] : []),
-    ...state.queue.map(s => s.title),
-    ...state.playedSongs.map(s => s.title),
-  ];
+  const exclude = [...(state.nowPlaying ? [state.nowPlaying] : []), ...state.queue, ...state.playedSongs];
 
   const tabs = currentSong.tabs || [];
-  const picked = pickRandom(excludeTitles, tabs);
+  const picked = pickRandom(exclude, tabs);
   if (!picked) return res.status(400).json(message('noRedraw', {}, 'no songs available to redraw'));
 
   const ok = redrawSong(zone, index, { ...picked, requester: currentSong.requester, tabs, redemption: currentSong.redemption });
