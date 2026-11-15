@@ -13,6 +13,9 @@ Twitch 頻道點數點歌，附 OBS 顯示層與連麥 Shoutout 功能。
 
 **每次直播**：雙擊 `start_zh.bat`，就這樣。
 
+**更新到新版本**：到[最新版本](https://github.com/sheng7337/twitch-song-request-system/releases/latest)先看「⚠ 需要動手」，再照[新手入門第 12 章](docs/STARTER_GUIDE_zh_TW.md#12-更新到新版本)的步驟 —— 你的設定不會被覆蓋。
+（English: read **⚠ Action needed** in [the latest release](https://github.com/sheng7337/twitch-song-request-system/releases/latest), then follow [Updating to a new version](docs/STARTER_GUIDE.md#12-updating-to-a-new-version).）
+
 **控制台**：`http://localhost:3000/dashboard` — 點歌佇列、雷虎練唱台，以及聊天室（篩選、標示要宣讀的訊息、直接發言和回覆、封鎖／禁言／Shoutout／揪團／置頂、完成或退還兌換），以及模式（一鍵切換 Streamlabs／OBS 的場景、顯示項目、音訊，並暫停 Clip、在聊天室發言）。
 
 > 完整說明請見 [SETUP_zh_TW.md](SETUP_zh_TW.md)
