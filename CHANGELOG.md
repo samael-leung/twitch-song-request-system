@@ -2,10 +2,10 @@
 
 Versions are `YYYY.MM-W`: the year, the month (two digits) and which release weekend of that month it
 is, counted by its Saturday. A hotfix between weekends adds `.N` (`2026.11-1.1`). The version shows in
-the dashboard under 🎵 Song Queue → ⚙ Settings. Read **⚠ Action needed** before updating.
+the dashboard under **🎨 Look & overlays** (at the top). Read **⚠ Action needed** before updating.
 
 版本號是 `YYYY.MM-W`：年、月（兩位數），以及這是該月第幾個發佈週末（以週六算）。兩個週末之間的緊急修正
-會加上 `.N`（`2026.11-1.1`）。目前的版本顯示在控制台「🎵 點歌佇列 → ⚙ 設定」。更新前請先看「⚠ 需要動手」。
+會加上 `.N`（`2026.11-1.1`）。目前的版本顯示在控制台最上面的「**🎨 外觀與疊加層**」。更新前請先看「⚠ 需要動手」。
 
 ---
 
@@ -25,12 +25,15 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
   you pick another theme.
   在 OBS／Streamlabs 把每個**瀏覽器來源重新整理**一次（內容 →「**重新整理目前頁面的快取**」）：歌單、休息卡和
   Clip 播放器要載入新的主題檔案。在你選別的主題之前，看起來都和原本一樣。
-- Everything new is optional: nothing else to change.
-  新功能都是選用的：其他什麼都不用改。
+- The overlays' panel opacity, brightness and language moved from 🎵 Song Queue → ⚙ to **🎨 Look & overlays**
+  at the top; your values stay. Everything new is optional: nothing else to change.
+  疊加層的面板不透明度、亮度和語言從「🎵 點歌佇列 → ⚙」移到最上面的「**🎨 外觀與疊加層**」；原本的數值不變。新功能都是
+  選用的：其他什麼都不用改。
 - The terminal setup wizard (`setup.bat` / `setup.ps1`, `setup_zh.*`) is gone: use the web wizard
-  (`start.bat` opens it) or [SETUP_MANUAL.md](SETUP_MANUAL.md). Your `.env` stays as it is.
+  (`start.bat` opens it) or [SETUP_MANUAL.md](SETUP_MANUAL.md). Your `.env` stays as it is; the old
+  files left in your folder can be deleted.
   終端機版安裝精靈（`setup.bat`／`setup.ps1`、`setup_zh.*`）已移除：請用網頁版精靈（`start_zh.bat` 會開啟）或
-  [SETUP_MANUAL.md](SETUP_MANUAL.md)。你的 `.env` 不受影響。
+  [SETUP_MANUAL.md](SETUP_MANUAL.md)。你的 `.env` 不受影響；資料夾裡留下的舊檔案可以刪掉。
 
 ### What's new / 新功能
 
@@ -66,7 +69,6 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
 - **Sheet tabs and random pick in the dashboard** (🎵 Song Queue → ⚙): tick which tabs viewers can request,
   and choose weighted or pure random — no more editing `.env`.
   **歌單分頁和抽歌方式改在控制台設定**（🎵 點歌佇列 → ⚙）：勾選哪些分頁可以點歌，選擇加權或完全隨機 —— 不用再改 `.env`。
-
 - **License:** the song queue is now released under the [MIT License](LICENSE).
   **授權**：點歌系統現在以 [MIT 授權](LICENSE) 釋出。
 
