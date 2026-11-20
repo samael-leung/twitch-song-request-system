@@ -26,6 +26,10 @@ Twitch 頻道點數點歌，附 OBS 顯示層與連麥 Shoutout 功能。
 | 歌單顯示層 | `http://localhost:3000/overlay/index.html` | 960×1470，縮小至 50%（480×735） |
 | Clip Player | `http://localhost:3000/clip-player/index.html` | 1920×1080 |
 
+`!so` 找到 Clip 卻沒有播放，若記錄顯示 `Queued ... held`，代表目前模式勾選了「這個模式時暫停播放 Clip」。可先切換到沒有暫停 Clip 的模式（例如聊天模式）；本分支也修正了編輯目前模式時取消勾選不會即時生效的問題，現在取消勾選便會立即播放佇列，且不會重套場景、音量或聊天室訊息。Twitch 因未開台或對自己 Shoutout 而拒絕公告，不影響 Clip 本身。
+
+既有 ZIP 安裝可使用 [SO-Clip-Hold-Fix.zip](repair/SO-Clip-Hold-Fix.zip)，依內附說明停止程式、執行修復後重新啟動；只修復已知版本的 `server/modes.js`，保留備份並拒絕覆寫不明自訂版本。設定、金鑰、歌曲配對與模式資料均不修改。此修復屬於 Node.js 點歌系統，無須更新練唱台的 Update.exe。
+
 歌單顯示層 Custom CSS：
 ```css
 body { background-color: rgba(0, 0, 0, 0) !important; margin: 0px auto; overflow: hidden; }

@@ -39,6 +39,9 @@ function init(send) {
   load();
   const active = data.modes.find(m => m.id === data.active);
   mediaQueue.setHold(!!(active && active.holdClips));
+  if (active && active.holdClips) {
+    console.log(`[modes] ${active.icon} ${active.name} is holding clips (!so, !watch, !tk). Turn off "Hold clips" for this mode or switch modes to resume.`);
+  }
 }
 
 const byId = id => data.modes.find(m => m.id === id);
@@ -215,6 +218,8 @@ function update(m) {
   const mode = mustFind(m && m.id);
   Object.assign(mode, clean(m));
   save();
+  // Editing the active mode takes effect without reapplying its scene, audio or chat message.
+  if (data.active === mode.id) mediaQueue.setHold(mode.holdClips);
   changed();
   return mode;
 }

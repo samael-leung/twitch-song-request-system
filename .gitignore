@@ -26,3 +26,5 @@ stream-modes.json
 backups/leihu-sync-*/
 twitch-session.json
 twitch-session.json.tmp
+server/modes.js.before-so-fix-*.bak
+server/modes.js.so-fix-*.tmp
