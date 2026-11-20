@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en" data-surface="overlay">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat Overlay</title>
+<!-- The on-stream chat: Twitch chat, redemptions and subs / raids / follows, the last N of them
+     (the dashboard's 💬 Chat → ⚙ "Chat on stream" sets N, the text size and what it shows).
+     Styles: ?style=panel (the song list's look, default), ?style=bubble (speech bubbles), ?style=list
+     (plain lines with an outline, for over a game or video), ?style=row (one horizontal strip, e.g. along
+     the top of the screen: newest on the right, older ones leave on the left).
+     Browser Source: any size (e.g. width 960, height 1080; row: 3840 × 200), then scale it to 50% — it renders at 2x
+     like the song overlay. Messages a mod deletes, and a timed-out or banned viewer's, leave at once.
+     lang="en" like the song overlay: under zh-TW, OBS's browser picks a serif font for Chinese. -->
+<script src="/shared/i18n.js"></script>
+<script src="/shared/i18n-viewer.js"></script>
+<script src="/shared/chat-bots.js"></script>
+<link rel="stylesheet" href="/shared/themes.css">
+<script src="/shared/theme.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    background: transparent !important;
+    zoom: 2;   /* rendered at 2x; the Browser Source is scaled to 50% for sharp text */
+  }
+
+  /* Colours and fonts: shared/themes.css (🎨 Look & overlays → overlay theme, or ?theme= in the URL).
+     The list and row styles keep white text with an outline in every theme: they sit over a game or video. */
+  :root[data-surface="overlay"] {   /* outranks the theme's own --bg-panel (themes.css) */
+    --panel-bg-alpha: 0.92;
+    --text-brightness: 1;
+    --size: 1;   /* text size from the settings, 1 = 100% */
+    --bg-panel: rgba(var(--panel-rgb), var(--panel-bg-alpha));
+    --bg-card: rgba(var(--card-rgb), 0.85);
+    --fs: calc(20px * var(--size));
+  }
+
+  /* The page is half the Browser Source in each direction (zoom 2); placeChat() sets it */
+  html, body {
+    background: transparent !important;
+    font-family: var(--font-body);
+    color: var(--text);
+    overflow: hidden;
+  }
+  body { position: relative; filter: brightness(var(--text-brightness)); }
+
+  .chat {
+    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px;
+    overflow: hidden; font-size: var(--fs); line-height: 1.45;
+    /* the oldest line fades out at the top instead of being cut */
+    -webkit-mask-image: linear-gradient(transparent 0, #000 28px);
+            mask-image: linear-gradient(transparent 0, #000 28px);
+  }
+  .msg { flex-shrink: 0; overflow-wrap: anywhere; }
+  .msg.new { animation: come .35s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes come { from { opacity: 0; transform: translateY(10px); } }
+
+  .badge { height: 1.1em; vertical-align: -0.18em; margin-right: 3px; }
+  .name { font-weight: 700; }
+  .emote { height: 1.75em; vertical-align: middle; margin: -0.3em 1px; }
+  .mention { color: var(--accent); font-weight: 700; }
+  .cheer { color: var(--warn); font-weight: 700; }
+  .reply { display: block; font-size: 0.78em; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .event-icon { margin-right: 4px; }
+  .quote { display: block; color: var(--text); }
+
+  /* ── panel: the song list's look ── */
+  .style-panel .frame {
+    position: absolute; inset: 6px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px;
+    backdrop-filter: blur(8px);
+  }
+  .style-panel .frame::before, .style-panel .frame::after { content: ''; position: absolute; width: 10px; height: 10px; }
+  .style-panel .frame::before { top: -1px; left: -1px; border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+  .style-panel .frame::after  { bottom: -1px; right: -1px; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+  .style-panel .header {
+    position: absolute; top: 6px; left: 6px; right: 6px; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--good); box-shadow: 0 0 6px var(--good); }
+  .status-dot.disconnected { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+  .header-title { font-family: var(--font-display); font-size: 12px; font-weight: 500; letter-spacing: 3px; color: var(--accent-dim); text-transform: uppercase; }
+  .style-panel .chat { top: 46px; left: 16px; right: 16px; bottom: 16px; }
+  .style-panel .msg { background: var(--bg-card); border: 1px solid var(--border); border-left: 2px solid var(--name-color, var(--accent)); border-radius: 4px; padding: 5px 9px; }
+  .style-panel .msg.event { border-left-color: var(--good); color: var(--good); }
+  .style-panel .msg.redeem { border-left-color: var(--warn); color: var(--warn); }
+
+  /* ── bubble: speech bubbles, no panel ── */
+  .style-bubble .chat { inset: 8px; gap: 9px; align-items: flex-start; }
+  .style-bubble .msg { display: flex; flex-direction: column; align-items: flex-start; max-width: 100%; }
+  .style-bubble .who {
+    display: inline-flex; align-items: center; gap: 3px; margin: 0 0 -4px 10px; padding: 1px 10px; border-radius: 10px;
+    background: var(--name-color, var(--accent)); color: var(--on-name); font-size: 0.82em; font-weight: 700; position: relative; z-index: 1;
+    max-width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .style-bubble .who .name { color: inherit !important; }
+  .style-bubble .body {
+    background: rgba(var(--panel-rgb), calc(var(--panel-bg-alpha) * 0.92)); border: 1px solid var(--border); border-radius: 14px;
+    padding: 8px 13px 6px; max-width: 100%; box-shadow: 0 4px 14px rgba(var(--shadow-rgb), calc(0.35 * var(--shadow-k)));
+  }
+  .style-bubble .msg.new { animation-name: pop; }
+  @keyframes pop { from { opacity: 0; transform: translateX(-14px) scale(.96); } }
+  .style-bubble .msg.event .body { border-color: rgba(var(--good-rgb), 0.5); color: var(--good); }
+  .style-bubble .msg.redeem .body { border-color: rgba(var(--warn-rgb), 0.55); color: var(--warn); }
+
+  /* ── list: plain lines with an outline ── */
+  .style-list .chat { inset: 8px; gap: 3px; -webkit-mask-image: none; mask-image: none; }
+  .style-list .msg {
+    font-size: 1.15em; color: #fff;
+    text-shadow: 0 0 2px #000, 0 0 2px #000, 1px 1px 2px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000;
+  }
+  .style-list .name { text-shadow: inherit; }
+  .style-list .msg.event { color: var(--good); }
+  .style-list .msg.redeem { color: var(--warn); }
+  .style-list .reply { color: #ccc; }
+  .style-list .quote { color: #fff; }
+
+  /* ── row: one horizontal strip; each message is its text over a small name line ── */
+  .style-row .chat {
+    inset: 4px 8px; flex-direction: row; justify-content: flex-end; align-items: flex-start; gap: 30px;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 70px);
+            mask-image: linear-gradient(to right, transparent 0, #000 70px);
+  }
+  .style-row .msg { display: flex; flex-direction: column; gap: 1px; max-width: 46%; }
+  .style-row .msg.new { animation-name: slide; }
+  @keyframes slide { from { opacity: 0; transform: translateX(40px); } }
+  .style-row .line, .style-row .who {
+    color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    /* any theme: white with a teal glow over the stream */
+    text-shadow: 0 0 2px #06363a, 0 0 2px #06363a, 0 0 3px #06363a, 0 0 8px rgba(70, 235, 225, 0.85), 0 0 14px rgba(70, 235, 225, 0.45);
+  }
+  .style-row .line { font-size: 1.45em; font-weight: 700; line-height: 1.6; }
+  .style-row .line .emote { height: 1.35em; margin: 0 1px; vertical-align: -0.28em; }
+  .style-row .who { display: flex; align-items: center; gap: 3px; font-size: 0.95em; padding-left: 2px; }
+  .style-row .who .name { color: #fff !important; font-weight: 400; margin-right: 2px; }
+  .style-row .msg.event .line { color: #c9ffe4; }   /* any theme */
+  .style-row .msg.redeem .line { color: #ffe6b8; }   /* any theme */
+  .style-row .quote { display: inline; margin-left: 8px; }
+</style>
+</head>
+<body>
+<div class="frame"></div>
+<div class="header"><span class="status-dot disconnected" id="dot"></span><span class="header-title" data-i18n="chatOverlay.title">// Chat</span></div>
+<div class="chat" id="chat" aria-live="polite"></div>
+<script>
+const t = I18N.t;
+const STYLES = ['panel', 'bubble', 'list', 'row'];
+const style = STYLES.includes(new URLSearchParams(location.search).get('style')) ? new URLSearchParams(location.search).get('style') : 'panel';
+document.body.classList.add('style-' + style);
+if (style !== 'panel') for (const el of document.querySelectorAll('.frame, .header')) el.remove();
+
+// Notices shown with "events" on: subs, gifts, raids… (a gift of several subs once: its community_sub_gift line)
+const EVENT_NOTICES = ['sub', 'resub', 'sub_gift', 'community_sub_gift', 'gift_paid_upgrade', 'prime_paid_upgrade',
+  'pay_it_forward', 'raid', 'watch_streak', 'bits_badge_tier', 'charity_donation', 'announcement'];
+const EVENT_ICONS = { raid: '🚀', sub_gift: '🎁', community_sub_gift: '🎁', charity_donation: '💗', bits_badge_tier: '💎', announcement: '📣', watch_streak: '🔥' };
+// Twitch's own name colours, for viewers who never picked one (any theme: Theme.nameColor adjusts them)
+const NAME_COLORS = ['#FF4A6A', '#5A9AFF', '#4AFF9A', '#B06AFF', '#FFB84A', '#FF7F50', '#9ACD32', '#FF69B4', '#1E90FF', '#00FF7F', '#DAA520', '#D2691E'];
+
+const view = { max: 10, bots: false, commands: false, redeems: true, events: true };
+let records = [];   // the latest, to draw again when a setting changes
+let badges = {};    // "set/version" → picture (server/chat-badges.js)
+const WS_URL = `ws://${location.host}`;
+let ws, reconnectTimer;
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+// The page is the Browser Source's size at half scale (html zoom: 2)
+function placeChat() {
+  document.body.style.width = `${innerWidth / 2}px`;
+  document.body.style.height = `${innerHeight / 2}px`;
+}
+addEventListener('resize', placeChat);
+
+function nameColor(user) {
+  if (user.color) return user.color;
+  let h = 0;
+  for (const c of user.login || user.name || '') h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return NAME_COLORS[h % NAME_COLORS.length];
+}
+
+function shows(rec) {
+  if (rec.deleted) return false;
+  const bot = (window.CHAT_BOTS || []).includes((rec.user.login || '').toLowerCase());
+  if (rec.kind === 'chat') return (view.bots || !bot) && (view.commands || !rec.text.startsWith('!'));
+  if (rec.kind === 'redeem') return view.redeems;
+  if (rec.kind === 'follow') return view.events;
+  if (rec.kind === 'notice') return view.events && EVENT_NOTICES.includes(rec.notice) && !(rec.notice === 'sub_gift' && rec.communityGift);
+  return false;
+}
+
+function badgesHtml(user) {
+  return (user.badgeIds || []).map(id => badges[id] ? `<img class="badge" src="${esc(badges[id])}" alt="" onerror="this.remove()">` : '').join('');
+}
+
+function partsHtml(rec) {
+  const parts = rec.parts && rec.parts.length ? rec.parts : [{ t: 'text', text: rec.text }];
+  return parts.map((p) => {
+    if (p.t === 'emote') return `<img class="emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${encodeURIComponent(p.id)}/default/dark/2.0" alt="${esc(p.text)}" onerror="this.replaceWith(this.alt)">`;
+    if (p.t === 'mention') return `<span class="mention">${esc(p.text)}</span>`;
+    if (p.t === 'cheer') return `<span class="cheer">💎${esc(p.text)}</span>`;
+    return esc(p.text);
+  }).join('');
+}
+
+// A sub / gift / raid / follow in our own words, in the overlay's language. Twitch's own (English)
+// line when we have no wording for it, or the record is from before its details were kept.
+function eventLine(rec) {
+  if (rec.kind === 'follow') return t('chatOverlay.followed', { name: rec.user.name });
+  const key = 'chatOverlay.notice.' + rec.notice;
+  const missing = { community_sub_gift: !rec.count, sub_gift: !rec.recipient, raid: rec.viewers == null,
+    bits_badge_tier: !rec.bitsTier, charity_donation: !rec.charity }[rec.notice];
+  if (!I18N.has(key) || missing) return rec.system || rec.notice;
+  const tier = rec.tier && I18N.has('chatOverlay.tier.' + rec.tier) ? t('chatOverlay.tier.' + rec.tier) : '';
+  const charity = rec.charity || {};
+  return t(key, {
+    name: rec.anonymous ? t('chatOverlay.anonymous') : rec.user.name, tier, months: rec.months, count: rec.count,
+    recipient: rec.recipient && rec.recipient.name, viewers: rec.viewers, bitsTier: rec.bitsTier,
+    charity: charity.name, amount: charity.amount != null ? `${charity.amount} ${charity.currency}`.trim() : '',
+  });
+}
+
+// One record as a line: who, then what (chat), or an event / redemption line
+function msgHtml(rec, fresh) {
+  const color = style === 'panel' || style === 'bubble' ? Theme.nameColor(nameColor(rec.user)) : nameColor(rec.user);
+  const name = `<span class="name" style="color:${esc(color)}">${esc(rec.user.name)}</span>`;
+  let kind = '', who = `${badgesHtml(rec.user)}${name}`, what, reply = '';
+  if (rec.kind === 'chat') {
+    // the message it answers: above the line (in a bubble, at the top of the bubble)
+    if (rec.reply) reply = `<span class="reply">↪ ${esc(rec.reply.name)}: ${esc(rec.reply.text)}</span>`;
+    what = partsHtml(rec);
+  } else if (rec.kind === 'redeem') {
+    kind = ' redeem';
+    what = `<span class="event-icon">🎟</span>${esc(t('chatOverlay.redeemed', { name: rec.user.name, reward: rec.reward }))}${rec.text ? `<span class="quote">${esc(rec.text)}</span>` : ''}`;
+  } else if (rec.notice === 'announcement') {
+    kind = ' event';
+    what = `<span class="event-icon">📣</span>${who}: ${partsHtml(rec)}`;
+  } else {
+    kind = ' event';
+    const icon = rec.kind === 'follow' ? '💜' : (EVENT_ICONS[rec.notice] || '⭐');
+    what = `<span class="event-icon">${icon}</span>${esc(eventLine(rec))}${rec.text ? `<span class="quote">${partsHtml(rec)}</span>` : ''}`;
+  }
+  const attrs = `class="msg${kind}${fresh ? ' new' : ''}" data-id="${esc(rec.id)}" data-user="${esc(rec.user.id)}" data-kind="${rec.kind}" style="--name-color:${esc(color)}"`;
+  if (style === 'bubble') return `<div ${attrs}>${kind ? '' : `<span class="who">${who}</span>`}<div class="body">${reply}${what}</div></div>`;
+  // row: the text, then the name with its badges under it (one line each; no reply line)
+  if (style === 'row') return `<div ${attrs}><div class="line">${what}</div>${kind ? '' : `<div class="who">${name}${badgesHtml(rec.user)}</div>`}</div>`;
+  return `<div ${attrs}>${reply}${kind ? '' : `${who}: `}${what}</div>`;
+}
+
+function trim() {
+  const box = document.getElementById('chat');
+  while (box.children.length > view.max) box.firstElementChild.remove();
+}
+
+function drawAll() {
+  const shown = records.filter(shows).slice(-view.max);
+  document.getElementById('chat').innerHTML = shown.map(r => msgHtml(r, false)).join('');
+}
+
+function add(rec) {
+  records.push(rec);
+  if (records.length > 200) records = records.slice(-200);
+  if (!shows(rec)) return;
+  document.getElementById('chat').insertAdjacentHTML('beforeend', msgHtml(rec, true));
+  trim();
+}
+
+// A mod deleted a message, timed out or banned a viewer, or cleared the chat
+function remove(del) {
+  for (const r of records) {
+    if (r.kind === 'chat' && (del.all || (del.ids && del.ids.includes(r.id)) || (del.user && r.user.id === del.user))) r.deleted = true;
+  }
+  for (const el of [...document.querySelectorAll('#chat .msg[data-kind="chat"]')]) {
+    if (del.all || (del.ids && del.ids.includes(el.dataset.id)) || (del.user && el.dataset.user === del.user)) el.remove();
+  }
+}
+
+function applySettings({ panelBgAlpha, textBrightness, overlayLanguage, chatOverlay, overlayTheme }) {
+  if (overlayTheme && overlayTheme !== Theme.current) { Theme.apply(overlayTheme); drawAll(); }   // name colours follow
+  if (overlayLanguage) { I18N.setLang(overlayLanguage, { save: false, tagPage: false }); drawAll(); }
+  if (panelBgAlpha != null) document.documentElement.style.setProperty('--panel-bg-alpha', panelBgAlpha);
+  if (textBrightness != null) document.documentElement.style.setProperty('--text-brightness', textBrightness);
+  if (chatOverlay) {
+    Object.assign(view, chatOverlay);
+    document.documentElement.style.setProperty('--size', (chatOverlay.size || 100) / 100);
+    drawAll();
+  }
+}
+
+// What was said before this page opened (a refresh or scene switch shouldn't start empty)
+async function loadRecent() {
+  try {
+    const data = await (await fetch('/api/chat/recent')).json();
+    records = (data.records || []).slice(-200);
+    drawAll();
+  } catch(_) {}
+}
+
+async function loadBadges() {
+  try {
+    badges = await (await fetch('/api/chat/badges')).json();
+    drawAll();
+  } catch(_) {}
+}
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => {
+    document.getElementById('dot')?.classList.remove('disconnected');
+    clearTimeout(reconnectTimer);
+    ws.send(JSON.stringify({ type: 'chat-subscribe' }));
+    loadRecent();   // what came in while disconnected
+    if (!Object.keys(badges).length) loadBadges();
+  };
+  ws.onclose = () => { document.getElementById('dot')?.classList.add('disconnected'); reconnectTimer = setTimeout(connect, 3000); };
+  ws.onmessage = (e) => {
+    try {
+      const m = JSON.parse(e.data);
+      if (m.type === 'chat') add(m.record);
+      if (m.type === 'chat-delete') remove(m);
+      if (m.type === 'settings') applySettings(m);
+    } catch(_) {}
+  };
+}
+
+I18N.setLang('en', { save: false, tagPage: false });
+placeChat();
+fetch('/api/settings').then(r => r.json()).then(applySettings).catch(() => {});
+connect();
+</script>
+</body>
+</html>

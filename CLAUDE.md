@@ -65,6 +65,8 @@ vtuber-song-queue/
 │   ├── chat-router.js     Dispatches chat messages to registered commands (mods-only by default)
 │   ├── chat-log.js        Chat + redemption log for the dashboard Chat tab, chat-logs/YYYY-MM-DD.jsonl
 │   ├── song-notes.js      Song overlay note "last sung N days ago" when chat names a sheet song
+│   ├── song-tabs.js       Song Queue ⚙: sheet tabs left out (EXCLUDED_TABS, kept in order) and the random pick mode
+│   ├── look.js            🎨 Look & overlays: dashboard / overlay themes and text sizes (.env), checked
 │   ├── media-queue.js     Clip player queue (max 3; 10 while a mode holds it), mediaId matching, watchdog
 │   ├── media-history.js   Last played media, for !replay
 │   ├── shoutout-history.js  Broadcasters shouted out since the last !tk
@@ -72,20 +74,28 @@ vtuber-song-queue/
 │   ├── messages.js        Message codes for errors/notes the web pages show translated
 │   ├── node-check.js      Is Node.js below the secure minimum (`secureNode` in package.json)
 │   ├── ending-credits.js  Who !endingtk thanks, from the chat log (groups, avatars, ending-credits.json)
+│   ├── ending-raid.js     Raid with the ending roll: times the roll and the raid so it goes 10 s after the roll
 │   ├── redemptions.js     Redemptions done / refunded (Chat tab, queue songs); taking over rewards made on Twitch
 │   ├── first-chat.js      Anonymous read-only IRC: Twitch's first-msg flag → chat-log markFirst
 │   ├── chat-send.js       The Chat tab's message box: Helix POST /chat/messages (replies too)
 │   ├── chat-mod.js        The Chat tab's ban / timeout / unban, Twitch Shoutout, raid / cancel, pin / unpin (Helix)
+│   ├── chat-badges.js     Badge pictures for the chat on stream (Helix /chat/badges, global + channel, read once)
+│   ├── veadotube.js       veadotube mini windows (~/.veadotube/instances → WebSocket): avatar states, set, thumbnails
+│   ├── outfits.js         👕 Outfit rewards: redemptions wait for the streamer's pick; time limit back to the default
 │   ├── modes.js           Modes (🎛 tab, top-bar buttons): save / apply the streaming app's state + this app's part
 │   ├── stream-app.js      Streamlabs Desktop (Remote Control JSON-RPC) / OBS (obs-websocket 5) on this PC
 │   ├── stream-session.js  When the stream went live (stream.online / Helix /streams), for "to announce"
 │   ├── stream-window.js   The dashboard in its own Chrome / Edge window, so OBS can capture Leihu's sound
 │   └── commands/          shoutout.js (!so), watch.js (!watch), replay.js, stop.js, thanks.js (!tk), ending-thanks.js (!endingtk)
 ├── shared/                Served at /shared: i18n.js (language helper), i18n-server.js (server
-│                          messages), i18n-viewer.js (overlay + clip player strings)
+│                          messages), i18n-viewer.js (overlay + clip player strings), themes.css (the five
+│                          themes as role tokens: --accent, --good, --warn…, *-rgb for tints) and theme.js
+│                          (Theme.apply / scale / nameColor; ?theme= on an overlay URL)
 ├── dashboard/i18n-dashboard.js, dashboard/i18n-links.js   Page strings, EN + zh-TW
 ├── setup/                 Web setup wizard (index.html, setup.css, setup.js, i18n.js — EN + zh-TW)
-├── overlay/index.html     OBS Browser Source — song queue, cyberpunk dark/neon style
+├── overlay/index.html     OBS Browser Source — song queue, in the overlay theme (Neon: cyberpunk dark/neon)
+├── overlay/chat.html      OBS Browser Source — the chat on stream (?style=panel | bubble | list | row)
+├── overlay/break.html     OBS Browser Source — "休息中 / ON BREAK" card; ?card=opening "準備中 / STARTING SOON" (?min=N / ?at=HH:MM count down)
 ├── dashboard/index.html   Streamer control panel — tabs (Song Queue: 2×2 panels, drag/drop, history, manual add; Leihu; Chat), ⚙ per tab
 ├── dashboard/links.html   YouTube link finder review page
 ├── clip-player/
@@ -98,7 +108,6 @@ vtuber-song-queue/
 ├── docs/                  Starter guide (STARTER_GUIDE.md / _zh_TW.md, images/), song-list-template.xlsx;
 │                          served at /docs (the wizard links the template)
 ├── tools/build-han-readings.js  Rebuilds server/data/han-readings.json from Unihan_Readings.txt
-├── setup.ps1 / setup_zh.ps1   Terminal setup wizard (alternative to the web wizard)
 ├── start.ps1 / start_zh.ps1   Every-stream startup: starts server, opens browser when ready
 ├── *.bat                  Double-click launchers (avoid PowerShell execution-policy issues)
 ├── SETUP.md / SETUP_zh_TW.md / SETUP_MANUAL.md   User guides (docs/STARTER_GUIDE*.md for newcomers)
@@ -127,7 +136,7 @@ vtuber-song-queue/
   Scopes: `channel:read:redemptions channel:manage:redemptions user:read:chat user:write:chat moderator:read:followers
   moderator:manage:banned_users moderator:manage:shoutouts channel:manage:raids moderator:manage:chat_messages`
   (older setups lack the later ones: the dashboard links to `/setup?reauth=1`, which jumps to the
-  wizard's authorization step). setup.ps1 / setup_zh.ps1 ask for the same scopes
+  wizard's authorization step)
 - `ensureFreshToken()` refreshes 1 min before expiry. Call it before **every** Helix call.
   Concurrent calls share one refresh (`refreshPromise`) — Twitch rotates the refresh token,
   so two parallel refreshes would invalidate each other
@@ -171,7 +180,7 @@ vtuber-song-queue/
 - `QUEUE_STATE_FILE` overrides the state file (tests)
 
 ### Random picker (random.js)
-- `RANDOM_PICK_MODE`: `weighted` (favours songs not requested recently) or `pure`
+- `RANDOM_PICK_MODE`: `weighted` (favours songs not requested recently) or `pure` — Song Queue ⚙ → Pick
 - Excludes songs in nowPlaying/queue/played and songs requested within `RANDOM_COOLDOWN_DAYS`
 - Cooldown uses live history; weighting uses the startup snapshot
 
@@ -198,7 +207,7 @@ vtuber-song-queue/
 ### Encoding (critical — many bugs came from this)
 - All PowerShell scripts use `[System.IO.File]::WriteAllText/ReadAllText` with `UTF8Encoding($false)` (UTF-8 **without** BOM) for `.env` file operations
 - `Set-Content` / `Get-Content` without explicit encoding corrupts Chinese characters on Windows
-- Scripts containing Chinese (`setup_zh.ps1`, `start_zh.ps1`) are saved with UTF-8 BOM so PowerShell 5.x parses them correctly; the English ones are pure ASCII
+- Scripts containing Chinese (`start_zh.ps1`) are saved with UTF-8 BOM so PowerShell 5.x parses them correctly; the English ones are pure ASCII
 - `.env.example` is pure ASCII (no unicode decorations)
 - `dotenv` reads `.env` as UTF-8 by default — this is fine as long as the file was written correctly
 
@@ -319,6 +328,13 @@ vtuber-song-queue/
   #chat-dock (right of .tab-area in .workspace) on the other tabs. Use chatOnScreen() (not currentTab === 'chat')
   for "is the chat visible". Docked: live only (a past day switches back), tools / filters hidden, a strip names an
   active filter. localStorage chatDock {open, width}; none under 900px; starts closed under 1100px and in the stream window
+- Chat on stream (overlay/chat.html, replaces OneComme): loads /api/chat/recent, then sends `{type: 'chat-subscribe'}`
+  like the dashboard and adds `chat` records; `chat-delete` removes messages at once. Shows the last `chatOverlay.max`
+  of chat / redemptions / follows / notices (subs, gifts, raids… and `announcement`; a community gift once), bots
+  (shared/chat-bots.js) and !commands per the settings. Badges: `user.badgeIds` ("set/version", new records only)
+  → /api/chat/badges. Subs / gifts / raids… in its own words in the overlay language (chatOverlay.notice.* in
+  shared/i18n-viewer.js, from the notice's tier / months / count / bitsTier / charity); Twitch's English `system` line for
+  other types and older records. Emotes: static-cdn.jtvnw.net v2. Styles by ?style=; html zoom 2, the body sized to half the window
 - Dashboard Chat tab (chat-log.js): every `channel.chat.message`, redemption, chat notification (sub,
   raid…) and follow becomes a record (user,
   badges, text split into text / emote / mention / cheer parts, message_type, bits, reply, `songs` = sheet
@@ -332,7 +348,8 @@ vtuber-song-queue/
   channel, first-time (`first` from IRC's first-msg, or `user_intro`), highlighted / bits, redemptions, waiting redemptions, one viewer, search, bots) run in
   the dashboard. ♪ on a song mention adds it via `/api/add` with the viewer as requester
 - "To announce" (要宣讀), highlighted in every view (`.to-announce`, not a filter): subs / resubs / gifts (a community gift once: its `sub_gift` lines carry
-  `communityGift` and are left out), raids, watch streaks, bits badges, charity, follows, redemptions
+  `communityGift` and are left out), raids, watch streaks, bits badges, charity, follows, redemptions except song request / random song ones (`songRewards` from
+  `/api/redemptions/manageable`, redemptions.songRewardIds)
   (their mark reads "✓ Announce", beside ✓ Done), cheers,
   highlighted messages, first-time chatters, and each viewer's first message this session (`greet`,
   worked out in the dashboard; bots and the streamer left out). The session = since the stream last
@@ -527,13 +544,20 @@ register it in index.js.
 | GET | `/api/history` | Request history snapshot (startup state) |
 | GET | `/api/node-status` | `{version, minimum, outdated}` — is Node.js missing security fixes |
 | GET | `/api/version` | `{version}` — this copy's version (package.json), shown in Song Queue ⚙ |
-| GET/POST | `/api/settings` | Random cooldown days, overlay panel opacity, text brightness, overlay language, Leihu auto-prepare |
+| GET/POST | `/api/settings` | Random cooldown days, overlay panel opacity, text brightness, overlay language, Leihu auto-prepare; POST `{look: {dashboardTheme?, dashboardTextScale?, overlayTheme?, songTextScale?, breakTextScale?}}` (look.js) — sent to every page as `settings` |
 | GET | `/api/hls`, `/api/clip-stream` | Proxies for Twitch clip playback (Twitch hosts only) |
 | GET | `/api/leihu/status` | Leihu state of nowPlaying + queue, keyed by title + artist |
 | GET | `/api/leihu/library` | Leihu's songs, for the dashboard link picker |
 | POST | `/api/leihu/link` | Manual link `{title, artist, id}` — `id: null` unlinks |
 | POST | `/api/leihu/prepare` | Import / render key for one song now `{title, artist, key}` |
 | GET | `/api/chat/recent` | Chat tab: the latest 1000 chat records `{records, channel}` |
+| GET | `/api/chat/badges` | `{"set/version": picture}` — badge pictures for the chat on stream (chat-badges.js) |
+| GET | `/api/outfits` | 👕 veadotube windows + states, outfit window, waiting redemptions, settings, `revertAt` (outfits.js) |
+| GET | `/api/outfits/thumb?window=&state=` | A state's 128 × 128 PNG from veadotube (cached by its hash) |
+| POST | `/api/outfits/pick` | `{ state, id?, window? }` — wear it; with a redemption id: done + time limit |
+| POST | `/api/outfits/drop` | `{ id, refund }` — refund a waiting redemption, or just close its card |
+| POST | `/api/outfits/keep` | Stop the time limit |
+| POST | `/api/outfits/settings` | `{ rewards?, default?, window?, minutes? }` (OUTFIT_* in .env) |
 | GET | `/api/chat/days` | Days with a chat log, newest first |
 | GET | `/api/chat/log?day=YYYY-MM-DD` | One day's chat records, with deletions, redemption statuses, first messages and ✓ marks applied |
 | GET | `/api/credits` | `{follows, lastAt, groups}` — who `!endingtk` would thank now; follows: `on` / `no-permission` / `failed` |
@@ -546,13 +570,14 @@ register it in index.js.
 | POST | `/api/chat/mod/ban` | `{login, seconds?, reason?}` → `{name, until}`; no seconds = ban |
 | POST | `/api/chat/mod/unban` | `{login}` → `{name}`; ends a ban or timeout |
 | POST | `/api/chat/mod/shoutout` | `{login}` → `{name, twitch, clip}`; Twitch Shoutout + the `!so` clip |
-| POST | `/api/chat/mod/raid` / `raid/cancel` | `{login}` → `{name, login, createdAt}` / cancels |
+| POST | `/api/chat/mod/raid` / `raid/cancel` | `{login}` → `{name, login, createdAt}` / cancels (a raid with the ending roll: both) |
+| GET / POST | `/api/chat/mod/raid/roll` | `?login=` → channel + `{people, rollMs, rollIn, raidIn, landsIn}` / `{login}` starts it → `{name, rollAt, raidAt, landsAt, …}`; WS `ending-raid` |
 | POST | `/api/chat/mod/pin` / `unpin` | `{id, seconds?}` → pinned message / `{id}` |
 | GET | `/api/modes` | `{modes, active, held, connection, live, issues}` — `?live=0` doesn't ask the streaming app |
 | POST | `/api/modes/switch` | `{id}` → `{skipped, failed, appError, chat, tab, canvasChanged?}` |
 | POST | `/api/modes/new` / `save` / `recapture` / `delete` / `order` | `{name, icon}` / `{mode}` / `{id}` / `{id}` / `{ids}` |
 | POST | `/api/modes/connection` | `{app, port?, secret?}` → writes .env, reconnects, answers like GET |
-| GET | `/api/redemptions/manageable` | `{ids, channel}` — rewards whose redemptions the Chat tab can change |
+| GET | `/api/redemptions/manageable` | `{ids, channel, songRewards}` — rewards whose redemptions the Chat tab can change; the song ones (not to announce) |
 | POST | `/api/redemptions/status` | `{id, rewardId, action: 'done' \| 'refund'}` |
 | GET | `/api/rewards` | Chat ⚙: every reward with `role`, `manageable`, `skipsQueue`, `takeover` |
 | POST | `/api/rewards/takeover` | `{id, action: 'start' \| 'finish' \| 'cancel'}` |
@@ -589,14 +614,21 @@ See `.env.example` for full descriptions.
 - `EXCLUDED_TABS` — tabs left out of requests, random picks and the link finder, comma-separated.
   Unset = `待練勿點`; empty = none. Read through `config.EXCLUDED_TABS` (a getter, so it follows .env)
 - `PORT` — default 3000
-- `RANDOM_PICK_MODE` — `weighted` or `pure`
+- `RANDOM_PICK_MODE` — `weighted` or `pure`. Song Queue ⚙ sets it and `EXCLUDED_TABS` (Sheet tabs: a tick per
+  tab from sheets.getTabs(); server/song-tabs.js keeps the left-out tabs in order, the first being the practice tab)
 - `RANDOM_COOLDOWN_DAYS`, `OVERLAY_PANEL_BG_ALPHA`, `OVERLAY_TEXT_BRIGHTNESS`, `OVERLAY_LANGUAGE` (`en` / `zh-TW`) — also adjustable from the dashboard
+- `DASHBOARD_THEME`, `OVERLAY_THEME` (`neon` / `daylight` / `contrast` / `ocean` / `coffee`), `DASHBOARD_TEXT_SCALE` (0.85–1.4), `OVERLAY_SONG_TEXT_SCALE` (0.8–1.25), `OVERLAY_BREAK_TEXT_SCALE` (0.8–1.1) — 🎨 Look & overlays (top bar; the app-wide panel #config-app: themes, overlay opacity / brightness / language, Browser Source addresses, version)
+- Themes: pages use only the tokens in `shared/themes.css` (test/themes.test.js fails on a typed colour; black / white / greys and lines marked `any theme` are allowed). A new page links themes.css + theme.js; an overlay sets `<html data-surface="overlay">`; text that should follow a size setting uses `calc(Npx * var(--ts))`
 - `LEIHU_URL` — Leihu Singsing address (default `http://127.0.0.1:8765`)
 - `LEIHU_PYTHON` — optional: the Python the link finder runs; unset = found in Leihu's folder
 - `LEIHU_AUTO_PREPARE` — `1` = prepare queued songs in Leihu ahead of time (dashboard toggle)
 - `LEIHU_AUTOSTART` — `1` = start Leihu without its window when the song queue starts (dashboard toggle)
 - `CHAT_LOG_DAYS` — days of chat log kept in chat-logs/ (default 30)
 - `SONG_NOTES` — `0` = no song notes on the song overlay (Chat tab switch; on when unset)
+- `CHAT_OVERLAY_MAX` (1–50, 10), `CHAT_OVERLAY_SIZE` (60–200 %, 100), `CHAT_OVERLAY_REDEEMS` / `_EVENTS` (on),
+  `CHAT_OVERLAY_COMMANDS` / `_BOTS` (off) — the chat on stream; `chatOverlay` in /api/settings, set from Chat ⚙
+- `OUTFIT_REWARDS` (reward IDs, comma-separated), `OUTFIT_DEFAULT` (veadotube state), `OUTFIT_MINUTES` (0 = stays) —
+  the 👕 Outfits tab; `VEADOTUBE_DIR` overrides ~/.veadotube/instances (tests)
 - `LEIHU_ROOT` — optional: Leihu's folder for starting it; unset = remembered from Leihu's `/api/status` `root`
 - `STREAM_APP` (`streamlabs` / `obs`), `STREAMLABS_TOKEN`, `STREAMLABS_PORT`, `OBS_WS_PORT`, `OBS_WS_PASSWORD` — modes' streaming app (🎛 Modes tab)
 

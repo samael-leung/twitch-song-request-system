@@ -14,7 +14,11 @@ const { registerClient, addSong, addPending, updatePending, acceptPending, skipS
 const { connect: connectTwitch, setEventHandler, setChatHandler, setModerationHandler, setNoticeHandler, setFollowHandler, setRewardHandler, setStreamHandler, followStatus } = require('./twitch');
 const { registerCommand, handleChatEvent } = require('./chat-router');
 const chatLog = require('./chat-log');
+const chatBadges = require('./chat-badges');
 const songNotes = require('./song-notes');
+const look = require('./look');
+const songTabs = require('./song-tabs');
+const config = require('./config');
 const registerShoutout = require('./commands/shoutout');
 const registerWatch = require('./commands/watch');
 const registerReplay = require('./commands/replay');
@@ -22,11 +26,13 @@ const registerStop = require('./commands/stop');
 const registerThanks = require('./commands/thanks');
 const registerEndingThanks = require('./commands/ending-thanks');
 const endingCredits = require('./ending-credits');
+const endingRaid = require('./ending-raid');
 const redemptions = require('./redemptions');
 const firstChat = require('./first-chat');
 const chatSend = require('./chat-send');
 const chatMod = require('./chat-mod');
 const modes = require('./modes');
+const outfits = require('./outfits');
 const streamApp = require('./stream-app');
 const streamSession = require('./stream-session');
 const { generateIfMissing: generateSponsorVoice } = require('./sponsor-voice');
@@ -144,7 +150,9 @@ setChatHandler((event) => {
 setModerationHandler(chatLog.onModeration);
 // Subs, gifts, raids and follows: shown in the Chat tab, thanked by !endingtk (ending-credits.js)
 setNoticeHandler((event) => {
-  try { chatLog.addNotice(event); } catch (err) { console.error('[chat-log] Could not log a chat notice:', err.message); }
+  let rec = null;
+  try { rec = chatLog.addNotice(event); } catch (err) { console.error('[chat-log] Could not log a chat notice:', err.message); }
+  endingRaid.onRecord(rec);   // a raid coming in stops ours with the ending roll
 });
 setFollowHandler((event) => {
   try { chatLog.addFollow(event); } catch (err) { console.error('[chat-log] Could not log a follow:', err.message); }
@@ -160,6 +168,8 @@ setRedemptionHook(redemptions.settle);
 setStreamHandler(streamSession.onEvent);
 streamSession.init(session => sendChat({ type: 'chat-session', ...session }));
 modes.init(msg => sendChat(msg));   // after mediaQueue.init: a mode may hold clips
+endingRaid.init(msg => sendChat(msg));
+outfits.init({ send: msg => sendChat(msg), saveEnv: values => setupRouter.writeEnvValues(values) });
 
 // Returns the matching random-reward config object if the given rewardId is
 // a configured random reward, or null if it isn't.
@@ -186,18 +196,15 @@ setEventHandler(async (event) => {
 
   console.log(`[event] Redemption from @${requester}: "${requestText}" (reward: ${rewardId})`);
   try { chatLog.addRedemption(event); } catch (err) { console.error('[chat-log] Could not log a redemption:', err.message); }
+  if (outfits.onRedemption(event)) return;   // 👕 waits for the streamer's pick in the dashboard
 
   // Random song reward(s) — each entry in TWITCH_RANDOM_REWARDS can restrict to specific sheet tabs.
   const matchedRandom = parseRandomReward(rewardId);
   if (matchedRandom) {
     const { queue, nowPlaying, playedSongs } = getState();
-    const excludeTitles = [
-      ...(nowPlaying ? [nowPlaying.title] : []),
-      ...queue.map(s => s.title),
-      ...playedSongs.map(s => s.title),
-    ];
+    const exclude = [...(nowPlaying ? [nowPlaying] : []), ...queue, ...playedSongs];
     const allowedTabs = matchedRandom.tabs || [];
-    const picked = pickRandom(excludeTitles, allowedTabs);
+    const picked = pickRandom(exclude, allowedTabs);
     if (picked) {
       addSong({ title: picked.title, artist: picked.artist, key: picked.key || '', requester, isRandom: true, tabs: allowedTabs, redemption });
       const tabInfo = allowedTabs.length > 0 ? ` [${allowedTabs.join('/')}]` : '';
@@ -296,14 +303,10 @@ app.post('/api/redraw', (req, res) => {
 
   // Exclude everything currently in the queue (including the song being replaced,
   // so it won't be re-drawn on the next pick)
-  const excludeTitles = [
-    ...(state.nowPlaying ? [state.nowPlaying.title] : []),
-    ...state.queue.map(s => s.title),
-    ...state.playedSongs.map(s => s.title),
-  ];
+  const exclude = [...(state.nowPlaying ? [state.nowPlaying] : []), ...state.queue, ...state.playedSongs];
 
   const tabs = currentSong.tabs || [];
-  const picked = pickRandom(excludeTitles, tabs);
+  const picked = pickRandom(exclude, tabs);
   if (!picked) return res.status(400).json(message('noRedraw', {}, 'no songs available to redraw'));
 
   const ok = redrawSong(zone, index, { ...picked, requester: currentSong.requester, tabs, redemption: currentSong.redemption });
@@ -661,6 +664,30 @@ const TEXT_BRIGHTNESS_MIN = 0.5;
 const TEXT_BRIGHTNESS_MAX = 2;
 const OVERLAY_LANGUAGES = ['en', 'zh-TW'];   // what viewers see on the overlay and clip player
 
+// The on-stream chat (overlay/chat.html): how many messages it shows, text size (%), and what it
+// shows besides chat. Each is a .env value; a missing or broken one is its default.
+const CHAT_OVERLAY = {
+  max: { env: 'CHAT_OVERLAY_MAX', min: 1, max: 50, def: 10 },
+  size: { env: 'CHAT_OVERLAY_SIZE', min: 60, max: 200, def: 100 },
+  bots: { env: 'CHAT_OVERLAY_BOTS', def: false },
+  commands: { env: 'CHAT_OVERLAY_COMMANDS', def: false },
+  redeems: { env: 'CHAT_OVERLAY_REDEEMS', def: true },
+  events: { env: 'CHAT_OVERLAY_EVENTS', def: true },
+};
+
+function chatOverlaySettings() {
+  const out = {};
+  for (const [key, s] of Object.entries(CHAT_OVERLAY)) {
+    const raw = process.env[s.env];
+    if (typeof s.def === 'boolean') out[key] = raw === '1' ? true : raw === '0' ? false : s.def;
+    else {
+      const n = Number(raw);
+      out[key] = raw != null && raw !== '' && Number.isInteger(n) && n >= s.min && n <= s.max ? n : s.def;
+    }
+  }
+  return out;
+}
+
 function overlayLanguage() {
   return OVERLAY_LANGUAGES.includes(process.env.OVERLAY_LANGUAGE) ? process.env.OVERLAY_LANGUAGE : 'en';
 }
@@ -683,10 +710,15 @@ app.get('/api/settings', (req, res) => {
     leihuAutoStart: process.env.LEIHU_AUTOSTART === '1',
     songNotes: songNotes.enabled(),
     overlayLanguage: overlayLanguage(),
+    chatOverlay: chatOverlaySettings(),
+    randomPickMode: songTabs.pickMode(),
+    excludedTabs: config.EXCLUDED_TABS,
+    sheetTabs: require('./sheets').getTabs(),
+    ...look.read(),   // themes and text sizes (look.js)
   });
 });
 
-app.post('/api/settings', (req, res) => {
+app.post('/api/settings', async (req, res) => {
   const updates = {};
 
   if (req.body.randomCooldownDays !== undefined) {
@@ -696,6 +728,18 @@ app.post('/api/settings', (req, res) => {
     }
     updates.randomCooldownDays = days;
     setupRouter.writeEnvValues({ RANDOM_COOLDOWN_DAYS: String(days) });
+  }
+
+  if (req.body.randomPickMode !== undefined) {
+    try { updates.randomPickMode = songTabs.parsePickMode(req.body.randomPickMode); } catch (err) { return res.status(400).json(errorBody(err)); }
+    setupRouter.writeEnvValues({ RANDOM_PICK_MODE: updates.randomPickMode });
+  }
+
+  // Sheet tabs left out of requests, random picks and the link finder; the song list is read again
+  if (req.body.excludedTabs !== undefined) {
+    try { updates.excludedTabs = songTabs.excludedList(req.body.excludedTabs); } catch (err) { return res.status(400).json(errorBody(err)); }
+    setupRouter.writeEnvValues({ EXCLUDED_TABS: updates.excludedTabs.join(',') });
+    updates.songCount = (await require('./sheets').fetchSongs()).length;
   }
 
   if (req.body.panelBgAlpha !== undefined) {
@@ -727,6 +771,25 @@ app.post('/api/settings', (req, res) => {
     broadcastSettings({ overlayLanguage: updates.overlayLanguage });
   }
 
+  if (req.body.chatOverlay && typeof req.body.chatOverlay === 'object') {
+    const values = {};
+    for (const [key, value] of Object.entries(req.body.chatOverlay)) {
+      const s = CHAT_OVERLAY[key];
+      if (!s) continue;
+      if (typeof s.def === 'boolean') values[s.env] = value ? '1' : '0';
+      else {
+        const n = Number(value);
+        if (!Number.isInteger(n) || n < s.min || n > s.max) {
+          return res.status(400).json({ error: `chatOverlay.${key} must be a whole number from ${s.min} to ${s.max}` });
+        }
+        values[s.env] = String(n);
+      }
+    }
+    setupRouter.writeEnvValues(values);
+    updates.chatOverlay = chatOverlaySettings();
+    broadcastSettings({ chatOverlay: updates.chatOverlay });
+  }
+
   if (req.body.leihuAutoPrepare !== undefined) {
     updates.leihuAutoPrepare = !!req.body.leihuAutoPrepare;
     setupRouter.writeEnvValues({ LEIHU_AUTO_PREPARE: updates.leihuAutoPrepare ? '1' : '0' });
@@ -742,11 +805,21 @@ app.post('/api/settings', (req, res) => {
     setupRouter.writeEnvValues({ LEIHU_AUTOSTART: updates.leihuAutoStart ? '1' : '0' });
   }
 
+  // Themes and text sizes: { look: { dashboardTheme?, overlayTheme?, …TextScale? } }; every page follows at once
+  if (req.body.look !== undefined) {
+    let parsed;
+    try { parsed = look.parse(req.body.look); } catch (err) { return res.status(400).json(errorBody(err)); }
+    setupRouter.writeEnvValues(parsed.env);
+    Object.assign(updates, parsed.values);
+    broadcastSettings(parsed.values);
+  }
+
   res.json({ ok: true, ...updates });
 });
 
 // ── Chat log (dashboard Chat tab, chat-log.js) ───────────────────────────────
 app.get('/api/chat/recent', (req, res) => res.json(chatLog.getRecent()));
+app.get('/api/chat/badges', async (req, res) => res.json(await chatBadges.get()));   // the on-stream chat's badge pictures
 app.get('/api/chat/days', async (req, res) => res.json(await chatLog.days()));
 app.get('/api/chat/log', async (req, res) => res.json(await chatLog.load(String(req.query.day || ''))));
 // "To announce" (Chat tab): this stream session's records (stream-session.js; the last 12 hours until
@@ -785,14 +858,17 @@ function modRoute(fn) {
 }
 app.get('/api/chat/mod', async (req, res) => {
   const can = await chatMod.permissions();
-  res.json({ can, pinned: can.pin ? await chatMod.pinned() : null });
+  res.json({ can, pinned: can.pin ? await chatMod.pinned() : null, endingRaid: endingRaid.status() });
 });
 app.get('/api/chat/mod/channel', modRoute((b, req) => chatMod.channel(req.query.login)));
 app.post('/api/chat/mod/ban', modRoute(b => chatMod.ban(b.login, { seconds: b.seconds, reason: b.reason })));
 app.post('/api/chat/mod/unban', modRoute(b => chatMod.unban(b.login)));
 app.post('/api/chat/mod/shoutout', modRoute(b => registerShoutout.shoutout(b.login)));   // Twitch's Shoutout + the !so clip
 app.post('/api/chat/mod/raid', modRoute(b => chatMod.raid(b.login)));
-app.post('/api/chat/mod/raid/cancel', modRoute(() => chatMod.cancelRaid()));
+app.post('/api/chat/mod/raid/cancel', modRoute(() => endingRaid.active() ? endingRaid.stop('canceled') : chatMod.cancelRaid()));
+// Raid with the ending roll (ending-raid.js): GET → the channel and when the roll and the raid would go; POST starts it
+app.get('/api/chat/mod/raid/roll', modRoute((b, req) => endingRaid.plan(req.query.login)));
+app.post('/api/chat/mod/raid/roll', modRoute(b => endingRaid.start(b.login)));
 app.post('/api/chat/mod/pin', modRoute(b => chatMod.pin(b.id, b.seconds)));
 app.post('/api/chat/mod/unpin', modRoute(b => chatMod.unpin(b.id)));
 
@@ -832,7 +908,7 @@ app.get('/api/credits', async (req, res) => {
 // ── Channel-point redemptions (redemptions.js) ─────────────────────────────────
 // Which rewards' redemptions the Chat tab can mark done / refund, and the channel for Twitch's own queue
 app.get('/api/redemptions/manageable', async (req, res) => {
-  res.json({ ids: [...await redemptions.manageableIds()], channel: await redemptions.channelLogin() });
+  res.json({ ids: [...await redemptions.manageableIds()], channel: await redemptions.channelLogin(), songRewards: [...redemptions.songRewardIds()] });
 });
 // { id, rewardId, action: 'done' | 'refund' }
 app.post('/api/redemptions/status', async (req, res) => {
@@ -846,6 +922,38 @@ app.post('/api/redemptions/status', async (req, res) => {
     res.status(err.messageCode ? 400 : 500).json(errorBody(err));
   }
 });
+// 👕 Outfits (server/outfits.js): veadotube's avatar states, the redemptions waiting for a pick, the settings
+app.get('/api/outfits', (req, res) => res.json(outfits.status()));
+app.get('/api/outfits/thumb', async (req, res) => {
+  const png = await outfits.thumb(String(req.query.window || ''), String(req.query.state || ''));
+  if (!png) return res.status(404).end();
+  res.set('Cache-Control', 'max-age=300').type('png').send(png);
+});
+app.post('/api/outfits/pick', (req, res) => {
+  if (!req.body.state) return res.status(400).json({ error: 'state is needed' });
+  try {
+    outfits.pick(String(req.body.state), req.body.id ? String(req.body.id) : '', req.body.window ? String(req.body.window) : '');
+    res.json(outfits.status());
+  } catch (err) {
+    res.status(err.messageCode ? 400 : 500).json(errorBody(err));
+  }
+});
+app.post('/api/outfits/drop', (req, res) => {
+  outfits.drop(String(req.body.id || ''), !!req.body.refund);
+  res.json(outfits.status());
+});
+app.post('/api/outfits/keep', (req, res) => {
+  outfits.keep();
+  res.json(outfits.status());
+});
+app.post('/api/outfits/settings', (req, res) => {
+  try {
+    res.json(outfits.save(req.body || {}));
+  } catch (err) {
+    res.status(err.messageCode ? 400 : 500).json(errorBody(err));
+  }
+});
+
 // Chat ⚙: every reward, and taking over one made on Twitch ({ id, action: 'start' | 'finish' | 'cancel' })
 app.get('/api/rewards', async (req, res) => {
   try {
@@ -864,7 +972,7 @@ app.post('/api/rewards/takeover', async (req, res) => {
   }
 });
 
-// New chat goes only to dashboards that asked for it (overlay and clip player don't need it)
+// New chat goes only to pages that asked for it: dashboards and the on-stream chat (overlay/chat.html)
 function sendChat(msg) {
   const str = JSON.stringify(msg);
   for (const client of wss.clients) {

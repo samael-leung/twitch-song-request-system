@@ -12,7 +12,10 @@
 //   { kind: 'notice', id, at, user, notice, system, text, anonymous?, recipient?, viewers?, avatar? }
 //       — Twitch's sub / resub / gift / raid … lines (notice = notice_type, system = Twitch's own wording);
 //         recipient: who got a gifted sub; a raid's user is the raiding channel; communityGift: a
-//         sub_gift that is one of a gift of several (the community_sub_gift line says it once)
+//         sub_gift that is one of a gift of several (the community_sub_gift line says it once).
+//         For the chat on stream's own wording (not in older logs): tier ('1000' | '2000' | '3000' |
+//         'prime'), months (a resub's total), count (subs in a community gift), bitsTier,
+//         charity { name, amount, currency }
 //   { kind: 'follow', id, at, user }
 //   { kind: 'delete', at, ids? | user? | all? }   — a mod deleted messages; applied on load
 //   { kind: 'redeem-status', at, id, status }      — a redemption done or refunded later; in the
@@ -20,7 +23,8 @@
 //   { kind: 'chat-first', at, id }                  — the flag arrived after the message; applied on load
 //   { kind: 'announced', at, ids, done }            — ✓ on a Chat tab "to announce" highlight (done: false = undone);
 //       in the records' day file, applied on load as `announced: true`
-// user = { id, login, name, color, badges: ['moderator', 'subscriber', ...] }
+// user = { id, login, name, color, badges: ['moderator', 'subscriber', ...], badgeIds?: ['subscriber/12', ...] }
+//   (badgeIds: set and version, for the badge pictures on the on-stream chat; not in older logs)
 // parts = the message split into text / emote / mention / cheer, for drawing emotes.
 // songs = sheet songs the message names, for the "songs mentioned" filter:
 //   [{ title, artist, lastAt?, recent?, onStream? }] — lastAt: when the song was last sung (ms, from
@@ -83,8 +87,8 @@ function songsIn(text) {
 }
 
 // When the song was last sung (history.js keeps "YYYY-MM-DD HH:MM:SS" in UTC), as ms; null = never
-function lastSungAt(title) {
-  const s = history.getLastRequestedAt(title);
+function lastSungAt(title, artist) {
+  const s = history.getLastRequestedAt(title, artist);
   const ms = s ? Date.parse(s.replace(' ', 'T') + 'Z') : NaN;
   return Number.isFinite(ms) ? ms : null;
 }
@@ -95,6 +99,13 @@ function lastSungAt(title) {
 function userOf(e, prefix) {
   const p = prefix ? `${prefix}_user_` : 'user_';
   return { id: e[`${p}id`] || '', login: e[`${p}login`] || '', name: e[`${p}name`] || e[`${p}login`] || '' };
+}
+
+// A chatter as chat events name them, with their badges
+function chatterOf(e) {
+  const user = { ...userOf(e, 'chatter'), color: e.color || '', badges: (e.badges || []).map(b => b.set_id) };
+  if (e.badges && e.badges.length) user.badgeIds = e.badges.map(b => `${b.set_id}/${b.id}`);
+  return user;
 }
 
 // channel.chat.message (EventSub v1)
@@ -108,13 +119,13 @@ function fromChat(e, at = Date.now()) {
   const text = e.message?.text || '';
   const rec = {
     kind: 'chat', id: e.message_id, at,
-    user: { ...userOf(e, 'chatter'), color: e.color || '', badges: (e.badges || []).map(b => b.set_id) },
+    user: chatterOf(e),
     text, parts, type: e.message_type || 'text',
   };
   if (e.cheer?.bits) rec.bits = e.cheer.bits;
   if (e.reply) rec.reply = { name: e.reply.parent_user_name || e.reply.parent_user_login, text: e.reply.parent_message_body || '' };
   const songs = text.startsWith('!') ? [] : songsIn(text);
-  if (songs.length) rec.songs = history.isReady() ? songs.map(s => ({ ...s, lastAt: lastSungAt(s.title) })) : songs;
+  if (songs.length) rec.songs = history.isReady() ? songs.map(s => ({ ...s, lastAt: lastSungAt(s.title, s.artist) })) : songs;
   return rec;
 }
 
@@ -133,7 +144,7 @@ function fromRedemption(e, at = Date.now()) {
 function fromNotice(e, at = Date.now()) {
   const rec = {
     kind: 'notice', id: e.message_id || `n${at}`, at,
-    user: { ...userOf(e, 'chatter'), color: e.color || '', badges: (e.badges || []).map(b => b.set_id) },
+    user: chatterOf(e),
     notice: e.notice_type || '', system: e.system_message || '', text: e.message?.text || '',
   };
   if (e.chatter_is_anonymous) rec.anonymous = true;
@@ -142,6 +153,15 @@ function fromNotice(e, at = Date.now()) {
     rec.recipient = { id: gift.recipient_user_id, login: gift.recipient_user_login || '', name: gift.recipient_user_name || gift.recipient_user_login || '' };
   }
   if (gift?.community_gift_id) rec.communityGift = gift.community_gift_id;
+  // What the line says, for the chat on stream's own wording (overlay/chat.html)
+  const detail = e[e.notice_type] || {};
+  const tier = detail.is_prime ? 'prime' : detail.sub_tier;
+  if (tier) rec.tier = tier;
+  if (e.resub?.cumulative_months) rec.months = e.resub.cumulative_months;
+  if (e.community_sub_gift?.total) rec.count = e.community_sub_gift.total;
+  if (e.bits_badge_tier?.tier) rec.bitsTier = e.bits_badge_tier.tier;
+  const amount = e.charity_donation?.amount;
+  if (amount) rec.charity = { name: e.charity_donation.charity_name || '', amount: amount.value / 10 ** (amount.decimal_place || 0), currency: amount.currency || '' };
   if (e.raid) {
     rec.user = { ...rec.user, id: e.raid.user_id || rec.user.id, login: e.raid.user_login || rec.user.login, name: e.raid.user_name || rec.user.name };
     rec.viewers = e.raid.viewer_count || 0;

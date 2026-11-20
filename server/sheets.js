@@ -10,9 +10,8 @@ const fs = require('fs');
 const CREDENTIALS_PATH = path.join(__dirname, '..', 'google-credentials.json');
 const CACHE_PATH = path.join(__dirname, '..', 'song-cache.json');
 
-// Tabs to skip — add more names here if needed
-
 let songCache = [];
+let sheetTabs = [];   // every tab's name, left-out ones too (Song Queue ⚙ → Sheet tabs)
 
 async function getAuthClient() {
   if (!fs.existsSync(CREDENTIALS_PATH)) {
@@ -46,6 +45,7 @@ async function fetchSongs() {
 
     // Step 1: get all sheet/tab names
     const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+    sheetTabs = meta.data.sheets.map(s => s.properties.title);
     const tabs = meta.data.sheets
       .map(s => s.properties.title)
       .filter(name => !config.EXCLUDED_TABS.includes(name));
@@ -135,10 +135,15 @@ function getSongs() {
   return songCache;
 }
 
+// The sheet's tabs in its order; before the sheet has been read, the cached songs' tabs
+function getTabs() {
+  return sheetTabs.length ? sheetTabs : [...new Set(songCache.map(s => s.tab).filter(Boolean))];
+}
+
 async function startAutoRefresh() {
   await fetchSongs();
   setInterval(fetchSongs, config.SHEET_REFRESH_INTERVAL_MS);
 }
 
-module.exports = { fetchSongs, getSongs, startAutoRefresh };
+module.exports = { fetchSongs, getSongs, getTabs, startAutoRefresh };
 

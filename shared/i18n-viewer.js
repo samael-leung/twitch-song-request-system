@@ -26,6 +26,27 @@
       // !endingtk headings
       credits: { raiders: 'Raiders', subs: 'Subscribers', cheers: 'Cheers', followers: 'New Followers', redeemers: 'Channel Points', requesters: 'Song Requests', chatters: 'Top Chatters' },
     },
+    // The on-stream chat (overlay/chat.html)
+    chatOverlay: {
+      title: '// Chat',
+      followed: '{name} followed',
+      redeemed: '{name} redeemed {reward}',
+      anonymous: 'An anonymous gifter',
+      // Subs, gifts, raids… in our own words (Twitch's English line for anything not here)
+      tier: { prime: 'Prime', 1000: 'Tier 1', 2000: 'Tier 2', 3000: 'Tier 3' },
+      notice: {
+        sub: ({ name, tier }) => tier ? `${name} subscribed with ${tier}!` : `${name} subscribed!`,
+        resub: ({ name, months }) => months ? `${name} resubscribed — ${months} months!` : `${name} resubscribed!`,
+        sub_gift: '{name} gifted a sub to {recipient}!',
+        community_sub_gift: ({ name, count }) => `${name} gifted ${count} sub${count === 1 ? '' : 's'} to the chat!`,
+        gift_paid_upgrade: '{name} is continuing their gifted sub!',
+        prime_paid_upgrade: '{name} upgraded from Prime to a paid sub!',
+        pay_it_forward: '{name} is paying their gifted sub forward!',
+        raid: ({ name, viewers }) => `${name} is raiding with ${viewers} viewer${viewers === 1 ? '' : 's'}!`,
+        bits_badge_tier: '{name} unlocked the {bitsTier} bits badge!',
+        charity_donation: '{name} donated {amount} to {charity}!',
+      },
+    },
   },
   'zh-TW': {
     overlay: {
@@ -46,6 +67,25 @@
       shoutout: '推薦頻道',
       watching: '現在播放',
       credits: { raiders: '感謝揪團', subs: '感謝訂閱', cheers: '感謝小奇點', followers: '感謝追隨', redeemers: '感謝兌換', requesters: '感謝點歌', chatters: '感謝聊天' },
+    },
+    chatOverlay: {
+      title: '// 聊天室',
+      followed: '{name} 追隨了頻道',
+      redeemed: '{name} 兌換了 {reward}',
+      anonymous: '匿名觀眾',
+      tier: { prime: 'Prime', 1000: '第 1 級', 2000: '第 2 級', 3000: '第 3 級' },
+      notice: {
+        sub: ({ name, tier }) => tier ? `${name} 訂閱了頻道（${tier}）！` : `${name} 訂閱了頻道！`,
+        resub: ({ name, months }) => months ? `${name} 續訂了！已經訂閱 ${months} 個月` : `${name} 續訂了！`,
+        sub_gift: '{name} 送了一份訂閱給 {recipient}！',
+        community_sub_gift: ({ name, count }) => `${name} 送出 ${count} 份訂閱給聊天室！`,
+        gift_paid_upgrade: '{name} 自己續訂了收到的禮物訂閱！',
+        prime_paid_upgrade: '{name} 從 Prime 升級成付費訂閱！',
+        pay_it_forward: '{name} 把收到的禮物訂閱傳給下一位！',
+        raid: ({ name, viewers }) => `${name} 帶著 ${viewers} 位觀眾來揪團！`,
+        bits_badge_tier: '{name} 解鎖了 {bitsTier} 小奇點徽章！',
+        charity_donation: '{name} 為 {charity} 捐了 {amount}！',
+      },
     },
   },
 });

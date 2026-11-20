@@ -65,7 +65,7 @@ module.exports = {
   // e.g. 台語, which no recognition language fits. Needs Leihu 1.4.7+.
   LEIHU_TAB_LANGUAGES: { '國語': 'zh', '日語': 'ja' },
 
-  // Overlay look and scroll speed are set in overlay/index.html
+  // Overlay colours and fonts: shared/themes.css; list height and scroll speed: overlay/index.html
   // (CSS variables in <style>, SCROLL_PX_PER_SEC in <script>).
 
 };

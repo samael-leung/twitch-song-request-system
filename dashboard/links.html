@@ -7,35 +7,20 @@
 <script src="/shared/i18n.js"></script>
 <script src="/shared/i18n-server.js"></script>
 <script src="/dashboard/i18n-links.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/themes.css">
+<script src="/shared/theme.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   /* Same tokens as dashboard/index.html */
-  :root {
-    --bg: #07070f;
-    --bg-panel: #0d0d1e;
-    --bg-card: #111128;
-    --bg-hover: #181830;
-    --border: rgba(120,60,220,0.25);
-    --border-green: rgba(40,160,90,0.25);
-    --border-amber: rgba(200,140,30,0.3);
-    --purple: #b06aff;
-    --green: #4aff9a;
-    --amber: #ffb84a;
-    --blue: #5a9aff;
-    --red: #ff5a5a;
-    --text: #d4c8f0;
-    --text-dim: #9a8cbc;
-    --text-muted: #3a3060;
-  }
+  :root { --ts: 1; }   /* colours and fonts: shared/themes.css, in the dashboard's theme and text size */
 
   html, body {
     min-height: 100vh;
     background: var(--bg);
-    font-family: 'Share Tech Mono', monospace;
+    font-family: var(--font-body);
     color: var(--text);
-    font-size: 15px;
+    font-size: calc(15px * var(--ts));
   }
 
   .topbar {
@@ -45,98 +30,98 @@
     border-bottom: 1px solid var(--border);
     position: sticky; top: 0; z-index: 10;
   }
-  .topbar-title { font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: 500; letter-spacing: 3px; color: var(--purple); }
-  .topbar a { color: var(--text-dim); font-size: 13px; text-decoration: none; }
-  .topbar a:hover { color: var(--purple); }
+  .topbar-title { font-family: var(--font-display); font-size: calc(13px * var(--ts)); font-weight: 500; letter-spacing: 3px; color: var(--accent); }
+  .topbar a { color: var(--text-dim); font-size: calc(13px * var(--ts)); text-decoration: none; }
+  .topbar a:hover { color: var(--accent); }
   .spacer { flex: 1; }
   .lang-switch { display: flex; gap: 4px; }
   .lang-btn {
-    font-family: 'Share Tech Mono', monospace; font-size: 13px; padding: 4px 9px; cursor: pointer;
+    font-family: var(--font-body); font-size: calc(13px * var(--ts)); padding: 4px 9px; cursor: pointer;
     background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim);
   }
   .lang-btn:hover { color: var(--text); }
-  .lang-btn.active { color: var(--purple); border-color: var(--purple); }
+  .lang-btn.active { color: var(--accent); border-color: var(--accent); }
 
   .btn {
-    font-family: 'Share Tech Mono', monospace; font-size: 13px; padding: 6px 14px;
+    font-family: var(--font-body); font-size: calc(13px * var(--ts)); padding: 6px 14px;
     background: transparent; border: 1px solid var(--border); border-radius: 4px;
-    color: var(--purple); cursor: pointer; transition: background .15s; white-space: nowrap;
+    color: var(--accent); cursor: pointer; transition: background .15s; white-space: nowrap;
   }
-  .btn:hover { background: rgba(176,106,255,0.1); }
+  .btn:hover { background: rgba(var(--accent-rgb), 0.1); }
   .btn:disabled { opacity: .4; cursor: default; background: transparent; }
-  .btn.go { color: var(--green); border-color: var(--border-green); }
-  .btn.go:hover { background: rgba(74,255,154,0.1); }
-  .btn.warn { color: var(--amber); border-color: var(--border-amber); }
-  .btn.small { padding: 4px 10px; font-size: 12px; }
+  .btn.go { color: var(--good); border-color: var(--border-good); }
+  .btn.go:hover { background: rgba(var(--good-rgb), 0.1); }
+  .btn.warn { color: var(--warn); border-color: var(--border-warn); }
+  .btn.small { padding: 4px 10px; font-size: calc(12px * var(--ts)); }
 
   .job { padding: 10px 20px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
-  .job-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text-dim); }
+  .job-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: calc(13px * var(--ts)); color: var(--text-dim); }
   .meter { height: 4px; background: var(--bg-card); border-radius: 2px; overflow: hidden; max-width: 600px; }
-  .meter i { display: block; height: 100%; background: var(--purple); transition: width .3s; }
-  .error { color: var(--red); font-size: 13px; }
-  .hint { color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+  .meter i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+  .error { color: var(--danger); font-size: calc(13px * var(--ts)); }
+  .hint { color: var(--text-dim); font-size: calc(13px * var(--ts)); line-height: 1.6; }
 
-  .access { border: 1px solid var(--border-amber); border-radius: 6px; padding: 10px 12px; max-width: 760px; display: flex; flex-direction: column; gap: 8px; }
-  .access-title { color: var(--amber); }
+  .access { border: 1px solid var(--border-warn); border-radius: 6px; padding: 10px 12px; max-width: 760px; display: flex; flex-direction: column; gap: 8px; }
+  .access-title { color: var(--warn); }
   .access-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .access code {
-    font-family: 'Share Tech Mono', monospace; font-size: 13px; color: var(--text);
+    font-family: var(--font-body); font-size: calc(13px * var(--ts)); color: var(--text);
     background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px;
     overflow-wrap: anywhere;
   }
-  .access-ok { font-size: 13px; color: var(--green); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .access a { color: var(--purple); }
+  .access-ok { font-size: calc(13px * var(--ts)); color: var(--good); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .access a { color: var(--accent); }
 
   .tabs { display: flex; gap: 6px; padding: 10px 20px; flex-wrap: wrap; align-items: center; }
   .tab {
-    font-family: 'Share Tech Mono', monospace; font-size: 13px; padding: 4px 10px; border-radius: 12px;
+    font-family: var(--font-body); font-size: calc(13px * var(--ts)); padding: 4px 10px; border-radius: 12px;
     border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer;
   }
-  .tab.cur { color: var(--purple); border-color: var(--purple); background: rgba(176,106,255,0.1); }
+  .tab.cur { color: var(--accent); border-color: var(--accent); background: rgba(var(--accent-rgb), 0.1); }
 
   .list { padding: 0 20px 40px; display: flex; flex-direction: column; gap: 10px; max-width: 1100px; }
   .song { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-  .song.accepted { border-color: var(--border-green); }
+  .song.accepted { border-color: var(--border-good); }
   .song.skipped { opacity: .55; }
   .song-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-  .song-title { font-size: 18px; color: var(--text); }
+  .song-title { font-size: calc(18px * var(--ts)); color: var(--text); }
   .song-artist { color: var(--text-dim); }
-  .song-tab { font-size: 12px; color: var(--text-dim); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; }
-  .song-ref { font-size: 13px; color: var(--text-dim); margin-left: auto; }
-  .status { font-size: 12px; padding: 1px 6px; border-radius: 3px; border: 1px solid; }
-  .status.confident { color: var(--green); border-color: var(--border-green); }
-  .status.review { color: var(--amber); border-color: var(--border-amber); }
-  .status.none { color: var(--red); border-color: rgba(255,90,90,0.3); }
+  .song-tab { font-size: calc(12px * var(--ts)); color: var(--text-dim); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; }
+  .song-ref { font-size: calc(13px * var(--ts)); color: var(--text-dim); margin-left: auto; }
+  .status { font-size: calc(12px * var(--ts)); padding: 1px 6px; border-radius: 3px; border: 1px solid; }
+  .status.confident { color: var(--good); border-color: var(--border-good); }
+  .status.review { color: var(--warn); border-color: var(--border-warn); }
+  .status.none { color: var(--danger); border-color: rgba(var(--danger-rgb), 0.3); }
 
   .cand { display: flex; gap: 10px; align-items: center; padding: 6px; border-radius: 4px; }
-  .cand.chosen { background: rgba(74,255,154,0.07); outline: 1px solid var(--border-green); }
+  .cand.chosen { background: rgba(var(--good-rgb), 0.07); outline: 1px solid var(--border-good); }
   .cand img { width: 144px; height: 81px; object-fit: cover; border-radius: 3px; background: #000; flex-shrink: 0; }
   .cand-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
   .cand-title { color: var(--text); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cand-title:hover { color: var(--purple); text-decoration: underline; }
-  .cand-meta { font-size: 13px; color: var(--text-dim); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .tag { font-size: 12px; padding: 1px 6px; border-radius: 3px; border: 1px solid var(--border); }
-  .tag.good { color: var(--green); border-color: var(--border-green); }
-  .tag.ok { color: var(--amber); border-color: var(--border-amber); }
-  .tag.bad { color: var(--red); border-color: rgba(255,90,90,0.3); }
+  .cand-title:hover { color: var(--accent); text-decoration: underline; }
+  .cand-meta { font-size: calc(13px * var(--ts)); color: var(--text-dim); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .tag { font-size: calc(12px * var(--ts)); padding: 1px 6px; border-radius: 3px; border: 1px solid var(--border); }
+  .tag.good { color: var(--good); border-color: var(--border-good); }
+  .tag.ok { color: var(--warn); border-color: var(--border-warn); }
+  .tag.bad { color: var(--danger); border-color: rgba(var(--danger-rgb), 0.3); }
   .cand-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 
   .song-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .song-foot input {
     flex: 1; min-width: 200px; max-width: 420px;
     background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
-    color: var(--text); padding: 5px 8px; font-family: 'Share Tech Mono', monospace; font-size: 13px;
+    color: var(--text); padding: 5px 8px; font-family: var(--font-body); font-size: calc(13px * var(--ts));
   }
-  .note { font-size: 13px; color: var(--amber); }
+  .note { font-size: calc(13px * var(--ts)); color: var(--warn); }
   .empty { color: var(--text-dim); padding: 30px 0; text-align: center; }
 
   .toast {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-    font-size: 13px; padding: 6px 12px; border-radius: 4px; opacity: 0; transition: opacity .3s;
-    background: rgba(74,255,154,0.15); border: 1px solid rgba(74,255,154,0.3); color: var(--green);
+    font-size: calc(13px * var(--ts)); padding: 6px 12px; border-radius: 4px; opacity: 0; transition: opacity .3s;
+    background: rgba(var(--good-rgb), 0.15); border: 1px solid rgba(var(--good-rgb), 0.3); color: var(--good);
     max-width: calc(100vw - 32px);
   }
-  .toast.error { background: rgba(255,90,90,0.15); border-color: rgba(255,90,90,0.3); color: var(--red); }
+  .toast.error { background: rgba(var(--danger-rgb), 0.15); border-color: rgba(var(--danger-rgb), 0.3); color: var(--danger); }
   .toast.show { opacity: 1; }
 
   @media (max-width: 640px) {
@@ -181,6 +166,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// The dashboard's theme and text size (🎨 Look & overlays)
+fetch('/api/settings').then(r => r.json()).then(s => { Theme.apply(s.dashboardTheme); Theme.scale(s.dashboardTextScale); }).catch(() => {});
 const t = I18N.t, tHtml = I18N.tHtml;
 let view = { job: {}, songs: [], written: 0 };
 let filter = 'review';

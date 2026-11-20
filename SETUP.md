@@ -56,8 +56,7 @@ no terminal commands, no manual `.env` editing:
 The wizard validates each step as you go and explains exactly what to do and why.
 If you're interrupted partway through, it picks up where you left off.
 
-> Prefer the terminal? `setup.ps1` / `setup_zh.ps1` walk through the same steps
-> (Twitch Device Authorization, reward creation, Google Sheets) interactively in PowerShell.
+> Prefer to fill in `.env` yourself? See [SETUP_MANUAL.md](SETUP_MANUAL.md).
 
 ---
 
@@ -91,7 +90,7 @@ Add the overlay to your scene — do this once:
    this is what makes the 2× render look sharper instead of just bigger
 
 The overlay connects automatically when the server is running and updates live.
-Its language (English or 繁體中文) is set in the dashboard: Song Queue tab ⚙ → **Overlay language**.
+Its language (English or 繁體中文) is set in the dashboard: **🎨 Look & overlays** (top) → **Overlay language**.
 
 ### Clip player (shoutouts / sponsor roll)
 
@@ -101,12 +100,33 @@ Its language (English or 繁體中文) is set in the dashboard: Song Queue tab �
 4. Put it at the top of the scene, covering the whole screen
 5. It stays fully transparent, and shows content only for `!so`, `!watch`, `!tk` and `!endingtk`
 
+### Chat on stream (instead of OneComme)
+
+Your Twitch chat on stream: the last messages, newest at the bottom, with badges, emotes and cheers,
+channel-point redemptions and subs / gifts / raids / follows.
+
+1. Add a new source → **Browser**
+2. URL, one of three styles (💬 Chat → ⚙ → **Chat on stream** lists them with **Copy**):
+   - `http://localhost:3000/overlay/chat.html?style=panel` — the song list's look
+   - `http://localhost:3000/overlay/chat.html?style=bubble` — speech bubbles
+   - `http://localhost:3000/overlay/chat.html?style=list` — plain lines with an outline, for over a game or video
+   - `http://localhost:3000/overlay/chat.html?style=row` — one horizontal strip, e.g. along the top of the screen:
+     newest on the right, older messages leave on the left
+3. Any size, e.g. Width `960`, Height `1080` (the row: `3840 × 200`), the same **Custom CSS** as the song overlay
+4. In your scene, scale it to 50% (e.g. `480 × 540`) — it renders at 2× for sharp text
+5. 💬 Chat → ⚙ → **Chat on stream**: how many messages, text size, and whether it shows redemptions,
+   subs / raids / follows, `!commands` and bots. Changes show at once.
+
+Messages a mod deletes, and a timed-out or banned viewer's, leave the stream at once. Moving from
+OneComme: run both for one stream, then remove the OneComme source; modes that showed or hid it
+mark it ⚠ — pick the new chat with **Pick a replacement…**, or press 📥 on the mode.
+
 ---
 
 ## Google Sheets setup
 
 ### Song list sheet
-Your existing sheet with songs. All tabs are included except those in `EXCLUDED_TABS` in `.env` (comma-separated; `待練勿點` when not set).
+Your existing sheet with songs. All tabs are included except the ones you untick under 🎵 Song Queue → ⚙ → **Sheet tabs** (`待練勿點` until you choose).
 Share it with the service account email → **Viewer** is enough. The YouTube link finder needs
 **Editor** to save links (see [YouTube link finder](#youtube-link-finder)).
 
@@ -165,8 +185,9 @@ Open `http://localhost:3000/dashboard` during streams.
 | Tabs | 🎵 Song Queue (the panels below) and 🎤 Leihu Singsing — Leihu's own screen inside the dashboard. **⚙ Settings** at the right end of its top row opens Leihu's settings and the two steps that get your song list ready; while those run, their progress shows in the header. `#leihu` in the address opens that tab. Leihu only shows on the PC it runs on. **▶ Start Leihu** there (or "Start Leihu with the song queue") runs Leihu without its own window, so it shows only in this tab |
 | 4 panels (2×2) | Left: Now Playing above Up Next · Right: Pending Review above Played |
 | Drag & drop | Move songs between panels or reorder within |
-| ⚙ Settings | Each tab has its own ⚙ at the right end of its top row: Song Queue — random cooldown, overlay opacity / brightness / language; Leihu Singsing — its settings and the two steps; Chat — song notes on the overlay, who `!endingtk` would thank now, channel-point rewards. Each saves on its own |
-| EN / 中文 | Switches the dashboard, links page and setup wizard together; the overlay and clip player follow the ⚙ "Overlay language" setting |
+| ⚙ Settings | Each tab has its own ⚙ at the right end of its top row: Song Queue — which sheet tabs can be requested, random cooldown and pick, clear the queue; Leihu Singsing — its settings and the two steps; Chat — song notes on the overlay, who `!endingtk` would thank now, channel-point rewards. Each saves on its own |
+| 🎨 Look & overlays | The button at the top, beside EN / 中文 — one place for what isn't a single tab's: five themes — **Neon** (the original), **Daylight**, **High contrast**, **Ocean**, **Cream & coffee** — chosen apart for the dashboard and for the overlays, and text sizes: the dashboard's (85–140%, the same on every browser and phone that opens it), the song list's and the break card's. Overlays change at once on stream and keep their size in OBS (bigger text, fewer songs in the same space). One overlay in another theme: add `?theme=daylight` (`neon`, `daylight`, `contrast`, `ocean`, `coffee`) to its URL. The chat's text size stays under 💬 Chat → ⚙. Also here: the overlays' panel opacity, brightness and language, each overlay's Browser Source address and size with **Copy**, and the version |
+| EN / 中文 | Switches the dashboard, links page and setup wizard together; the overlays follow **🎨 Look & overlays → Overlay language** |
 | ✓ Finished | Moves Now Playing → Played, pulls next song |
 | Pending column | Weak/unmatched requests — edit and accept manually |
 | 🔍 Find (Pending) | For a song that isn't on your sheet: searches lyric sites and YouTube (needs Leihu Singsing running), then **▶ Queue + prepare** or **＋ Add to** your first excluded tab with its link |
@@ -194,7 +215,7 @@ list. Messages mods delete show struck through.
   The search box looks in messages and names. Bots are hidden while **Hide bots** is ticked.
 - **To announce:** what to thank or greet on stream is highlighted in amber, right in the chat — subs,
   resubs and gifted subs (a gift of several subs as one line), raids, cheers, new followers, watch
-  streaks, channel-point redemptions, highlighted messages, first-time chatters, and each viewer's first message this stream
+  streaks, channel-point redemptions (not song requests: those go to the queue), highlighted messages, first-time chatters, and each viewer's first message this stream
   (tagged *first words this stream*; bots and you are left out). **✓** on one removes its highlight
   (on a redemption it's **✓ Announce**, apart from its **✓ Done**).
   Changed your mind? Point at the row and click **✓ announced** to highlight it again. In the filter
@@ -219,7 +240,11 @@ list. Messages mods delete show struck through.
   clips, like `!so`; Twitch only allows it while you're live, every 2 minutes (once an hour for the same
   channel), so outside that the clip still plays and you're told why. **Raid** first shows whether that
   channel is live and how many viewers it has; click again to go. Twitch then counts down 90 seconds
-  (shown above the chat, with **Cancel raid**). **📌** (shown when you point at a message) pins it to the
+  (shown above the chat, with **Cancel raid**). With **🎬 With the ending roll** ticked (the default), the
+  `!endingtk` roll plays so the raid goes 10 seconds after it ends: the app starts the raid and the roll at
+  the right times (the confirm says when) and the roll cuts in over a clip. **Cancel raid**, or someone raiding
+  you meanwhile, stops both. Don't press Raid Now on Twitch, and use this button rather than Twitch's own
+  `/raid`, which the app can't follow. **📌** (shown when you point at a message) pins it to the
   top of your Twitch chat for 1, 5 or 30 minutes or until the stream ends; the pinned message shows above
   the chat with **Unpin**. Setups from before these buttons need to authorize again once: the menu links to it.
 - **Redemptions:** a waiting redemption of a reward this app made gets **✓ Done** and **↩ Refund**
@@ -280,6 +305,21 @@ Streamlabs Desktop or OBS Studio back the way you saved the mode and does this a
 
 ---
 
+## Outfits (👕 Outfits tab)
+
+Viewers redeem a reward, you pick the outfit: your avatar's state in veadotube mini (2.1 or newer).
+
+1. In veadotube mini → **program settings**, turn on the **WebSocket server**
+2. Dashboard → **👕 Outfits**: your veadotube windows show with a picture of each state. Click one to wear it.
+3. Press **☆** on your usual outfit: it becomes the default, and its window the one redemptions change.
+   With the same avatar in two windows, press ☆ in the right one, once after opening veadotube.
+4. Under **Redemptions**, tick the rewards that change the outfit, and set **Back to the default outfit
+   after** N minutes (0 = it stays until the next redemption)
+5. When one is redeemed, a card with your outfits pops up on any tab: click the one to wear. Rewards made
+   by the app (or taken over in 💬 Chat ⚙) are then marked done, or **↩ Refund**; others stay in Twitch's queue.
+
+---
+
 ## How matching works
 
 | Result | Action |
@@ -294,9 +334,9 @@ Tune in `server/config.js`: `AUTO_ACCEPT_THRESHOLD`, `MATCH_THRESHOLD` (0.2 stri
 
 ## Random song modes
 
-Set `RANDOM_PICK_MODE` in `.env`:
-- `weighted` — favors songs not played recently (recommended)
-- `pure` — truly random
+Choose in 🎵 Song Queue → ⚙ → **Pick**:
+- **Weighted** — favors songs not played recently (recommended)
+- **Pure random**
 
 Songs already in queue/Now Playing/Played, and songs requested within the cooldown
 (⚙ on the dashboard), are always excluded.
@@ -322,6 +362,10 @@ dashboard connects to it by itself — nothing to set up. When it isn't running,
   so OBS hears it mixed with every other tab. `start.bat` opens the dashboard in a separate copy of Chrome
   (or Edge) for this; opened some other way, Leihu tab ⚙ → **🔊 Open the stream window** does the same. In OBS add **Application Audio Capture**, pick the
   window **點歌控制台 Song Queue (OBS)** and set Window Match Priority to **Window title must match**.
+- **Leihu 2.0's global hotkeys** (Ctrl+Alt+Space play / pause, KEY up / down, next song…, also for a Stream Deck)
+  belong to Leihu's own window: they work when you open Leihu from its shortcut and sing there. Started with
+  **▶ Start Leihu** (no window of its own) there are none, and with both open they act on Leihu's window, not
+  the dashboard's Leihu tab.
 
 ---
 
@@ -345,7 +389,6 @@ the search uses its lyric sites and YouTube tools):
 ```
 vtuber-song-queue/
 ├── setup/                    ← browser-based setup wizard (served at /setup)
-├── setup.ps1 / setup_zh.ps1  ← optional terminal setup wizard
 ├── start.ps1 / start_zh.ps1  ← run every stream
 ├── *.bat                     ← double-click launchers (avoid PowerShell execution policy issues)
 ├── .env                      ← secrets (never commit!)
