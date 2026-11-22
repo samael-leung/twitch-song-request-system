@@ -54,3 +54,18 @@ test('the song rewards are the song request reward, the random ones, and the ori
     }
   }
 });
+
+test('redemptions made while disconnected: those since the drop, oldest first, as EventSub sends them', () => {
+  const r = (id, at) => ({
+    id, broadcaster_id: '1', broadcaster_login: 'me', broadcaster_name: 'Me', user_id: '9', user_login: 'v', user_name: 'V',
+    user_input: '我愛他', status: 'UNFULFILLED', redeemed_at: at, reward: { id: 'song', title: '點歌券', prompt: '', cost: 500 },
+  });
+  const since = Date.parse('2026-11-18T16:28:00Z');
+  const missed = redemptions.missedFrom([r('b', '2026-11-18T16:29:30Z'), r('old', '2026-11-18T15:00:00Z'), r('a', '2026-11-18T16:28:40Z')], since);
+  assert.deepStrictEqual(missed.map(e => e.id), ['a', 'b']);
+  assert.deepStrictEqual(missed[0], {
+    id: 'a', broadcaster_user_id: '1', broadcaster_user_login: 'me', broadcaster_user_name: 'Me',
+    user_id: '9', user_login: 'v', user_name: 'V', user_input: '我愛他', status: 'unfulfilled',
+    redeemed_at: '2026-11-18T16:28:40Z', reward: { id: 'song', title: '點歌券', prompt: '', cost: 500 },
+  });
+});

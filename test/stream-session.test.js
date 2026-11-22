@@ -21,3 +21,19 @@ test('a session runs from go-live to the next go-live; ending the stream keeps i
   assert.deepStrictEqual(changes.map(c => c.live), [true, false, true]);
   assert.strictEqual(JSON.parse(fs.readFileSync(process.env.STREAM_SESSION_FILE, 'utf8')).startedAt, Date.parse('2026-10-27T12:00:00Z'), 'kept for a restart');
 });
+
+test('a stream that drops and is back within 15 minutes is the same session; after a longer break, a new one', (t) => {
+  t.mock.method(console, 'log', () => {});
+  const at = ms => new Date(ms).toISOString();
+  const start = Date.now() - 3600000;
+  session.onEvent('stream.online', { started_at: at(start) });
+  session.onEvent('stream.offline', {});
+  session.onEvent('stream.online', { started_at: at(Date.now() + 60000) });   // Twitch's new broadcast
+  assert.deepStrictEqual(session.get(), { startedAt: start, live: true }, 'who came before the drop is still to announce');
+  session.onEvent('stream.online', { started_at: at(Date.now() + 120000) });   // the offline event missed
+  assert.strictEqual(session.get().startedAt, start);
+  session.onEvent('stream.offline', {});
+  const later = Date.now() + 20 * 60000;
+  session.onEvent('stream.online', { started_at: at(later) });
+  assert.strictEqual(session.get().startedAt, later);
+});

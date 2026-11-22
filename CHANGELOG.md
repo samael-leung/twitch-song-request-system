@@ -11,60 +11,92 @@ the dashboard under **🎨 Look & overlays** (at the top). Read **⚠ Action nee
 
 ## 2026.11-3 — unreleased
 
-**Works with:** Node.js LTS · Leihu Singsing 1.6.x–2.0.x (checked with 2.0.0) · for modes, Streamlabs
-Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
+### 繁體中文
+
 **搭配**：Node.js LTS · 雷虎練唱台 1.6.x–2.0.x（以 2.0.0 確認過）· 模式需要 Streamlabs Desktop 或 OBS Studio 30
 以上 · 換裝需要 veadotube mini 2.1 以上。
 
-### ⚠ Action needed / 需要動手
+#### ⚠ 需要動手
 
-- **Restart** the app (close it, run `start.bat` / `start_zh.bat` again) and refresh the dashboard.
-  **重新啟動**程式（關掉後再執行 `start.bat`／`start_zh.bat`），並重新整理控制台。
-- Moving from **TriggerFyre** to 🎟️ reward effects: save your sounds and pictures into `alert-media`, set the
-  rewards up, then turn each one off in TriggerFyre — or it plays twice.
-  從 **TriggerFyre** 換成 🎟️ 兌換特效：把音效和圖片存到 `alert-media`，設定好兌換項目，再到 TriggerFyre 把每一個關掉 ——
+- **重新啟動**程式（關掉後再執行 `start.bat`／`start_zh.bat`），並重新整理控制台。
+- 從 **TriggerFyre** 換成 🎟️ 兌換特效：把音效和圖片存到 `alert-media`，設定好兌換項目，再到 TriggerFyre 把每一個關掉 ——
   否則會播兩次。
-- Alerts are optional: nothing new shows on stream until you add their Browser Source. If you keep
-  Streamlabs' Alert Box (or another alert service) too, mute or hide one of them, or each alert shows twice.
-  通知是選用的：加入它的瀏覽器來源之前，直播畫面上不會多出任何東西。如果你同時保留 Streamlabs 的 Alert Box
+- 通知是選用的：加入它的瀏覽器來源之前，直播畫面上不會多出任何東西。如果你同時保留 Streamlabs 的 Alert Box
   （或其他通知服務），請把其中一個靜音或隱藏，否則每則通知會出現兩次。
 
-### What's new / 新功能
+#### 新功能
+
+- **🔔 直播畫面上的通知**（`/overlay/alerts.html`），取代 Streamlabs 的 Alert Box：追隨、訂閱、贈訂、小奇點和揪團，
+  一次一則，用疊加層的主題和語言；一次送出多份訂閱只顯示一則。在新的「**🔔 通知**」分頁，每一種都可以設定開關、
+  最低門檻、顯示多久、`alert-media` 資料夾裡的圖片／GIF／影片和音效（或內建的提示音；全部共用一個「**🔊 預設音效**」，
+  也可以各自選；每個音效檔播放時會自動調成一樣大聲），以及到達一定數量時的**大型通知**（例如 50 人以上的揪團）。
+  「**▶ 測試**」只在直播畫面上顯示一則假的通知；「**↻ 重播**」再顯示一次最近的通知。兩種版面 —— 圖在上（800 × 600）
+  或圖在左（1600 × 300）—— 都列在「🎨 外觀與疊加層」，可以「**複製**」。
+- **🎟️ 兌換特效**（`/overlay/reward-effects.html`，在「🔔 通知」分頁），取代 TriggerFyre：頻道點數兌換時播放音效（放好幾個 =
+  每次隨機一個）、放在你指定位置的圖片／GIF／影片，或兩者都有，也可以顯示兌換的人。播完 → 兌換標成完成；關閉、跳過、
+  排隊超過 20 個或清除 → 退還點數。可以依序播放、一起播放（最多 3 個）或跳過新的。「**⏸ 暫停**」—— 或勾選「**🎟️ 這個模式時
+  暫停兌換特效**」的模式（新的 🎤 唱歌模式預設勾選）—— 會讓兌換先排隊。
+- **📂 回報問題用的紀錄**：每次啟動都會把黑色視窗的內容存到 `logs/`，每次一個以日期時間命名的資料夾（`app.log`，點歌系統
+  啟動雷虎練唱台時還有 `leihu.log`），token 和密碼會被遮掉。保留最近 30 次啟動，以及 14 天內的全部。「🎨 外觀與疊加層」→
+  「**📂 這次執行的紀錄**」會打開目前這個。
+
+#### 修正
+
+- 直播中切換主題時，疊加層的文字可能變成亂碼（例如咖啡主題的「正在演唱」歌名），要再切一次才恢復：現在每個主題的字型
+  只載入一次並保留，不再替換。
+- 直播或網路斷線時：
+  - 直播斷線 15 分鐘內恢復（Twitch 會開新的直播和 VOD）時，聊天室分頁的「**要宣讀**」會保留，斷線前的追隨、訂閱、
+    揪團不會再消失。
+  - 和 Twitch 斷線期間兌換的頻道點數（本系統建立的獎勵），連線恢復後會補收，不會停在 Twitch 的佇列裡沒人看到。
+  - 沒有關閉、只是沒有回應的連線會在 15 秒內發現並重新連線；恢復時只訂閱到一部分（少了聊天室）的連線會重來，
+    不會一直收不到直到重新啟動。
+  - 點歌紀錄寫入失敗時會一直重試到試算表收到為止，不會遺失。
+
+### English
+
+**Works with:** Node.js LTS · Leihu Singsing 1.6.x–2.0.x (checked with 2.0.0) · for modes, Streamlabs
+Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
+
+#### ⚠ Action needed
+
+- **Restart** the app (close it, run `start.bat` / `start_zh.bat` again) and refresh the dashboard.
+- Moving from **TriggerFyre** to 🎟️ reward effects: save your sounds and pictures into `alert-media`, set the
+  rewards up, then turn each one off in TriggerFyre — or it plays twice.
+- Alerts are optional: nothing new shows on stream until you add their Browser Source. If you keep
+  Streamlabs' Alert Box (or another alert service) too, mute or hide one of them, or each alert shows twice.
+
+#### What's new
 
 - **🔔 Alerts on stream** (`/overlay/alerts.html`), instead of Streamlabs' Alert Box: follows, subs, gift
-  subs, cheers and raids, one at a time, in the overlay theme and language; a gift of several subs is one alert. In the new **🔔 Alerts** tab each kind has on / off, a
-  minimum, how long it shows, a picture / GIF / video and a sound from the `alert-media` folder (or a
-  built-in chime; one **🔊 default sound** for all of them, unless a kind picks its own; every sound file is evened out to the same loudness as it plays), and a **big version** from an amount up (e.g. raids from 50 viewers). **▶ Test** shows a
-  made-up alert on stream only; **↻ Replay** shows a recent one again. Two layouts — picture above (800 × 600)
-  or on the left (1600 × 300) — both listed under 🎨 Look & overlays with **Copy**.
-  **🔔 直播畫面上的通知**（`/overlay/alerts.html`），取代 Streamlabs 的 Alert Box：追隨、訂閱、贈訂、小奇點和揪團，
-  一次一則，用疊加層的主題和語言；一次送出多份訂閱只顯示一則。在新的「**🔔 通知**」分頁，每一種
-  都可以設定開關、最低門檻、顯示多久、`alert-media` 資料夾裡的圖片／GIF／影片和音效（或內建的提示音；全部共用一個「**🔊 預設音效**」，也可以各自選；每個音效檔播放時會自動調成一樣大聲），以及到達
-  一定數量時的**大型通知**（例如 50 人以上的揪團）。「**▶ 測試**」只在直播畫面上顯示一則假的通知；「**↻ 重播**」再顯示
-  一次最近的通知。兩種版面 —— 圖在上（800 × 600）或圖在左（1600 × 300）—— 都列在「🎨 外觀與疊加層」，可以「**複製**」。
+  subs, cheers and raids, one at a time, in the overlay theme and language; a gift of several subs is one
+  alert. In the new **🔔 Alerts** tab each kind has on / off, a minimum, how long it shows, a picture / GIF /
+  video and a sound from the `alert-media` folder (or a built-in chime; one **🔊 default sound** for all of
+  them, unless a kind picks its own; every sound file is evened out to the same loudness as it plays), and a
+  **big version** from an amount up (e.g. raids from 50 viewers). **▶ Test** shows a made-up alert on stream
+  only; **↻ Replay** shows a recent one again. Two layouts — picture above (800 × 600) or on the left
+  (1600 × 300) — both listed under 🎨 Look & overlays with **Copy**.
 - **🎟️ Reward effects** (`/overlay/reward-effects.html`, in the 🔔 Alerts tab), instead of TriggerFyre: a
   channel-point reward plays a sound (several = one at random), a picture / GIF / video where you put it, or
   both, and can show who redeemed it. Played → the redemption is marked done; turned off, skipped, past 20
   waiting or cleared → refunded. One after the other, together (up to 3) or skip the new one. **⏸ Pause** — or a
   mode with **🎟️ Pause reward effects** (new 🎤 singing modes have it) — keeps them waiting.
-  **🎟️ 兌換特效**（`/overlay/reward-effects.html`，在「🔔 通知」分頁），取代 TriggerFyre：頻道點數兌換時播放音效（放好幾個 =
-  每次隨機一個）、放在你指定位置的圖片／GIF／影片，或兩者都有，也可以顯示兌換的人。播完 → 兌換標成完成；關閉、跳過、
-  排隊超過 20 個或清除 → 退還點數。可以依序播放、一起播放（最多 3 個）或跳過新的。「**⏸ 暫停**」—— 或勾選「**🎟️ 這個模式時
-  暫停兌換特效**」的模式（新的 🎤 唱歌模式預設勾選）—— 會讓兌換先排隊。
 - **📂 Logs for bug reports**: every start now saves what the black window shows in `logs/`, one folder per
   start named by date and time (`app.log`, plus `leihu.log` when the song queue starts Leihu), with tokens and
   passwords blanked. The last 30 starts and anything from the last 14 days are kept. 🎨 Look & overlays →
   **📂 This run's logs** opens the current one.
-  **📂 回報問題用的紀錄**：每次啟動都會把黑色視窗的內容存到 `logs/`，每次一個以日期時間命名的資料夾（`app.log`，點歌系統
-  啟動雷虎練唱台時還有 `leihu.log`），token 和密碼會被遮掉。保留最近 30 次啟動，以及 14 天內的全部。「🎨 外觀與疊加層」→
-  「**📂 這次執行的紀錄**」會打開目前這個。
 
-### Fixes / 修正
+#### Fixes
 
 - Changing the theme while an overlay is on stream could garble its text (e.g. the now-playing title in Coffee)
   until the next switch: each theme's fonts now load once and stay, instead of being swapped.
-  直播中切換主題時，疊加層的文字可能變成亂碼（例如咖啡主題的「正在演唱」歌名），要再切一次才恢復：現在每個主題的字型
-  只載入一次並保留，不再替換。
+- When the stream or the network drops:
+  - A stream that drops and is back within 15 minutes (Twitch starts a new broadcast and VOD) keeps
+    the Chat tab's **To announce**: followers, subs and raids from before the drop no longer disappear.
+  - Channel-point redemptions made while the connection to Twitch was down are picked up when it's back
+    (rewards the app made), instead of waiting unseen in Twitch's queue.
+  - A connection that goes quiet without closing is noticed within 15 seconds and made again, and one
+    that comes back only partly subscribed (chat missing) starts over, instead of staying deaf until a restart.
+  - A request-history write that fails is tried again until the sheet takes it, instead of being lost.
 
 ---
 

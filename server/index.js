@@ -13,7 +13,7 @@ const { isAllowedRequest } = require('./request-guard');
 const { startAutoRefresh } = require('./sheets');
 const { matchSong } = require('./matcher');
 const { registerClient, addSong, addPending, updatePending, acceptPending, skipSong, clearQueue, getState, deleteSong, moveSong, redrawSong, broadcastSettings, broadcastRaw, setRedemptionHook, forgetRedemption } = require('./queue');
-const { connect: connectTwitch, setEventHandler, setChatHandler, setModerationHandler, setNoticeHandler, setFollowHandler, setRewardHandler, setStreamHandler, followStatus } = require('./twitch');
+const { connect: connectTwitch, setEventHandler, setChatHandler, setModerationHandler, setNoticeHandler, setFollowHandler, setRewardHandler, setStreamHandler, setReconnectHandler, replayRedemption, followStatus } = require('./twitch');
 const { registerCommand, handleChatEvent } = require('./chat-router');
 const chatLog = require('./chat-log');
 const chatBadges = require('./chat-badges');
@@ -171,6 +171,16 @@ setRewardHandler((type, event) => {
 setRedemptionHook(redemptions.settle);
 // The stream went live / ended: the Chat tab's "to announce" starts a new session
 setStreamHandler(streamSession.onEvent);
+// Back after the connection to Twitch dropped: EventSub doesn't send what came meanwhile. Live or
+// not (a go-live / end may be missed), and the redemptions made during the gap (a little before
+// Twitch was last heard from, in case of clock differences; ones that did come in are skipped)
+setReconnectHandler(async ({ since }) => {
+  streamSession.refresh();
+  if (!since) return;
+  const missed = await redemptions.missedSince(since - 30000);
+  const handed = missed.filter(replayRedemption);
+  if (handed.length) console.log(`[event] ${handed.length} redemption(s) made while disconnected, handled now`);
+});
 streamSession.init(session => sendChat({ type: 'chat-session', ...session }));
 modes.init(msg => sendChat(msg));   // after mediaQueue.init: a mode may hold clips
 endingRaid.init(msg => sendChat(msg));

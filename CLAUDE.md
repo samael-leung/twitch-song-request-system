@@ -47,7 +47,9 @@ vtuber-song-queue/
 ├── server/
 │   ├── index.js           Express + WebSocket server, redemption routing, REST API, HLS/clip proxy
 │   ├── config.js          Tuneable behaviour settings (thresholds, excluded tabs, weights)
-│   ├── twitch.js          EventSub WebSocket client, token refresh (ensureFreshToken), dedupe
+│   ├── twitch.js          EventSub WebSocket client, token refresh (ensureFreshToken), dedupe; keepalive
+│                          watchdog, re-subscribes a half-subscribed session, setReconnectHandler({ since })
+│                          after a drop (index.js: stream-session refresh + redemptions.missedSince → replayRedemption)
 │   ├── twitch-clips.js    Clip lookup + signed playback URLs for !so / !watch
 │   ├── setup-routes.js    All /setup/api/* endpoints for the web setup wizard
 │   ├── request-guard.js   Blocks cross-site and DNS-rebinding requests (HTTP + WebSocket)
@@ -61,7 +63,7 @@ vtuber-song-queue/
 │   ├── link-score.js      Scores YouTube candidates against the lyric version (pure functions)
 │   ├── romaji.js          Matches romanized video titles to 漢字/かな song titles
 │   ├── data/han-readings.json  Pinyin + Japanese readings per 漢字 (generated from Unicode's Unihan)
-│   ├── history.js         Request history sheet (debounced 1.5s), startup snapshot
+│   ├── history.js         Request history sheet (debounced 1.5s, failed writes / new rows retried 5 s → 5 min), startup snapshot
 │   ├── chat-router.js     Dispatches chat messages to registered commands (mods-only by default)
 │   ├── app-log.js         logs/<start time>/: app.log (the console, secrets blanked) + leihu.log; 30 runs / 14 days
 │   ├── chat-log.js        Chat + redemption log for the dashboard Chat tab, chat-logs/YYYY-MM-DD.jsonl
@@ -87,7 +89,8 @@ vtuber-song-queue/
 │   ├── reward-effects.js  🎟️ Reward effects: a reward plays sounds / a picture (queue, pause, done / refund); reward-effects.json
 │   ├── modes.js           Modes (🎛 tab, top-bar buttons): save / apply the streaming app's state + this app's part
 │   ├── stream-app.js      Streamlabs Desktop (Remote Control JSON-RPC) / OBS (obs-websocket 5) on this PC
-│   ├── stream-session.js  When the stream went live (stream.online / Helix /streams), for "to announce"
+│   ├── stream-session.js  When the stream went live (stream.online / Helix /streams), for "to announce";
+│                          a go-live within 15 min of the end (a dropped stream) keeps the session
 │   ├── stream-window.js   The dashboard in its own Chrome / Edge window, so OBS can capture Leihu's sound
 │   └── commands/          shoutout.js (!so), watch.js (!watch), replay.js, stop.js, thanks.js (!tk), ending-thanks.js (!endingtk)
 ├── shared/                Served at /shared: i18n.js (language helper), i18n-server.js (server
