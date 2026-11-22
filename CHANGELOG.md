@@ -9,7 +9,7 @@ the dashboard under **🎨 Look & overlays** (at the top). Read **⚠ Action nee
 
 ---
 
-## 2026.11-3 — unreleased
+## 2026.11-3 — 2026-11-23
 
 ### 繁體中文
 
