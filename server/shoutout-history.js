@@ -1,6 +1,6 @@
 // server/shoutout-history.js
 // In-memory store for broadcasters shouted out since the last !tk.
-// getAndClear() returns all entries and resets the list.
+// getAndClear() returns all entries and resets the list; restore() puts back a roll's that didn't play.
 
 const history = []; // { login, displayName, avatarUrl }
 
@@ -15,4 +15,12 @@ function getAndClear() {
   return history.splice(0);
 }
 
-module.exports = { addShoutout, getAndClear };
+// A !tk roll that was dropped before it played: its broadcasters are waiting to be thanked again,
+// ahead of anyone shouted out since
+function restore(list) {
+  const back = list.filter(b => !history.find(h => h.login.toLowerCase() === b.login.toLowerCase()));
+  history.unshift(...back);
+  if (back.length) console.log(`[shoutout-history] Back on the !tk list: ${back.map(b => b.displayName).join(', ')} (${history.length} total)`);
+}
+
+module.exports = { addShoutout, getAndClear, restore };

@@ -292,8 +292,10 @@ Streamlabs Desktop or OBS Studio back the way you saved the mode and does this a
   (position, size, rotation, crop). Off (the default), they stay where you placed them. A mode never moves
   anything if the canvas size changed since it was saved; save it again.
 - **This app's part:** a chat message posted when switching to the mode; **⏸ Hold clips**, where clips
-  from `!so`, `!watch` and `!tk` wait (up to 10) until you switch to another mode, and one already
-  playing finishes; and a dashboard tab to open.
+  from `!so`, `!watch`, `!tk` and `!endingtk` wait (up to 10) until you switch to another mode, and one already
+  playing finishes; and a dashboard tab to open. While something waits, the top bar shows **⏸ N waiting**: click it
+  for the list, where **▶ Play now** plays one at once and **✕ Drop** skips it (a `!tk` roll's names go back on the
+  `!tk` list, so the next `!tk` still thanks them).
 - **When things change in the streaming app:**
   - Renamed items, scenes and sounds are still found.
   - An item deleted and made again with the same name is found by its name.
@@ -319,20 +321,24 @@ the overlay theme (🎨 Look & overlays), worded in the overlay language. A gift
    a built-in icon and plays a built-in chime (or pick *(no sound)*). **🔊 Default sound** (above the kinds) is the
    sound every kind set to *(default: …)* plays — that's every kind at first — so one pick changes them all.
    Sound files don't need to match: each one is evened out to the same loudness (−16 LUFS) as it plays —
-   the file itself isn't changed — and the 🔊 volume is on top of that. Reward effects' sounds too
+   the file itself isn't changed — and the 🔊 volume is on top of that. Reward effects' sounds too.
 4. Per kind: on / off, a minimum (bits, raid viewers…), how long it shows, the volume, and a **big version**
    from an amount up (e.g. raids from 50 viewers): larger, longer, with its own picture and sound
 5. **▶ Test** shows a made-up alert on stream only — nothing is posted to Twitch. **↻ Replay** shows a recent one again.
 
-The sound follows the source's own volume and mute, so a mode that mutes the source (🎤 singing) shows alerts
-silently. Moving from Streamlabs: run both for one stream with the Alert Box muted, then remove the Alert Box.
+**Sound:** in the source's properties tick **Control audio via OBS**, and in the mixer (⚙ → **Advanced Audio
+Properties**) set its Audio Monitoring to **Monitor and Output**, so you hear it too. Then the sound is in the mixer
+and follows the source's own volume and mute, so a mode that mutes the source (🎤 singing) shows alerts silently.
+Without it, the sound goes straight to your speakers: it isn't in the mixer, and reaches the stream only through a
+desktop-audio capture. Moving from Streamlabs: run both for one stream with the Alert Box muted, then remove the Alert Box.
 
 ### 🎟️ Reward effects (instead of TriggerFyre)
 
 A channel-point reward plays a sound, a picture / GIF / video, or both. In 🔔 Alerts → **🎟️ Reward effects**:
 
 1. Add a new source → **Browser**: `http://localhost:3000/overlay/reward-effects.html`, Width `1920`, Height `1080`,
-   over your whole scene (on top). It's transparent while nothing plays, and has its own volume and mute.
+   over your whole scene (on top). It's transparent while nothing plays. Tick **Control audio via OBS** and set
+   Audio Monitoring to **Monitor and Output**, as for alerts above: then it has its own volume and mute in the mixer.
 2. **＋ Add a reward…**, then pick its sounds (several = one at random each time), a picture, GIF or video,
    where it shows and how big, how long (or as long as the sound), and **Show who redeemed it**. **▶ Test** plays
    it on stream only. Song, random-song and outfit rewards aren't in the list: they have their own.

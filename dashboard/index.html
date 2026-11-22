@@ -868,6 +868,26 @@
   .mode-bar.busy .mode-chip { opacity: 0.5; pointer-events: none; }
   .mode-chip.on { color: var(--bg); background: var(--accent); border-color: var(--accent); }
   .mode-chip.on:hover { background: var(--accent); }
+  /* What a mode holds (top bar): "⏸ N waiting", the list under it */
+  .held-box { position: relative; }
+  .held-box[hidden] { display: none; }
+  .held-chip { color: var(--warn); border-color: var(--border-warn); }
+  .held-chip:hover { background: rgba(var(--warn-rgb), 0.1); }
+  .held-chip.flash { animation: held-flash 0.6s ease-in-out 3; }
+  @keyframes held-flash { 50% { background: rgba(var(--warn-rgb), 0.35); } }
+  .held-panel {
+    position: absolute; top: calc(100% + 6px); right: 0; z-index: 260; width: min(360px, calc(100vw - 32px));
+    background: var(--bg-panel); border: 1px solid var(--border-warn); border-radius: 8px; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  }
+  .held-panel[hidden] { display: none; }
+  /* Phone: the button can sit anywhere in the wrapped top bar, so the list spans the screen under it */
+  @media (max-width: 900px) { .held-panel { position: fixed; top: auto; left: 16px; right: 16px; width: auto; margin-top: 6px; } }
+  .held-row { display: flex; flex-direction: column; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .held-title { font-size: calc(14px * var(--ts)); color: var(--text); overflow-wrap: anywhere; }
+  .held-meta { font-size: calc(12px * var(--ts)); color: var(--text-dim); }
+  .held-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .held-note { font-size: calc(12px * var(--ts)); color: var(--text-dim); }
   .modes-page { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
   .modes-list { display: flex; flex-direction: column; gap: 10px; }
   .modes-box { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
@@ -952,6 +972,11 @@
   <div class="mode-box" id="mode-box" hidden>
     <button class="mode-box-label" type="button" onclick="showTab('modes')" data-i18n-title="dash.modes.barEdit" data-i18n="dash.modes.barLabel">🎛 Modes</button>
     <div class="mode-bar" id="mode-bar" role="group" data-i18n-aria-label="dash.modes.bar"></div>
+  </div>
+  <!-- What the mode holds (clips, !tk, !endingtk): shown only while something waits -->
+  <div class="held-box" id="held-box" hidden>
+    <button class="chip held-chip" id="held-chip" type="button" aria-expanded="false" aria-controls="held-panel" data-i18n-title="dash.held.tip"></button>
+    <div class="held-panel" id="held-panel" hidden></div>
   </div>
   <span class="lang-switch" role="group" data-i18n-aria-label="dash.set.language"></span>
   <button class="chip tab-config-btn" id="app-config-btn" type="button" onclick="toggleTabConfig('app')" aria-expanded="false" aria-controls="config-app" data-i18n="dash.app.button">🎨 Look &amp; overlays</button>
@@ -1416,6 +1441,7 @@ function connect() {
   ws.onopen  = () => {
     document.getElementById('dot').classList.remove('off'); clearTimeout(reconnectTimer);
     ws.send(JSON.stringify({ type: 'chat-subscribe' }));
+    loadWaiting();
     loadChat();   // fills in chat missed while disconnected
     loadModes(currentTab === 'modes');
     loadOutfits();
@@ -1432,6 +1458,7 @@ function connect() {
       else if (m.type === 'chat-announced') applyAnnounced(m.ids, m.done);
       else if (m.type === 'chat-session') loadChatSession().then(() => { linkSession(); rerenderChat(); });
       else if (m.type === 'modes') onModesMessage(m);
+      else if (m.type === 'media-waiting') onWaiting(m.waiting, true);
       else if (m.type === 'outfits') { outfits.status = m; paintOutfits(); }
       else if (m.type === 'alert') onAlertMessage(m.alert);
       else if (m.type === 'reward-effects') onEffectsMessage(m.status);
@@ -4253,9 +4280,65 @@ function paintModeBar() {
     const on = v.active === m.id;
     const issue = modeIssue(m);
     const tip = [on ? t('dash.modes.activeTip') : t('dash.modes.switchTip', { name: m.name }), on && v.held ? t('dash.modes.heldTip') : '', issue].filter(Boolean).join('\n');
-    return `<button class="chip mode-chip${on ? ' on' : ''}" data-mode="${esc(m.id)}" aria-pressed="${on}" title="${esc(tip)}">${esc(m.icon)} ${esc(m.name)}${issue ? ' ⚠' : ''}${on && v.held ? ' ⏸' : ''}</button>`;
+    return `<button class="chip mode-chip${on ? ' on' : ''}" data-mode="${esc(m.id)}" aria-pressed="${on}" title="${esc(tip)}">${esc(m.icon)} ${esc(m.name)}${issue ? ' ⚠' : ''}</button>`;
   }).join('');
+  paintWaiting();
 }
+
+// ── What the mode holds (top bar) ──────────────────────────────────────────────
+// While a mode holds clips (🎤 singing), !so / !watch clips and !tk / !endingtk rolls wait for the next
+// mode: "⏸ N waiting" shows them, each with ▶ Play now (at once, over the hold) and ✕ Drop (a !tk
+// roll's names go back on the !tk list). From server/media-queue.js.
+const held = { list: [], open: false };
+
+async function loadWaiting() {
+  try { onWaiting((await (await fetch('/api/media/waiting')).json()).waiting, false); } catch (_) {}
+}
+
+function onWaiting(list, live) {
+  const more = (list || []).length > held.list.length;
+  held.list = list || [];
+  if (!held.list.length) held.open = false;
+  paintWaiting(live && more);
+}
+
+function paintWaiting(flash = false) {
+  const box = document.getElementById('held-box');
+  if (!box) return;
+  const chip = document.getElementById('held-chip');
+  const panel = document.getElementById('held-panel');
+  box.hidden = !held.list.length;
+  chip.textContent = t('dash.held.chip', { n: held.list.length });
+  chip.setAttribute('aria-expanded', String(held.open));
+  panel.hidden = !held.open;
+  const m = modes.view && modeById(modes.view.active);
+  const mode = m ? `${m.icon ? m.icon + ' ' : ''}${m.name}` : t('dash.held.thisMode');
+  panel.innerHTML = held.list.map(w => `
+    <div class="held-row">
+      <span class="held-title">${esc(w.title)}</span>
+      <span class="held-meta">${esc(w.from)} · ${esc(new Date(w.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}</span>
+      <span class="held-actions">
+        <button class="chip" type="button" data-held-play="${w.id}">${esc(t('dash.held.play'))}</button>
+        <button class="chip" type="button" data-held-drop="${w.id}" title="${esc(t('dash.held.dropTip'))}">${esc(t('dash.held.drop'))}</button>
+      </span>
+    </div>`).join('') + `<div class="held-note">${esc(t('dash.held.note', { mode }))}</div>`;
+  if (flash) { chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash'); }
+}
+
+document.getElementById('held-chip').addEventListener('click', () => { held.open = !held.open; paintWaiting(); });
+document.getElementById('held-panel').addEventListener('click', async (e) => {
+  const play = e.target.closest('[data-held-play]');
+  const drop = e.target.closest('[data-held-drop]');
+  if (!play && !drop) return;
+  try {
+    const r = await modPost(play ? '/api/media/waiting/play' : '/api/media/waiting/drop', { id: Number((play || drop).dataset[play ? 'heldPlay' : 'heldDrop']) });
+    if (!r.ok) showToast(t('dash.held.gone'));
+  } catch (err) { showToast(err.message, true); }
+});
+// A click elsewhere closes the list
+document.addEventListener('click', (e) => {
+  if (held.open && !document.getElementById('held-box').contains(e.target)) { held.open = false; paintWaiting(); }
+});
 
 document.getElementById('mode-bar').addEventListener('click', (e) => {
   const btn = e.target.closest('[data-mode]');

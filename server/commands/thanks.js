@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const mediaQueue = require('../media-queue');
-const { getAndClear } = require('../shoutout-history');
+const { getAndClear, restore } = require('../shoutout-history');
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
 const BG_DIR = path.join(__dirname, '..', '..', 'clip-player', 'sponsor-bgs');
@@ -31,7 +31,8 @@ module.exports = function register(registerCommand) {
     async handler() {
       const broadcasters = getAndClear();
       if (!broadcasters.length) {
-        console.log('[thanks] !tk fired but shoutout list is empty — no-op');
+        if (mediaQueue.waiting().some(w => w.from === '!tk')) console.log('[thanks] !tk fired, but a sponsor roll is already waiting for the mode to change (see the dashboard\'s top bar)');
+        else console.log('[thanks] !tk fired but shoutout list is empty — no-op');
         return;
       }
 
@@ -44,7 +45,7 @@ module.exports = function register(registerCommand) {
         title: '提供 Sponsor Roll',
         bgUrl,
         broadcasters,
-      });
+      }, { onDrop: () => restore(broadcasters) });   // not played: a later !tk thanks them
     },
   });
 };

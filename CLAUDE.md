@@ -70,9 +70,10 @@ vtuber-song-queue/
 │   ├── song-notes.js      Song overlay note "last sung N days ago" when chat names a sheet song
 │   ├── song-tabs.js       Song Queue ⚙: sheet tabs left out (EXCLUDED_TABS, kept in order) and the random pick mode
 │   ├── look.js            🎨 Look & overlays: dashboard / overlay themes and text sizes (.env), checked
-│   ├── media-queue.js     Clip player queue (max 3; 10 while a mode holds it), mediaId matching, watchdog
+│   ├── media-queue.js     Clip player queue (max 3; 10 while a mode holds it), mediaId matching, watchdog;
+│                          waiting() while held → dashboard top bar "⏸ N waiting" (media-waiting, /api/media/waiting/play|drop)
 │   ├── media-history.js   Last played media, for !replay
-│   ├── shoutout-history.js  Broadcasters shouted out since the last !tk
+│   ├── shoutout-history.js  Broadcasters shouted out since the last !tk (restore(): a dropped roll's go back)
 │   ├── sponsor-voice.js   Generates the Japanese sponsor-roll voice line on first run
 │   ├── messages.js        Message codes for errors/notes the web pages show translated
 │   ├── node-check.js      Is Node.js below the secure minimum (`secureNode` in package.json)

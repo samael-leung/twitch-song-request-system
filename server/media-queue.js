@@ -11,6 +11,12 @@ let nextId = 0;
 let watchdog = null;
 let broadcast = null;
 let held = false;   // true: nothing new starts; the queue waits
+// Queued items carry queueId / queuedAt; what waits while held is shown in the dashboard's top bar,
+// where it can play now or be dropped. onDrop (by queueId): an item that won't play hands back what
+// it took (a !tk roll's names go back on the !tk list)
+let nextQueueId = 0;
+const drops = new Map();
+let onWaiting = () => {};
 
 function init(broadcastRaw) {
   broadcast = broadcastRaw;
@@ -45,14 +51,17 @@ function advance() {
     if (queue.length) console.log(`[media-queue] Holding ${queue.length} until the mode changes`);
   } else if (queue.length > 0) {
     const next = queue.shift();
+    drops.delete(next.queueId);
     play(next);
     console.log(`[media-queue] Playing next: "${next.title}" (${queue.length} remaining)`);
+    notify();
   } else {
     console.log('[media-queue] Queue empty');
   }
 }
 
-function enqueue(payload) {
+// onDrop: runs if the item is dropped instead of played (queue full, ✕ Drop, !stop)
+function enqueue(payload, { onDrop } = {}) {
   if (!current && !held) {
     play(payload);
     console.log(`[media-queue] Playing: "${payload.title}"`);
@@ -61,10 +70,60 @@ function enqueue(payload) {
   const max = held ? MAX_HELD : MAX_QUEUE;
   if (queue.length >= max) {
     console.log(`[media-queue] Queue full (${max}/${max}), dropping: "${payload.title}"`);
+    if (onDrop) onDrop();
     return;
   }
-  queue.push(payload);
+  const item = { ...payload, queueId: ++nextQueueId, queuedAt: Date.now() };
+  if (onDrop) drops.set(item.queueId, onDrop);
+  queue.push(item);
   console.log(`[media-queue] Queued (${queue.length}/${max})${held ? ' — held' : ''}: "${payload.title}"`);
+  notify();
+}
+
+// Where a queued item came from, for the dashboard
+function from(item) {
+  if (item.kind === 'sponsor-card') return item.groups ? '!endingtk' : '!tk';
+  if (item.labelKey === 'shoutout') return '!so';
+  return '!watch';
+}
+
+// What waits while a mode holds clips (nothing otherwise: a short queue plays by itself)
+function waiting() {
+  if (!held) return [];
+  return queue.map(i => ({ id: i.queueId, title: i.title, from: from(i), at: i.queuedAt }));
+}
+
+function notify() {
+  try { onWaiting(waiting()); } catch (err) { console.error('[media-queue] Could not tell the dashboards:', err.message); }
+}
+
+// `fn(waiting())` runs whenever that changes
+function setWaitingListener(fn) {
+  onWaiting = fn || onWaiting;
+}
+
+// ▶ Play now (dashboard): this queued item plays at once, held or not. → false when it's gone
+function playQueued(id) {
+  const i = queue.findIndex(q => q.queueId === id);
+  if (i < 0) return false;
+  const [item] = queue.splice(i, 1);
+  drops.delete(item.queueId);
+  playNow(item);
+  notify();
+  return true;
+}
+
+// ✕ Drop (dashboard): this queued item won't play. → false when it's gone
+function dropQueued(id) {
+  const i = queue.findIndex(q => q.queueId === id);
+  if (i < 0) return false;
+  const [item] = queue.splice(i, 1);
+  const onDrop = drops.get(item.queueId);
+  drops.delete(item.queueId);
+  console.log(`[media-queue] Dropped: "${item.title}"`);
+  if (onDrop) onDrop();
+  notify();
+  return true;
 }
 
 // A second clip player (e.g. OBS plus a preview tab) reports the same item
@@ -78,12 +137,18 @@ function onEnded(mediaId) {
 
 function stopAll() {
   const had = queue.length;
+  for (const item of queue) {
+    const onDrop = drops.get(item.queueId);
+    if (onDrop) onDrop();
+  }
+  drops.clear();
   queue = [];
   clearTimeout(watchdog);
   watchdog = null;
   current = null;
   broadcast({ type: 'media-stop' });
   console.log(`[media-queue] Stopped and cleared (dropped ${had} queued)`);
+  notify();
 }
 
 // Raid with the ending roll (ending-raid.js): this plays at once — over what plays now (it stops) and
@@ -106,8 +171,9 @@ function stopIf(mediaId) {
 function setHold(on) {
   held = !!on;
   if (!held && !current && queue.length) advance();
+  notify();
 }
 
 const isHeld = () => held;
 
-module.exports = { init, enqueue, playNow, stopIf, onEnded, stopAll, setHold, isHeld };
+module.exports = { init, enqueue, playNow, stopIf, onEnded, stopAll, setHold, isHeld, waiting, setWaitingListener, playQueued, dropQueued };

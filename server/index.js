@@ -141,6 +141,7 @@ setupRouter.setConfigChangeCallback(() => activateServiceIfReady().catch(err => 
 
 // ── Chat command registration ─────────────────────────────────────────────────
 mediaQueue.init(broadcastRaw);
+mediaQueue.setWaitingListener(waiting => sendChat({ type: 'media-waiting', waiting }));   // the top bar's "⏸ N waiting"
 registerShoutout(registerCommand);
 registerWatch(registerCommand);
 registerReplay(registerCommand);
@@ -900,6 +901,10 @@ app.post('/api/chat/mod/unpin', modRoute(b => chatMod.unpin(b.id)));
 // GET → { modes, active, held, connection, live, issues }; live = what Streamlabs / OBS shows now.
 // ?live=0 leaves the streaming app alone. Refusals come back translated (400).
 app.get('/api/modes', async (req, res) => res.json(await modes.view({ live: req.query.live !== '0' })));
+// Clips waiting while a mode holds them (top bar): GET the list; ▶ play one now; ✕ drop one
+app.get('/api/media/waiting', (req, res) => res.json({ waiting: mediaQueue.waiting() }));
+app.post('/api/media/waiting/play', (req, res) => res.json({ ok: mediaQueue.playQueued(Number(req.body.id)) }));
+app.post('/api/media/waiting/drop', (req, res) => res.json({ ok: mediaQueue.dropQueued(Number(req.body.id)) }));
 app.post('/api/modes/switch', modRoute(b => modes.apply(b.id)));
 app.post('/api/modes/new', modRoute(b => modes.create(b)));
 app.post('/api/modes/save', modRoute(b => modes.update(b.mode)));

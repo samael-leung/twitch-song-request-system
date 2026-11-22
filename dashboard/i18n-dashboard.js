@@ -111,6 +111,16 @@
         showing: 'Showing only: {what}',
         showAll: 'Show all ✕',
       },
+      held: {
+        chip: '⏸ {n} waiting',
+        tip: 'Held by the mode: clips, !tk and !endingtk wait for the next mode. Click to see them',
+        thisMode: 'this mode',
+        play: '▶ Play now',
+        drop: '✕ Drop',
+        dropTip: 'Won\'t play. A !tk roll\'s names go back on the !tk list, and the next !endingtk covers its viewers again',
+        note: 'They play when you switch from {mode} to another mode.',
+        gone: 'That one has already played or gone',
+      },
       modes: {
         bar: 'Modes',
         barLabel: '🎛 Modes',
@@ -692,6 +702,16 @@
         resize: '拖曳調整聊天室寬度',
         showing: '只顯示：{what}',
         showAll: '顯示全部 ✕',
+      },
+      held: {
+        chip: '⏸ {n} 個等待中',
+        tip: '被模式暫停：Clip、!tk 和 !endingtk 會等到切換模式再播。按一下查看',
+        thisMode: '這個模式',
+        play: '▶ 現在播放',
+        drop: '✕ 不播',
+        dropTip: '不會播放。!tk 的名單會放回去，下次 !tk 還會感謝；下次 !endingtk 也會再算到這些觀眾',
+        note: '從「{mode}」切換到其他模式時會播放。',
+        gone: '這個已經播過或不在了',
       },
       modes: {
         bar: '模式',
