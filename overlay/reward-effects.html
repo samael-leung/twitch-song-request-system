@@ -12,6 +12,7 @@
      The name under the picture uses the overlay theme (🎨 Look & overlays, or ?theme= in the URL). -->
 <link rel="stylesheet" href="/shared/themes.css">
 <script src="/shared/theme.js"></script>
+<script src="/shared/loudness.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -130,7 +131,7 @@ function play(e) {
 
   document.body.appendChild(el);
   if (video) start(el.querySelector('video'));
-  if (e.sound) start(new Audio(media(e.sound)));
+  if (e.sound) start(Loudness.sound(media(e.sound)));   // evened out (shared/loudness.js)
   if (e.seconds) timers.push(setTimeout(finish, e.seconds * 1000));
   else if (!waiting) timers.push(setTimeout(finish, SHOW_SECONDS * 1000));
   else timers.push(setTimeout(finish, 60000));   // the longest an effect plays

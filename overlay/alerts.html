@@ -16,6 +16,7 @@
 <script src="/shared/i18n-viewer.js"></script>
 <link rel="stylesheet" href="/shared/themes.css">
 <script src="/shared/theme.js"></script>
+<script src="/shared/loudness.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -222,8 +223,7 @@ function play(a) {
     const c = chime(a.kind, a.big, volume);
     if (c) sounds.push(c);
   } else if (a.sound) {
-    const audio = new Audio(media(a.sound));
-    audio.volume = volume;
+    const audio = Loudness.sound(media(a.sound), volume);   // evened out (shared/loudness.js)
     audio.play().catch(() => {});
     sounds.push(audio);
   }

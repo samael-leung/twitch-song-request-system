@@ -317,7 +317,9 @@ the overlay theme (🎨 Look & overlays), worded in the overlay language. A gift
 3. Pictures, GIFs, videos and sounds: put the files in the `alert-media` folder (in the song request folder),
    then press **↻ Read the folder again** and pick them per kind. Without your own files, each kind shows
    a built-in icon and plays a built-in chime (or pick *(no sound)*). **🔊 Default sound** (above the kinds) is the
-   sound every kind set to *(default: …)* plays — that's every kind at first — so one pick changes them all
+   sound every kind set to *(default: …)* plays — that's every kind at first — so one pick changes them all.
+   Sound files don't need to match: each one is evened out to the same loudness (−16 LUFS) as it plays —
+   the file itself isn't changed — and the 🔊 volume is on top of that. Reward effects' sounds too
 4. Per kind: on / off, a minimum (bits, raid viewers…), how long it shows, the volume, and a **big version**
    from an amount up (e.g. raids from 50 viewers): larger, longer, with its own picture and sound
 5. **▶ Test** shows a made-up alert on stream only — nothing is posted to Twitch. **↻ Replay** shows a recent one again.
@@ -405,6 +407,15 @@ dashboard connects to it by itself — nothing to set up. When it isn't running,
   so OBS hears it mixed with every other tab. `start.bat` opens the dashboard in a separate copy of Chrome
   (or Edge) for this; opened some other way, Leihu tab ⚙ → **🔊 Open the stream window** does the same. In OBS add **Application Audio Capture**, pick the
   window **點歌控制台 Song Queue (OBS)** and set Window Match Priority to **Window title must match**.
+  - **Music and voice out of sync** (the voice drifts ahead of and behind the music, ~200 ms): Application
+    Audio Capture has no device clock, so its timing can wander. Capture Leihu from an output device instead —
+    a device capture runs on the device's clock, like your mic:
+    - **Audio Output Capture** of the output you listen on (simplest, but every other sound on it — other
+      tabs, Discord, Windows — goes on stream too), or
+    - give Leihu an output of its own (Leihu ⚙ → music output device) and capture that: a **hardware virtual
+      output** if your audio interface has one (e.g. SSL 2 MKII's *Output 3/4 (Virtual)*, mixed into your
+      headphones in SSL 360 — leave monitoring off), or a virtual cable such as **VB-Audio Virtual Cable**
+      (set its capture to *Monitor and Output* to hear it, then set its Sync Offset once for the monitoring delay).
 - **Leihu 2.0's global hotkeys** (Ctrl+Alt+Space play / pause, KEY up / down, next song…, also for a Stream Deck)
   belong to Leihu's own window: they work when you open Leihu from its shortcut and sing there. Started with
   **▶ Start Leihu** (no window of its own) there are none, and with both open they act on Leihu's window, not

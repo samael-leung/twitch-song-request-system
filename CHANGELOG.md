@@ -34,12 +34,12 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
 - **🔔 Alerts on stream** (`/overlay/alerts.html`), instead of Streamlabs' Alert Box: follows, subs, gift
   subs, cheers and raids, one at a time, in the overlay theme and language; a gift of several subs is one alert. In the new **🔔 Alerts** tab each kind has on / off, a
   minimum, how long it shows, a picture / GIF / video and a sound from the `alert-media` folder (or a
-  built-in chime; one **🔊 default sound** for all of them, unless a kind picks its own), and a **big version** from an amount up (e.g. raids from 50 viewers). **▶ Test** shows a
+  built-in chime; one **🔊 default sound** for all of them, unless a kind picks its own; every sound file is evened out to the same loudness as it plays), and a **big version** from an amount up (e.g. raids from 50 viewers). **▶ Test** shows a
   made-up alert on stream only; **↻ Replay** shows a recent one again. Two layouts — picture above (800 × 600)
   or on the left (1600 × 300) — both listed under 🎨 Look & overlays with **Copy**.
   **🔔 直播畫面上的通知**（`/overlay/alerts.html`），取代 Streamlabs 的 Alert Box：追隨、訂閱、贈訂、小奇點和揪團，
   一次一則，用疊加層的主題和語言；一次送出多份訂閱只顯示一則。在新的「**🔔 通知**」分頁，每一種
-  都可以設定開關、最低門檻、顯示多久、`alert-media` 資料夾裡的圖片／GIF／影片和音效（或內建的提示音；全部共用一個「**🔊 預設音效**」，也可以各自選），以及到達
+  都可以設定開關、最低門檻、顯示多久、`alert-media` 資料夾裡的圖片／GIF／影片和音效（或內建的提示音；全部共用一個「**🔊 預設音效**」，也可以各自選；每個音效檔播放時會自動調成一樣大聲），以及到達
   一定數量時的**大型通知**（例如 50 人以上的揪團）。「**▶ 測試**」只在直播畫面上顯示一則假的通知；「**↻ 重播**」再顯示
   一次最近的通知。兩種版面 —— 圖在上（800 × 600）或圖在左（1600 × 300）—— 都列在「🎨 外觀與疊加層」，可以「**複製**」。
 - **🎟️ Reward effects** (`/overlay/reward-effects.html`, in the 🔔 Alerts tab), instead of TriggerFyre: a
@@ -58,6 +58,13 @@ Desktop or OBS Studio 30+ · for outfits, veadotube mini 2.1+.
   **📂 回報問題用的紀錄**：每次啟動都會把黑色視窗的內容存到 `logs/`，每次一個以日期時間命名的資料夾（`app.log`，點歌系統
   啟動雷虎練唱台時還有 `leihu.log`），token 和密碼會被遮掉。保留最近 30 次啟動，以及 14 天內的全部。「🎨 外觀與疊加層」→
   「**📂 這次執行的紀錄**」會打開目前這個。
+
+### Fixes / 修正
+
+- Changing the theme while an overlay is on stream could garble its text (e.g. the now-playing title in Coffee)
+  until the next switch: each theme's fonts now load once and stay, instead of being swapped.
+  直播中切換主題時，疊加層的文字可能變成亂碼（例如咖啡主題的「正在演唱」歌名），要再切一次才恢復：現在每個主題的字型
+  只載入一次並保留，不再替換。
 
 ---
 

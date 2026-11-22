@@ -93,7 +93,8 @@ vtuber-song-queue/
 ├── shared/                Served at /shared: i18n.js (language helper), i18n-server.js (server
 │                          messages), i18n-viewer.js (overlay + clip player strings), themes.css (the five
 │                          themes as role tokens: --accent, --good, --warn…, *-rgb for tints) and theme.js
-│                          (Theme.apply / scale / nameColor; ?theme= on an overlay URL)
+│                          (Theme.apply / scale / nameColor; ?theme= on an overlay URL), loudness.js
+│                          (the overlays even out every sound file to −16 LUFS as it plays; maths tested in Node)
 ├── dashboard/i18n-dashboard.js, dashboard/i18n-links.js   Page strings, EN + zh-TW
 ├── setup/                 Web setup wizard (index.html, setup.css, setup.js, i18n.js — EN + zh-TW)
 ├── overlay/index.html     OBS Browser Source — song queue, in the overlay theme (Neon: cyberpunk dark/neon)
