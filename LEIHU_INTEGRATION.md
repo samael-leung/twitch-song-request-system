@@ -1,6 +1,6 @@
 # 雷虎練唱台雙向選歌
 
-點歌系統上游為 [sheng7337/twitch-song-request-system](https://github.com/sheng7337/twitch-song-request-system)，目前已合併 `master` 的 `333337d48fcb78fd92ee47316f99792bc9b4778d`（2026.11-2）。保留原生雷虎匯入、下載、歌詞、遠端開歌、聊天室、模式切換、點數兌換及佇列保存；兩個整合儲存庫均只更新 **`leihu-song-request-sync`** 分支。
+點歌系統上游為 [sheng7337/twitch-song-request-system](https://github.com/sheng7337/twitch-song-request-system)，目前已合併 `master` 的 `fa90879`（2026.11-3）。保留原生雷虎匯入、下載、歌詞、遠端開歌、聊天室、模式切換、點數兌換及佇列保存；兩個整合儲存庫均只更新 **`leihu-song-request-sync`** 分支。
 
 練唱台 1.6.9 顯示「點歌系統回應錯誤（404）」時，是正在執行的點歌伺服器缺少 `/api/integrations/leihu/selection`。原作者的 `/api/leihu/status`、`/api/leihu/open` 是另一組 API，更新練唱台或 npm 不會補上選歌路由。
 
@@ -69,3 +69,5 @@ Invoke-RestMethod 'http://127.0.0.1:3000/api/integrations/leihu/selection'
 原生自動啟動練唱台時，也會優先使用已完成遷移、具有 leihu-ready.json 的 secure-runtime；不完整時沿用既有執行環境。
 
 2026-11-21 整合驗證：157 項 Node 測試全部通過；瀏覽器實測目前模式取消暫停後 Clip 播放及自然結束、新主題保存與 WebSocket 同步、聊天室顯示／重載／刪除訊息。雙向同步模組、Clip 暫停修正及四個舊版 CLI 設定檔與前版逐位元組相同；既有 HTTP 路由全部保留。
+
+2026-11-23：合併 2026.11-3 的提醒、兌換特效、記錄檔、響度處理與斷線恢復；保留 Clip 即時取消暫停，並讓目前模式的兌換特效暫停設定即時生效。舊版 SO 修復工具固定使用內附舊版相容 payload，不依賴新版兌換特效模組。

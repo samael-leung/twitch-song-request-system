@@ -1,7 +1,7 @@
 // server/modes.js
 // The dashboard's modes (e.g. 🎤 singing / 💬 talking / ☕ break): one click sets the streaming app
 // (stream-app.js) as it was saved — the scene, which items show, where some of them sit, each audio
-// source's mute and volume — and does this app's part: hold clips while singing, post a chat message,
+// source's mute and volume — and does this app's part: hold clips and reward effects while singing, post a chat message,
 // open a dashboard tab.
 //
 // A mode is saved from what the streaming app shows (capture): the current scene and the scenes and
@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const streamApp = require('./stream-app');
 const mediaQueue = require('./media-queue');
+const rewardEffects = require('./reward-effects');
 const chatSend = require('./chat-send');
 const { UserError, errorBody } = require('./messages');
 
@@ -33,7 +34,7 @@ function save() {
   try { fs.writeFileSync(FILE, JSON.stringify(data, null, 1)); } catch (err) { console.error('[modes] Could not save:', err.message); }
 }
 
-// After a restart, a held clip queue stays held while its mode is on
+// After a restart, a held clip queue (and paused reward effects) stay so while its mode is on
 function init(send) {
   broadcast = send;
   load();
@@ -42,6 +43,7 @@ function init(send) {
   if (active && active.holdClips) {
     console.log(`[modes] ${active.icon} ${active.name} is holding clips (!so, !watch, !tk). Turn off "Hold clips" for this mode or switch modes to resume.`);
   }
+  rewardEffects.setModePause(!!(active && active.pauseEffects));
 }
 
 const byId = id => data.modes.find(m => m.id === id);
@@ -186,6 +188,7 @@ function clean(m) {
     })),
     chat: text(m.chat, 500).trim(),
     holdClips: !!m.holdClips,
+    pauseEffects: !!m.pauseEffects,
     tab: TABS.includes(m.tab) ? m.tab : '',
   };
 }
@@ -219,7 +222,10 @@ function update(m) {
   Object.assign(mode, clean(m));
   save();
   // Editing the active mode takes effect without reapplying its scene, audio or chat message.
-  if (data.active === mode.id) mediaQueue.setHold(mode.holdClips);
+  if (data.active === mode.id) {
+    mediaQueue.setHold(mode.holdClips);
+    rewardEffects.setModePause(mode.pauseEffects);
+  }
   changed();
   return mode;
 }
@@ -227,7 +233,7 @@ function update(m) {
 function remove(id) {
   mustFind(id);
   data.modes = data.modes.filter(m => m.id !== id);
-  if (data.active === id) { data.active = null; mediaQueue.setHold(false); }
+  if (data.active === id) { data.active = null; mediaQueue.setHold(false); rewardEffects.setModePause(false); }
   save();
   changed();
 }
@@ -283,6 +289,7 @@ async function apply(id) {
   }
 
   mediaQueue.setHold(mode.holdClips);
+  rewardEffects.setModePause(mode.pauseEffects);
   data.active = id;
   save();
   if (mode.chat) {

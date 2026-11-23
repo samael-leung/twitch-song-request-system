@@ -18,6 +18,7 @@ module.exports = function register(registerCommand) {
         return;
       }
       await credits.addAvatars(groups);
+      const before = credits.lastRunAt();
       credits.saveRunAt(now);
       console.log(`[ending-credits] Queuing the ending roll: ${groups.map(g => `${g.key} ${g.people.length}`).join(', ')}`);
       mediaQueue.enqueue({
@@ -26,7 +27,7 @@ module.exports = function register(registerCommand) {
         title: 'Ending Roll',
         bgUrl: pickBgUrl(),
         groups,
-      });
+      }, { onDrop: () => credits.saveRunAt(before) });   // not played: the next !endingtk covers them again
     },
   });
 };

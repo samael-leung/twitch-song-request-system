@@ -54,3 +54,26 @@ test('a mode holding clips: the one on screen finishes, new ones wait, letting g
   }
   mediaQueue.stopAll();
 });
+
+test('what waits while held is listed; ▶ plays one at once, ✕ and !stop hand back what a roll took', () => {
+  const lists = [];
+  mediaQueue.setWaitingListener(w => lists.push(w));
+  const dropped = [];
+  mediaQueue.setHold(true);
+  mediaQueue.enqueue({ title: 'Roll', kind: 'sponsor-card', broadcasters: [] }, { onDrop: () => dropped.push('Roll') });
+  mediaQueue.enqueue({ title: 'Clip', kind: 'video', labelKey: 'shoutout', duration: 10 });
+  mediaQueue.enqueue({ title: 'Ending', kind: 'sponsor-card', groups: [] }, { onDrop: () => dropped.push('Ending') });
+  const waiting = mediaQueue.waiting();
+  assert.deepStrictEqual(waiting.map(w => [w.title, w.from]), [['Roll', '!tk'], ['Clip', '!so'], ['Ending', '!endingtk']]);
+  assert.deepStrictEqual(lists[lists.length - 1], waiting, 'the dashboards hear of each change');
+
+  assert.strictEqual(mediaQueue.playQueued(waiting[1].id), true);
+  assert.strictEqual(last().title, 'Clip', 'plays although held');
+  assert.strictEqual(mediaQueue.dropQueued(waiting[0].id), true);
+  assert.deepStrictEqual(dropped, ['Roll']);
+  assert.strictEqual(mediaQueue.dropQueued(waiting[0].id), false, 'already gone');
+  mediaQueue.stopAll();
+  assert.deepStrictEqual(dropped, ['Roll', 'Ending']);
+  mediaQueue.setHold(false);
+  assert.deepStrictEqual(mediaQueue.waiting(), [], 'nothing is listed when not held');
+});

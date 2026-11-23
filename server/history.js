@@ -14,7 +14,7 @@ const fs = require('fs');
 
 const { songKey, findKey } = require('../shared/song-key');
 
-const CREDENTIALS_PATH = path.join(__dirname, '..', 'google-credentials.json');
+const CREDENTIALS_PATH = process.env.GOOGLE_CREDENTIALS_FILE || path.join(__dirname, '..', 'google-credentials.json');   // tests use a temp file
 const HEADERS = [
   'title', 'artist', 'total_requests',
   'last_requested_at', 'last_requester',
@@ -160,6 +160,10 @@ function updateTopRequesters(record, requester) {
 // Queue of pending writes to avoid hammering the API
 let writeQueue = [];
 let writeTimer = null;
+// A write that fails (the network is down) goes again: after 5 s, then twice as long each time, up to 5 min
+const RETRY_FIRST_MS = 5000;
+const RETRY_MAX_MS = 5 * 60 * 1000;
+let retryMs = RETRY_FIRST_MS;
 
 async function flushWrites() {
   if (writeQueue.length === 0) return;
@@ -181,8 +185,14 @@ async function flushWrites() {
     });
 
     console.log(`[history] Wrote ${toWrite.length} record(s) to history sheet`);
+    retryMs = RETRY_FIRST_MS;
   } catch (err) {
-    console.error('[history] Write error:', err.message);
+    // Back in the queue (a write for the same row queued since has the same record) and again later
+    for (const w of toWrite) if (!writeQueue.some(q => q.rowIndex === w.rowIndex)) writeQueue.push(w);
+    console.error(`[history] Write error: ${err.message} — trying again in ${Math.round(retryMs / 1000)}s`);
+    clearTimeout(writeTimer);
+    writeTimer = setTimeout(flushWrites, retryMs);
+    retryMs = Math.min(retryMs * 2, RETRY_MAX_MS);
   }
 }
 
@@ -210,7 +220,7 @@ async function recordRequest({ title, artist, requester }) {
     record.last_requested_at = now;
     record.last_requester = requester;
     updateTopRequesters(record, requester);
-    scheduleWrite(rowMap[key], record);
+    if (rowMap[key]) scheduleWrite(rowMap[key], record);   // else its new row is still being added, with this record
 
   } else {
     // New song — append a row
@@ -223,31 +233,39 @@ async function recordRequest({ title, artist, requester }) {
       top2_requester: '', top2_count: 0,
       top3_requester: '', top3_count: 0,
     };
+    // Known at once (the random picker's cooldown), whether or not the sheet can be reached now.
+    // Don't add to startupSnapshot — first ever request has no prior history
+    rowData[key] = record;
+    await appendRow(key, record);
+  }
+}
 
-    try {
-      const sheets = await getClient();
-      const res = await sheets.spreadsheets.values.append({
-        spreadsheetId: historySheetId,
-        range: 'A:K',
-        valueInputOption: 'RAW',
-        insertDataOption: 'INSERT_ROWS',
-        requestBody: { values: [recordToRow(record)] },
-      });
+// A new song's row; when the sheet can't be reached it goes again, like the writes
+async function appendRow(key, record, wait = RETRY_FIRST_MS) {
+  const sent = record.total_requests;
+  try {
+    const sheets = await getClient();
+    const res = await sheets.spreadsheets.values.append({
+      spreadsheetId: historySheetId,
+      range: 'A:K',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [recordToRow(record)] },
+    });
 
-      // Get the row index from the response
-      const updatedRange = res.data.updates?.updatedRange || '';
-      const match = updatedRange.match(/A(\d+)/);
-      const newRow = match ? parseInt(match[1]) : null;
+    // Get the row index from the response
+    const updatedRange = res.data.updates?.updatedRange || '';
+    const match = updatedRange.match(/A(\d+)/);
+    const newRow = match ? parseInt(match[1]) : null;
 
-      if (newRow) {
-        rowMap[key] = newRow;
-        rowData[key] = record;
-        // Don't add to startupSnapshot — first ever request has no prior history
-        console.log(`[history] New song "${title}" added at row ${newRow}`);
-      }
-    } catch (err) {
-      console.error('[history] Append error:', err.message);
+    if (newRow) {
+      rowMap[key] = newRow;
+      console.log(`[history] New song "${record.title}" added at row ${newRow}`);
+      if (record.total_requests !== sent) scheduleWrite(newRow, record);   // requested again while it was added
     }
+  } catch (err) {
+    console.error(`[history] Append error: ${err.message} — trying again in ${Math.round(wait / 1000)}s`);
+    setTimeout(() => appendRow(key, record, Math.min(wait * 2, RETRY_MAX_MS)), wait);
   }
 }
 

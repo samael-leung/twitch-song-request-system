@@ -1,7 +1,8 @@
 // server/leihu-launcher.js
 // Starts Leihu Singsing without its own window, so it shows only in the dashboard's Leihu tab.
 // It runs Leihu's app.py the way Leihu's desktop.py does (--no-browser, log in Leihu's
-// logs/app.log), with --parent-pid of this process: Leihu closes when the song queue closes.
+// logs/app.log, and also in this run's log folder: app-log.js), with --parent-pid of this process:
+// Leihu closes when the song queue closes.
 // Leihu's own shortcut still works alongside: its desktop.py reuses a running server.
 //
 // Leihu's folder: LEIHU_ROOT in .env, else the folder Leihu reported last time it ran
@@ -12,6 +13,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const axios = require('axios');
 const { UserError } = require('./messages');
+const appLog = require('./app-log');
 
 const HOME_PATH = process.env.LEIHU_HOME_FILE || path.join(__dirname, '..', 'leihu-home.json');   // tests use a temp file
 const START_TIMEOUT_MS = 120000;   // first start loads the AI models' libraries
@@ -74,19 +76,20 @@ async function launch(baseUrl) {
   if (!python) throw new UserError('leihuPythonMissing', { root }, `Leihu Singsing's Python was not found in ${root}`);
   const port = new URL(baseUrl).port || '8765';
   fs.mkdirSync(path.join(root, 'logs'), { recursive: true });
-  const log = fs.openSync(path.join(root, 'logs', 'app.log'), 'a');
-  try {
-    child = spawn(python, [path.join(root, 'app.py'), '--no-browser', '--parent-pid', String(process.pid)], {
-      cwd: root, windowsHide: true, stdio: ['ignore', log, log],
-      env: { ...process.env, LIANTAI_PORT: port, PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1' },
-    });
-  } finally {
-    fs.closeSync(log);
-  }
+  // Leihu's output goes to Leihu's logs/app.log as always, and to this run's leihu.log
+  const logs = [path.join(root, 'logs', 'app.log'), appLog.leihuLogPath()].filter(Boolean)
+    .map(p => fs.createWriteStream(p, { flags: 'a' }).on('error', () => {}));
+  child = spawn(python, [path.join(root, 'app.py'), '--no-browser', '--parent-pid', String(process.pid)], {
+    cwd: root, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, LIANTAI_PORT: port, PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1' },
+  });
   const proc = child;
+  for (const out of [proc.stdout, proc.stderr]) out.on('data', chunk => logs.forEach(l => l.write(chunk)));
+  const closeLogs = () => logs.forEach(l => l.end());
   let exited = false;
   proc.on('exit', () => { exited = true; if (child === proc) child = null; });
-  proc.on('error', () => { exited = true; if (child === proc) child = null; });
+  proc.on('error', () => { exited = true; if (child === proc) child = null; closeLogs(); });
+  proc.on('close', closeLogs);
   console.log(`[leihu] Starting Leihu Singsing without its window (${root})`);
   const end = Date.now() + START_TIMEOUT_MS;
   while (Date.now() < end) {

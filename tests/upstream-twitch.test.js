@@ -23,7 +23,8 @@ function loadTwitch(post = async () => ({ data: {} })) {
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../server/twitch.js'), 'utf8'), {
     module, __dirname: path.join(__dirname, '../server'), process: { env }, Date, URL, Buffer,
     console: { log() {}, warn() {}, error() {} },
-    setTimeout: (fn, delay) => { timers.push({ fn, delay }); },
+    clearTimeout() {},
+    setTimeout: (fn, delay) => { const timer = { fn, delay }; timers.push(timer); return timer; },
     require: name => ({ axios: { post: async (...args) => { calls.push(args); return post(...args); } },
       ws: Socket, fs: { readFileSync: () => saved, writeFileSync: (name, value) => { saved = value; } }, path })[name],
   });

@@ -13,6 +13,8 @@ test('merged server preserves setup, dashboard, new upstream routes and Leihu se
     cwd: dir, env: { ...process.env, PORT: '0', TWITCH_TRANSPORT: 'websocket',
       TWITCH_CLIENT_ID: 'startup-test-client', TWITCH_USER_ACCESS_TOKEN: '',
       GOOGLE_SHEET_ID: '', HISTORY_SHEET_ID: '', LEIHU_AUTOSTART: '0',
+      APP_LOG_DIR: path.join(dir, 'logs'), ALERTS_FILE: path.join(dir, 'alerts.json'),
+      REWARD_EFFECTS_FILE: path.join(dir, 'reward-effects.json'), ALERT_MEDIA_DIR: path.join(dir, 'alert-media'),
       LEIHU_LINKS_FILE: path.join(dir, 'song-links.json'), QUEUE_STATE_FILE: path.join(dir, 'queue-state.json'),
       CHAT_LOG_DIR: path.join(dir, 'chat-logs'), LEIHU_HOME_FILE: path.join(dir, 'leihu-home.json') }, stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -41,6 +43,9 @@ test('merged server preserves setup, dashboard, new upstream routes and Leihu se
   const settings = await (await fetch(base + '/api/settings')).json();
   assert.equal(settings.randomCooldownDays, 7);
   assert.equal((await fetch(base + '/overlay/index.html')).status, 200);
+  for (const page of ['alerts', 'reward-effects']) assert.equal((await fetch(base + `/overlay/${page}.html`)).status, 200);
+  for (const api of ['alerts', 'reward-effects']) assert.equal((await fetch(base + `/api/${api}`)).status, 200);
+  assert.ok((await (await fetch(base + '/api/logs')).json()).folder.startsWith(dir));
   const status = await (await fetch(base + '/setup/api/status')).json();
   assert.equal(typeof status.configured.twitch, 'boolean');
   assert.equal(Object.hasOwn(status, 'access_token'), false);

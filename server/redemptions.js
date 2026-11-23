@@ -252,6 +252,39 @@ function originalsOf(ids) {
 
 // Song request and random song rewards (the !endingtk roll thanks their redeemers as requesters; the
 // Chat tab doesn't list them to announce). A reward the app took over still counts under its old ID.
+// Redemptions Twitch made while the connection was down (EventSub doesn't send them again): of the
+// rewards the app manages (Twitch shows only those), still waiting in Twitch's queue, made since
+// `since` (ms). → events in EventSub's shape, oldest first; index.js hands them on like any other
+async function missedSince(since) {
+  const found = [];
+  for (const rewardId of await manageableIds()) {
+    try {
+      const { data } = await axios.get(`${API}/redemptions`, {
+        ...await helix(),
+        params: { broadcaster_id: broadcaster(), reward_id: rewardId, status: 'UNFULFILLED', sort: 'NEWEST', first: 50 },
+      });
+      found.push(...data.data);
+    } catch (err) {
+      console.error('[redemptions] Could not check for redemptions missed while disconnected:', err.response?.data?.message || err.message);
+    }
+  }
+  return missedFrom(found, since);
+}
+
+// Helix's redemptions → EventSub's channel.channel_points_custom_reward_redemption.add events
+function missedFrom(list, since) {
+  return list
+    .filter(r => Date.parse(r.redeemed_at) >= since)
+    .sort((a, b) => Date.parse(a.redeemed_at) - Date.parse(b.redeemed_at))
+    .map(r => ({
+      id: r.id,
+      broadcaster_user_id: r.broadcaster_id, broadcaster_user_login: r.broadcaster_login, broadcaster_user_name: r.broadcaster_name,
+      user_id: r.user_id, user_login: r.user_login, user_name: r.user_name,
+      user_input: r.user_input || '', status: String(r.status || '').toLowerCase(), redeemed_at: r.redeemed_at,
+      reward: r.reward,
+    }));
+}
+
 function songRewardIds() {
   const ids = new Set([process.env.TWITCH_REWARD_ID].filter(Boolean));
   try { for (const r of JSON.parse(process.env.TWITCH_RANDOM_REWARDS || '[]')) if (r.id) ids.add(r.id); } catch {}
@@ -262,4 +295,5 @@ function songRewardIds() {
 module.exports = {
   manageableIds, channelLogin, setStatus, settle, listRewards,
   startTakeover, finishTakeover, cancelTakeover, onRewardRemoved, originalsOf, songRewardIds, copyOf, tempTitle,
+  missedSince, missedFrom,
 };

@@ -32,6 +32,19 @@
 
 <img src="docs/images/chat-overlay-zh.png" width="640" alt="直播畫面上的聊天室：面板和對話泡泡">
 
+### 🔔 通知
+取代 Streamlabs 的 Alert Box：追隨、訂閱、贈訂、小奇點和揪團，一次一則，用疊加層的主題和語言。
+- 每一種都可以設定開關、最低門檻、顯示多久，以及 `alert-media` 資料夾裡的圖片、GIF、影片和音效（沒有的話用內建的提示音）；全部共用一個預設音效，也可以各自選。每個音效檔會自動調成一樣大聲。
+- 到達一定數量就顯示**大型通知**（例如 50 人以上的揪團）；一次送出多份訂閱只顯示一則。
+- 「**▶ 測試**」只顯示在直播畫面上，不會發到 Twitch。
+
+<img src="docs/images/alerts-zh.png" width="640" alt="直播畫面上的通知：圖在上和圖在左">
+
+**🎟️ 兌換特效**（取代 TriggerFyre）：觀眾兌換頻道點數時播放音效、圖片／GIF／影片，放在畫面上你指定的位置。
+- 一個兌換項目可以放好幾個音效，每次隨機播一個；可以顯示兌換的人和他打的字。
+- 播完自動把兌換標成完成；沒有播的（關閉、跳過、排隊已滿）會退還點數。
+- 模式可以暫停特效（例如唱歌時），之後再依序播放。
+
 ### 🎛 模式
 「🎤 唱歌」「💬 聊天」「☕ 休息」……按一下就設定好 Streamlabs Desktop 或 OBS：場景、要顯示哪些來源、位置和音訊；
 還可以暫停 Clip、在聊天室發一則訊息、切換控制台分頁。
@@ -90,6 +103,8 @@
 | 歌單 | `http://localhost:3000/overlay/index.html` | 960×1470，在場景裡縮小到 50%（480×735） |
 | Clip 播放器 | `http://localhost:3000/clip-player/index.html` | 1920×1080 |
 | 聊天室 | `http://localhost:3000/overlay/chat.html?style=panel`（或 `bubble`、`list`、`row` 橫向一排） | 例如 960×1080（`row`：3840×200），縮小到 50% |
+| 通知 | `http://localhost:3000/overlay/alerts.html?layout=vertical`（或 `horizontal` 圖在左） | 800×600（`horizontal`：1600×300），縮小到 50% |
+| 兌換特效 | `http://localhost:3000/overlay/reward-effects.html` | 1920×1080，蓋住整個場景 |
 | 休息中卡片 | `http://localhost:3000/overlay/break.html` | 960×260，縮小到 50% |
 | 準備中卡片 | `http://localhost:3000/overlay/break.html?card=opening` | 960×260，縮小到 50% |
 
@@ -125,10 +140,10 @@ body { background-color: rgba(0, 0, 0, 0) !important; margin: 0px auto; overflow
 
 `!so` 找到 Clip 卻沒有播放，若記錄顯示 `Queued ... held`，代表目前模式勾選了「這個模式時暫停播放 Clip」。可先切換到沒有暫停 Clip 的模式（例如聊天模式）；本分支也修正了編輯目前模式時取消勾選不會即時生效的問題，現在取消勾選便會立即播放佇列，且不會重套場景、音量或聊天室訊息。Twitch 因未開台或對自己 Shoutout 而拒絕公告，不影響 Clip 本身。
 
-既有 ZIP 安裝可使用 [SO-Clip-Hold-Fix.zip](repair/SO-Clip-Hold-Fix.zip)，依內附說明停止程式、執行修復後重新啟動；只修復已知版本的 `server/modes.js`，保留備份並拒絕覆寫不明自訂版本。設定、金鑰、歌曲配對與模式資料均不修改。此修復屬於 Node.js 點歌系統，無須更新練唱台的 Update.exe。
+較舊、尚未含兌換特效的 ZIP 安裝可使用 [SO-Clip-Hold-Fix.zip](repair/SO-Clip-Hold-Fix.zip)，依內附說明停止程式、執行修復後重新啟動；只修復已知版本的 `server/modes.js`，保留備份並拒絕覆寫不明自訂版本。設定、金鑰、歌曲配對與模式資料均不修改。此修復屬於 Node.js 點歌系統，無須更新練唱台的 Update.exe。
 
 ## 雷虎練唱台雙向同步
 
-本分支以 [sheng7337/twitch-song-request-system](https://github.com/sheng7337/twitch-song-request-system) 的 2026.11-2（`333337d`）為上游，保留原生雷虎整合、聊天室、模式切換與佇列保存，再加入練唱台 1.6.9 使用的 `/api/integrations/leihu/selection`。修復畫面的同步 404 不需要重裝練唱台或安裝 ngrok；已下載原作者 ZIP 者可直接套用相容修復包。兩個整合 repo 都只更新 `leihu-song-request-sync` 分支。部署與修復方式見 [LEIHU_INTEGRATION.md](LEIHU_INTEGRATION.md)。
+本分支以 [sheng7337/twitch-song-request-system](https://github.com/sheng7337/twitch-song-request-system) 的 2026.11-3（`fa90879`）為上游，保留原生雷虎整合、聊天室、模式切換與佇列保存，再加入練唱台 1.6.9 使用的 `/api/integrations/leihu/selection`。修復畫面的同步 404 不需要重裝練唱台或安裝 ngrok；已下載原作者 ZIP 者可直接套用相容修復包。兩個整合 repo 都只更新 `leihu-song-request-sync` 分支。部署與修復方式見 [LEIHU_INTEGRATION.md](LEIHU_INTEGRATION.md)。
 
-本次合併新增聊天室顯示層、主題／字體、造型切換與片尾揪團，保留原本的同步、配對、佇列、Clip 即時恢復及命令列設定精靈（`setup*.bat` / `setup*.ps1`）。
+本次合併新增聊天室顯示層、主題／字體、造型切換、片尾揪團、提醒、兌換特效、記錄檔與斷線恢復，保留原本的同步、配對、佇列、Clip 即時恢復及命令列設定精靈（`setup*.bat` / `setup*.ps1`）。

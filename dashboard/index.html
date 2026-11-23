@@ -774,6 +774,33 @@
   .picker-item .st { color: var(--text-dim); font-size: calc(12px * var(--ts)); white-space: nowrap; }
   .picker-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
+  /* 🔔 Alerts tab */
+  .al-kinds { display: flex; flex-direction: column; gap: 8px; }
+  .al-kind { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .al-kind.off { opacity: .6; }
+  .al-row { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; font-size: 13px; color: var(--text-dim); }
+  .al-row label { display: inline-flex; align-items: center; gap: 5px; }
+  .al-row .al-name { min-width: 150px; font-size: 14px; color: var(--text); }
+  .al-row .modes-input { max-width: 190px; font-size: 12px; }
+  .al-row .btn { font-size: 12px; padding: 3px 10px; margin-left: auto; }
+  .al-default { margin-bottom: 8px; }
+  .al-default .modes-input { max-width: 260px; }
+  .al-big { padding-left: 22px; border-top: 1px dashed var(--border); padding-top: 6px; }
+  .al-row .btn + .btn { margin-left: 0; }
+  .fx-state { display: inline-flex; gap: 4px; }
+  .fx-state .btn { margin-left: 0; }
+  .fx-state .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--text-strong); background: rgba(var(--accent-rgb), 0.18); }
+  .fx-sounds { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .fx-chip { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border); border-radius: 10px; padding: 1px 2px 1px 8px; font-size: 12px; color: var(--text); }
+  .fx-chip button { background: none; border: 0; color: var(--text-dim); cursor: pointer; font-size: 11px; padding: 0 4px; }
+  .fx-note { font-size: 12px; color: var(--text-dim); }
+  .fx-note.warn, .fx-status.warn { color: var(--warn); }
+  .fx-status { font-size: 13px; color: var(--text-dim); margin: 6px 0; }
+  .al-recent { display: flex; flex-direction: column; gap: 4px; }
+  .al-recent-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .al-recent-row .st { color: var(--text-dim); font-size: 12px; }
+  .al-recent-row .btn { font-size: 12px; padding: 2px 9px; margin-left: auto; }
+
   /* 👕 Outfits: the tab, and the pick card that pops up on any tab for a waiting redemption */
   .outfit-grid { display: flex; flex-wrap: wrap; gap: 8px; }
   .outfit {
@@ -841,6 +868,26 @@
   .mode-bar.busy .mode-chip { opacity: 0.5; pointer-events: none; }
   .mode-chip.on { color: var(--bg); background: var(--accent); border-color: var(--accent); }
   .mode-chip.on:hover { background: var(--accent); }
+  /* What a mode holds (top bar): "⏸ N waiting", the list under it */
+  .held-box { position: relative; }
+  .held-box[hidden] { display: none; }
+  .held-chip { color: var(--warn); border-color: var(--border-warn); }
+  .held-chip:hover { background: rgba(var(--warn-rgb), 0.1); }
+  .held-chip.flash { animation: held-flash 0.6s ease-in-out 3; }
+  @keyframes held-flash { 50% { background: rgba(var(--warn-rgb), 0.35); } }
+  .held-panel {
+    position: absolute; top: calc(100% + 6px); right: 0; z-index: 260; width: min(360px, calc(100vw - 32px));
+    background: var(--bg-panel); border: 1px solid var(--border-warn); border-radius: 8px; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  }
+  .held-panel[hidden] { display: none; }
+  /* Phone: the button can sit anywhere in the wrapped top bar, so the list spans the screen under it */
+  @media (max-width: 900px) { .held-panel { position: fixed; top: auto; left: 16px; right: 16px; width: auto; margin-top: 6px; } }
+  .held-row { display: flex; flex-direction: column; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .held-title { font-size: calc(14px * var(--ts)); color: var(--text); overflow-wrap: anywhere; }
+  .held-meta { font-size: calc(12px * var(--ts)); color: var(--text-dim); }
+  .held-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .held-note { font-size: calc(12px * var(--ts)); color: var(--text-dim); }
   .modes-page { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
   .modes-list { display: flex; flex-direction: column; gap: 10px; }
   .modes-box { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
@@ -926,6 +973,11 @@
     <button class="mode-box-label" type="button" onclick="showTab('modes')" data-i18n-title="dash.modes.barEdit" data-i18n="dash.modes.barLabel">🎛 Modes</button>
     <div class="mode-bar" id="mode-bar" role="group" data-i18n-aria-label="dash.modes.bar"></div>
   </div>
+  <!-- What the mode holds (clips, !tk, !endingtk): shown only while something waits -->
+  <div class="held-box" id="held-box" hidden>
+    <button class="chip held-chip" id="held-chip" type="button" aria-expanded="false" aria-controls="held-panel" data-i18n-title="dash.held.tip"></button>
+    <div class="held-panel" id="held-panel" hidden></div>
+  </div>
   <span class="lang-switch" role="group" data-i18n-aria-label="dash.set.language"></span>
   <button class="chip tab-config-btn" id="app-config-btn" type="button" onclick="toggleTabConfig('app')" aria-expanded="false" aria-controls="config-app" data-i18n="dash.app.button">🎨 Look &amp; overlays</button>
   <button class="chip" id="leihu-chip" onclick="showTab('leihu')" data-i18n-title="dash.leihuChipTitle">
@@ -997,7 +1049,8 @@
   <section>
     <h3 data-i18n="dash.set.versionTitle">Version</h3>
     <p class="setting-hint"><span id="app-version">…</span> ·
-      <a href="https://github.com/sheng7337/twitch-song-request-system/releases" target="_blank" rel="noopener" data-i18n="dash.set.releases">What's new in each release</a></p>
+      <a href="https://github.com/sheng7337/twitch-song-request-system/releases" target="_blank" rel="noopener" data-i18n="dash.set.releases">What's new in each release</a> ·
+      <a href="#" onclick="openLogs(event)" data-i18n="dash.set.logs" data-i18n-title="dash.set.logsTip">📂 This run's logs</a></p>
   </section>
 </div>
 
@@ -1008,6 +1061,7 @@
   <button class="tab" role="tab" id="tabbtn-chat" data-tab="chat" aria-controls="tab-chat" onclick="showTab('chat')"><span data-i18n="dash.tab.chat">💬 Chat</span><span class="tab-count" id="chat-unread" hidden></span></button>
   <button class="tab" role="tab" id="tabbtn-modes" data-tab="modes" aria-controls="tab-modes" onclick="showTab('modes')" data-i18n="dash.tab.modes">🎛 Modes</button>
   <button class="tab" role="tab" id="tabbtn-outfits" data-tab="outfits" aria-controls="tab-outfits" onclick="showTab('outfits')"><span data-i18n="dash.tab.outfits">👕 Outfits</span><span class="tab-count" id="outfit-count" hidden></span></button>
+  <button class="tab" role="tab" id="tabbtn-alerts" data-tab="alerts" aria-controls="tab-alerts" onclick="showTab('alerts')" data-i18n="dash.tab.alerts">🔔 Alerts</button>
   <!-- The chat beside the other tabs: open / close (placeChat) -->
   <button class="tab dock-btn" id="dock-btn" type="button" onclick="toggleChatDock()" aria-pressed="false">💬<span class="tab-count" id="dock-unread" hidden></span> <span id="dock-arrow">◂</span></button>
 </nav>
@@ -1154,7 +1208,7 @@
           oninput="document.getElementById('co-size-value').textContent = this.value + '%'" onchange="saveChatOverlay('size')" />
         <span id="co-size-value"></span>
       </label>
-      <label class="setting"><input type="checkbox" id="co-redeems" onchange="saveChatOverlay('redeems')" /> <span data-i18n="dash.chat.overlayRedeems">🎟 Channel-point redemptions</span></label>
+      <label class="setting"><input type="checkbox" id="co-redeems" onchange="saveChatOverlay('redeems')" /> <span data-i18n="dash.chat.overlayRedeems">🎟️ Channel-point redemptions</span></label>
       <label class="setting"><input type="checkbox" id="co-events" onchange="saveChatOverlay('events')" /> <span data-i18n="dash.chat.overlayEvents">⭐ Subs, gifts, raids and follows</span></label>
       <label class="setting"><input type="checkbox" id="co-commands" onchange="saveChatOverlay('commands')" /> <span data-i18n="dash.chat.overlayCommands">! Chat commands (!so, !sr…)</span></label>
       <label class="setting"><input type="checkbox" id="co-bots" onchange="saveChatOverlay('bots')" /> <span data-i18n="dash.chat.overlayBots">🤖 Bots (Nightbot, StreamElements…)</span></label>
@@ -1195,6 +1249,40 @@
     <p class="setting-hint" data-i18n="dash.modes.intro"></p>
     <div class="modes-row" id="modes-presets" hidden></div>
     <div class="modes-list" id="modes-list"></div>
+  </div>
+</div>
+
+<div class="tab-page" id="tab-alerts" role="tabpanel" aria-labelledby="tabbtn-alerts" hidden>
+  <div class="modes-page">
+    <section class="modes-box">
+      <h3 data-i18n="dash.alerts.title">Alerts on stream</h3>
+      <p class="setting-hint" data-i18n="dash.alerts.intro"></p>
+      <div id="al-urls"></div>
+      <div class="modes-row">
+        <button class="btn" type="button" onclick="alertPost('/api/alerts/skip')" data-i18n="dash.alerts.skip">⏭ Skip the one showing</button>
+        <button class="btn" type="button" onclick="loadAlerts()" data-i18n="dash.alerts.reload">↻ Read the folder again</button>
+      </div>
+      <p class="setting-hint" id="al-folder"></p>
+    </section>
+    <section class="modes-box">
+      <h3 data-i18n="dash.alerts.kindsTitle">What shows</h3>
+      <p class="setting-hint" data-i18n="dash.alerts.kindsHint"></p>
+      <div class="al-row al-default" id="al-default"></div>
+      <div class="al-kinds" id="al-kinds"></div>
+    </section>
+    <section class="modes-box" id="fx-box">
+      <h3 data-i18n="dash.fx.title">🎟️ Reward effects</h3>
+      <p class="setting-hint" data-i18n="dash.fx.intro"></p>
+      <div id="fx-url"></div>
+      <div class="al-row" id="fx-controls"></div>
+      <p class="fx-status" id="fx-status"></p>
+      <div class="al-kinds" id="fx-list"></div>
+      <div class="al-row"><select class="modes-input" id="fx-add"></select></div>
+    </section>
+    <section class="modes-box">
+      <h3 data-i18n="dash.alerts.recentTitle">Latest alerts</h3>
+      <div class="al-recent" id="al-recent"></div>
+    </section>
   </div>
 </div>
 
@@ -1353,6 +1441,7 @@ function connect() {
   ws.onopen  = () => {
     document.getElementById('dot').classList.remove('off'); clearTimeout(reconnectTimer);
     ws.send(JSON.stringify({ type: 'chat-subscribe' }));
+    loadWaiting();
     loadChat();   // fills in chat missed while disconnected
     loadModes(currentTab === 'modes');
     loadOutfits();
@@ -1369,7 +1458,10 @@ function connect() {
       else if (m.type === 'chat-announced') applyAnnounced(m.ids, m.done);
       else if (m.type === 'chat-session') loadChatSession().then(() => { linkSession(); rerenderChat(); });
       else if (m.type === 'modes') onModesMessage(m);
+      else if (m.type === 'media-waiting') onWaiting(m.waiting, true);
       else if (m.type === 'outfits') { outfits.status = m; paintOutfits(); }
+      else if (m.type === 'alert') onAlertMessage(m.alert);
+      else if (m.type === 'reward-effects') onEffectsMessage(m.status);
       else if (m.type === 'ending-raid') onEndingRaid(m);
       else if (m.type === 'settings') applyLook(m);
     } catch(_){}
@@ -1836,6 +1928,9 @@ const OVERLAY_SOURCES = [
   ['clip', '/clip-player/index.html', '1920 × 1080'],
   ['break', '/overlay/break.html', '960 × 260'],
   ['opening', '/overlay/break.html?card=opening', '960 × 260'],
+  ['alertsV', '/overlay/alerts.html?layout=vertical', '800 × 600'],
+  ['alertsH', '/overlay/alerts.html?layout=horizontal', '1600 × 300'],
+  ['effects', '/overlay/reward-effects.html', '1920 × 1080'],
 ];
 
 function paintOverlaySources() {
@@ -2271,7 +2366,7 @@ async function pollLeihu() {
 
 // ── Tabs ── Each tab is a button in .tabs and a .tab-page; #leihu in the address keeps the tab
 // on reload. Planned: chat room, rewards, OBS / Streamlabs control — add them here and in the markup.
-const TABS = ['queue', 'leihu', 'chat', 'modes', 'outfits'];
+const TABS = ['queue', 'leihu', 'chat', 'modes', 'outfits', 'alerts'];
 let currentTab = 'queue';
 
 function showTab(name) {
@@ -2291,6 +2386,7 @@ function showTab(name) {
   if (name === 'chat') loadChatDays();
   if (name === 'modes') loadModes(true);
   if (name === 'outfits') { loadOutfits(); loadOutfitRewards(); }
+  if (name === 'alerts') loadAlerts();
   paintOutfitPick();
 }
 
@@ -3702,9 +3798,287 @@ I18N.onChange(() => {
   if (!document.getElementById('node-warn').hidden) paintNodeWarning();
   paintModeBar();
   if (currentTab === 'modes') paintModes();
+  if (currentTab === 'alerts') { paintAlerts(); paintEffects(); }
   paintLook();
   paintSheetTabs();
 });
+
+// ── 🔔 Alerts (server/alerts.js, overlay/alerts.html) ──────────────────────────
+// Per kind: on, minimum, seconds, picture, sound, volume, and the big version from an amount up (redemptions: 🎟️ reward effects).
+// Test shows a made-up one on stream only; the latest real ones can be replayed.
+const ALERT_KINDS = ['follow', 'sub', 'gift', 'cheer', 'raid'];
+const ALERT_AMOUNT = { sub: 'months', gift: 'count', cheer: 'bits', raid: 'viewers' };
+const ALERT_ICONS = { follow: '💜', sub: '⭐', gift: '🎁', cheer: '💎', raid: '🚀' };
+const ALERT_LAYOUTS = { vertical: '800 × 600', horizontal: '1600 × 300' };
+const alertsView = { status: null };
+
+async function loadAlerts() {
+  try {
+    alertsView.status = await (await fetch('/api/alerts')).json();
+  } catch(_) { return; }
+  paintAlerts();
+  loadEffects();
+}
+
+// A sound's name as the lists show it
+const alertSoundName = s => (s === '@chime' ? t('dash.alerts.chime') : s || t('dash.alerts.noSound'));
+
+// The choices for a picture or a sound; a kind's sound can also be the default sound (not the default itself)
+function alertFileOptions(selected, sound, { withDefault = sound, none } = {}) {
+  const files = alertsView.status.files.filter(f => sound ? /\.(mp3|wav|ogg|m4a)$/i.test(f) : !/\.(mp3|wav|ogg|m4a)$/i.test(f));
+  return (withDefault ? `<option value="@default"${selected === '@default' ? ' selected' : ''}>${esc(t('dash.alerts.useDefault', { sound: alertSoundName(alertsView.status.defaultSound) }))}</option>` : '')
+    + `<option value=""${selected ? '' : ' selected'}>${esc(none || t(sound ? 'dash.alerts.noSound' : 'dash.alerts.noPicture'))}</option>`
+    + (sound ? `<option value="@chime"${selected === '@chime' ? ' selected' : ''}>${esc(t('dash.alerts.chime'))}</option>` : '')
+    + files.map(f => `<option value="${esc(f)}"${f === selected ? ' selected' : ''}>${esc(f)}</option>`).join('');
+}
+
+function paintAlerts() {
+  const st = alertsView.status;
+  if (!st) return;
+  document.getElementById('al-urls').innerHTML = Object.entries(ALERT_LAYOUTS).map(([layout, size]) => {
+    const url = `${location.origin}/overlay/alerts.html?layout=${layout}`;
+    return `<div class="co-url"><b>${esc(t('dash.alerts.layout.' + layout))}<br><small>${size}</small></b><code title="${esc(url)}">${esc(url)}</code>`
+      + `<button class="btn" type="button" data-url="${esc(url)}">${esc(t('dash.chat.overlayCopy'))}</button></div>`;
+  }).join('');
+  document.getElementById('al-folder').textContent = t('dash.alerts.folder', { folder: st.folder });
+  document.getElementById('al-default').innerHTML = `<label title="${esc(t('dash.alerts.defaultSoundTip'))}">${esc(t('dash.alerts.defaultSound'))} `
+    + `<select class="modes-input" data-alert-default>${alertFileOptions(st.defaultSound, true, { withDefault: false })}</select></label>`;
+  document.getElementById('al-kinds').innerHTML = ALERT_KINDS.map((k) => {
+    const c = st.kinds[k];
+    const amount = ALERT_AMOUNT[k];
+    const num = (key, min, max) => `<input type="number" class="cooldown-input" data-k="${k}" data-key="${key}" min="${min}" max="${max}" step="1" value="${Number(c[key]) || 0}">`;
+    const unit = amount ? esc(t('dash.alerts.unit.' + k)) : '';
+    let html = `<div class="al-kind${c.on ? '' : ' off'}">`
+      + `<div class="al-row"><label class="al-name"><input type="checkbox" data-k="${k}" data-key="on"${c.on ? ' checked' : ''}> ${ALERT_ICONS[k]} ${esc(t('dash.alerts.kind.' + k))}</label>`
+      + (k === 'cheer' || k === 'raid' ? `<label>${esc(t('dash.alerts.min'))} ${num('min', 0, 1000000)} ${unit}</label>` : '')   // subs and gifts: every one
+      + `<label>${num('seconds', 2, 60)} ${esc(t('dash.alerts.seconds'))}</label>`
+      + `<select class="modes-input" data-k="${k}" data-key="image" title="${esc(t('dash.alerts.picture'))}">${alertFileOptions(c.image, false)}</select>`
+      + `<select class="modes-input" data-k="${k}" data-key="sound" title="${esc(t('dash.alerts.sound'))}">${alertFileOptions(c.sound, true)}</select>`
+      + `<label title="${esc(t('dash.alerts.volume'))}">🔊 <input type="range" class="opacity-slider" min="0" max="100" step="5" data-k="${k}" data-key="volume" value="${Number(c.volume) || 0}"></label>`
+      + `<button class="btn" type="button" data-test="${k}">${esc(t('dash.alerts.test'))}</button></div>`;
+    if (amount) {
+      html += `<div class="al-row al-big"><label>${esc(t('dash.alerts.bigFrom'))} ${num('bigAt', 0, 1000000)} ${unit}</label>`
+        + `<label>${num('bigSeconds', 2, 60)} ${esc(t('dash.alerts.seconds'))}</label>`
+        + `<select class="modes-input" data-k="${k}" data-key="bigImage" title="${esc(t('dash.alerts.picture'))}">${alertFileOptions(c.bigImage, false, { none: t('dash.alerts.samePicture') })}</select>`
+        + `<select class="modes-input" data-k="${k}" data-key="bigSound" title="${esc(t('dash.alerts.sound'))}">${alertFileOptions(c.bigSound, true, { none: t('dash.alerts.sameSound') })}</select>`
+        + `<button class="btn" type="button" data-test="${k}" data-big="1"${c.bigAt ? '' : ' disabled'}>${esc(t('dash.alerts.testBig'))}</button></div>`;
+    }
+    return html + '</div>';
+  }).join('');
+  document.getElementById('al-recent').innerHTML = st.recent.length ? st.recent.map(a => {
+    const time = new Date(a.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const amount = ALERT_AMOUNT[a.kind] && a[ALERT_AMOUNT[a.kind]] ? ` · ${a[ALERT_AMOUNT[a.kind]]} ${t('dash.alerts.unit.' + a.kind)}` : '';
+    return `<div class="al-recent-row"><span class="st">${esc(time)}</span><span>${ALERT_ICONS[a.kind] || ''} ${esc(a.name || t('dash.alerts.anonymous'))}${esc(amount)}</span>`
+      + (a.big ? `<span class="chat-tag">${esc(t('dash.alerts.big'))}</span>` : '') + (a.test ? `<span class="chat-tag">${esc(t('dash.alerts.testTag'))}</span>` : '')
+      + `<button class="btn" type="button" data-replay="${esc(a.id)}">${esc(t('dash.alerts.replay'))}</button></div>`;
+  }).join('') : `<p class="setting-hint">${esc(t('dash.alerts.noneYet'))}</p>`;
+}
+
+async function alertPost(url, body) {
+  try {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+    const out = await res.json();
+    if (!res.ok) throw new Error(I18N.server(out, 'dash.toast.requestFailed'));
+    return out;
+  } catch (err) {
+    showToast(err.message, true);
+    loadAlerts();
+    return null;
+  }
+}
+
+document.getElementById('tab-alerts').addEventListener('change', async (e) => {
+  const el = e.target;
+  if (el.dataset.alertDefault !== undefined) {
+    const out = await alertPost('/api/alerts/settings', { defaultSound: el.value });
+    if (out) { alertsView.status = out; paintAlerts(); }
+    return;
+  }
+  if (!el.dataset.k) return;
+  const value = el.type === 'checkbox' ? el.checked : el.type === 'number' || el.type === 'range' ? Number(el.value) : el.value;
+  const out = await alertPost('/api/alerts/settings', { kinds: { [el.dataset.k]: { [el.dataset.key]: value } } });
+  if (out) { alertsView.status = out; paintAlerts(); }
+});
+
+document.getElementById('tab-alerts').addEventListener('click', async (e) => {
+  const copy = e.target.closest('[data-url]');
+  if (copy) {
+    try { await navigator.clipboard.writeText(copy.dataset.url); showToast(t('dash.chat.overlayCopied')); } catch(_) { showToast(copy.dataset.url, true); }
+    return;
+  }
+  const test = e.target.closest('[data-test]');
+  if (test) { await alertPost('/api/alerts/test', { kind: test.dataset.test, big: !!test.dataset.big }); return; }
+  const replay = e.target.closest('[data-replay]');
+  if (replay) { await alertPost('/api/alerts/replay', { id: replay.dataset.replay }); return; }
+});
+
+// A new alert (real or test): the tab's list of the latest
+function onAlertMessage(a) {
+  if (!alertsView.status || a.replay) return;
+  alertsView.status.recent = [a, ...alertsView.status.recent].slice(0, 20);
+  if (currentTab === 'alerts') paintAlerts();
+}
+
+// 📂 This run's log folder (server/app-log.js), opened in File Explorer on the PC running the song queue
+async function openLogs(e) {
+  e.preventDefault();
+  try {
+    const res = await fetch('/api/logs/open', { method: 'POST' });
+    const body = await res.json();
+    if (!res.ok) throw new Error(I18N.server(body, 'dash.toast.requestFailed'));
+    showToast(t('dash.toast.logsOpened', { folder: body.folder }));
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+// ── 🎟️ Reward effects (server/reward-effects.js, overlay/reward-effects.html) ─────
+// A channel-point reward plays a sound (one of several at random), a picture / GIF / video, or both.
+// Played → its redemption is done; not played (off, skipped, queue full, cleared) → refunded. Twitch lets
+// the app do that only for the rewards it manages; the others play and stay in Twitch's queue.
+const FX_PLACES = ['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right', 'random'];
+const FX_SECONDS = [0, 3, 5, 8, 10, 15, 20, 30, 60];
+const fx = { status: null, rewards: null };
+
+async function loadEffects() {
+  try {
+    fx.status = await (await fetch('/api/reward-effects')).json();
+  } catch(_) { return; }
+  paintEffects();
+  if (!fx.rewards) loadEffectRewards();
+}
+
+async function loadEffectRewards() {
+  try {
+    const res = await fetch('/api/rewards');
+    const body = await res.json();
+    if (res.ok) fx.rewards = body.rewards;
+  } catch(_) {}
+  paintEffects();
+}
+
+const fxReward = id => (fx.rewards || []).find(r => r.id === id);
+
+// Whether the app can mark this reward's redemptions done / refund them (redemptions.js)
+function fxNote(r) {
+  if (!r) return fx.rewards ? `<span class="fx-note warn">${esc(t('dash.fx.gone'))}</span>` : '';
+  if (r.skipsQueue) return `<span class="fx-note">${esc(t('dash.chat.rewardSkipsQueue'))}</span>`;
+  if (r.manageable) return `<span class="fx-note">${esc(t('dash.fx.managed'))}</span>`;
+  return `<span class="fx-note warn" title="${esc(t('dash.chat.redeemQueueTip'))}">${esc(t('dash.fx.notManaged'))}</span>`;
+}
+
+function paintEffects() {
+  const st = fx.status;
+  if (!st) return;
+  const url = `${location.origin}/overlay/reward-effects.html`;
+  document.getElementById('fx-url').innerHTML = `<div class="co-url"><b>${esc(t('dash.app.src.effects'))}<br><small>1920 × 1080</small></b><code title="${esc(url)}">${esc(url)}</code>`
+    + `<button class="btn" type="button" data-url="${esc(url)}">${esc(t('dash.chat.overlayCopy'))}</button></div>`;
+  document.getElementById('fx-controls').innerHTML =
+    `<span class="fx-state">${['on', 'paused', 'off'].map(s => `<button class="btn" type="button" data-fx-state="${s}" aria-pressed="${st.state === s}">${esc(t('dash.fx.state.' + s))}</button>`).join('')}</span>`
+    + `<label>${esc(t('dash.fx.together'))} <select class="modes-input" data-fx="together">${['queue', 'overlap', 'skip'].map(v =>
+      `<option value="${v}"${st.together === v ? ' selected' : ''}>${esc(t('dash.fx.togetherOpt.' + v))}</option>`).join('')}</select></label>`
+    + `<label title="${esc(t('dash.alerts.volume'))}">🔊 <input type="range" class="opacity-slider" min="0" max="100" step="5" data-fx="volume" value="${st.volume}"></label>`
+    + `<button class="btn" type="button" data-fx-act="skip">${esc(t('dash.fx.skip'))}</button>`
+    + `<button class="btn" type="button" data-fx-act="clear">${esc(t('dash.fx.clear'))}</button>`;
+  const files = (list, selected, none) => `<option value="">${esc(none)}</option>`
+    + list.map(f => `<option value="${esc(f)}"${f === selected ? ' selected' : ''}>${esc(f)}</option>`).join('');
+  document.getElementById('fx-list').innerHTML = st.effects.length ? st.effects.map((e, i) => {
+    const r = fxReward(e.rewardId);
+    return `<div class="al-kind${e.on ? '' : ' off'}" data-fx-i="${i}">`
+      + `<div class="al-row"><label class="al-name"><input type="checkbox" data-f="on"${e.on ? ' checked' : ''}> 🎟️ ${esc(r ? r.title : e.title)}${r ? ` <small>(${r.cost})</small>` : ''}</label>${fxNote(r)}`
+      + `<button class="btn" type="button" data-fx-test>${esc(t('dash.alerts.test'))}</button>`
+      + `<button class="btn" type="button" data-fx-remove title="${esc(t('dash.fx.remove'))}">✕</button></div>`
+      + `<div class="al-row"><span>${esc(t('dash.fx.sounds'))}</span><span class="fx-sounds">`
+      + e.sounds.map(s => `<span class="fx-chip">${esc(s)}<button type="button" data-fx-unsound="${esc(s)}" title="${esc(t('dash.fx.remove'))}">✕</button></span>`).join('')
+      + `<select class="modes-input" data-f="addSound">${files(st.sounds.filter(s => !e.sounds.includes(s)), '', t(e.sounds.length ? 'dash.fx.addAnother' : 'dash.fx.addSound'))}</select></span>`
+      + (e.sounds.length > 1 ? `<span class="fx-note">${esc(t('dash.fx.randomOne'))}</span>` : '') + '</div>'
+      + `<div class="al-row"><select class="modes-input" data-f="image" title="${esc(t('dash.alerts.picture'))}">${files(st.pictures, e.image, t('dash.fx.noPicture'))}</select>`
+      + `<label>${esc(t('dash.fx.place'))} <select class="modes-input" data-f="place">${FX_PLACES.map(p =>
+        `<option value="${p}"${e.place === p ? ' selected' : ''}>${esc(t('dash.fx.places.' + p))}</option>`).join('')}</select></label>`
+      + `<label>${esc(t('dash.fx.size'))} <input type="range" class="opacity-slider" min="10" max="60" step="5" data-f="size" value="${e.size}"${e.image ? '' : ' disabled'}> ${e.size}%</label>`
+      + `<label>${esc(t('dash.fx.shows'))} <select class="modes-input" data-f="seconds">${FX_SECONDS.map(n =>
+        `<option value="${n}"${e.seconds === n ? ' selected' : ''}>${esc(n ? t('dash.fx.secondsN', { n }) : t('dash.fx.asLongAs'))}</option>`).join('')}</select></label>`
+      + `<label title="${esc(t('dash.alerts.volume'))}">🔊 <input type="range" class="opacity-slider" min="0" max="100" step="5" data-f="volume" value="${e.volume}"></label>`
+      + `<label><input type="checkbox" data-f="showName"${e.showName ? ' checked' : ''}> ${esc(t('dash.fx.showName'))}</label></div></div>`;
+  }).join('') : `<p class="setting-hint">${esc(t('dash.fx.none'))}</p>`;
+  const used = new Set(st.effects.map(e => e.rewardId));
+  const can = (fx.rewards || []).filter(r => !r.role && !used.has(r.id));   // song, random and outfit rewards have their own
+  document.getElementById('fx-add').innerHTML = `<option value="">${esc(t(!fx.rewards ? 'dash.chat.rewardsLoading' : can.length ? 'dash.fx.add' : 'dash.fx.addNone'))}</option>`
+    + can.map(r => `<option value="${esc(r.id)}">${esc(r.title)} (${r.cost})</option>`).join('');
+  paintEffectStatus();
+}
+
+// The line under the controls: no overlay, paused, what's playing and waiting
+function paintEffectStatus() {
+  const st = fx.status;
+  const el = document.getElementById('fx-status');
+  if (!st || !el) return;
+  const parts = [];
+  if (!st.overlays) parts.push(t('dash.fx.noOverlay'));
+  if (st.state === 'off') parts.push(t('dash.fx.offNote'));
+  else if (st.state === 'paused') parts.push(t('dash.fx.pausedHere'));
+  else if (st.modePaused) parts.push(t('dash.fx.pausedMode'));
+  parts.push(t('dash.fx.queue', { playing: st.playing, waiting: st.queue.length }));
+  el.textContent = parts.join(' · ');
+  el.classList.toggle('warn', !st.overlays && st.state !== 'off');
+  const skip = document.querySelector('[data-fx-act="skip"]');
+  const clear = document.querySelector('[data-fx-act="clear"]');
+  if (skip) skip.disabled = !st.playing;
+  if (clear) clear.disabled = !st.queue.length;
+}
+
+async function saveEffects(changes) {
+  const out = await alertPost('/api/reward-effects/settings', changes);
+  if (out) { fx.status = out; paintEffects(); }
+}
+
+// The whole list, with each reward's name as Twitch has it now (the overlay shows it under the picture)
+const saveEffectList = list => saveEffects({ effects: list.map(e => ({ ...e, title: (fxReward(e.rewardId) || e).title })) });
+
+document.getElementById('fx-box').addEventListener('change', (e) => {
+  const el = e.target;
+  if (el.id === 'fx-add') {
+    const r = fxReward(el.value);
+    if (r) saveEffectList([...fx.status.effects, { rewardId: r.id, title: r.title }]);
+    return;
+  }
+  if (el.dataset.fx) { saveEffects({ [el.dataset.fx]: el.type === 'range' ? Number(el.value) : el.value }); return; }
+  const row = el.closest('[data-fx-i]');
+  const f = el.dataset.f;
+  if (!row || !f) return;
+  const list = fx.status.effects.map(x => ({ ...x }));
+  const one = list[row.dataset.fxI];
+  if (f === 'addSound') { if (!el.value) return; one.sounds = [...one.sounds, el.value]; }
+  else if (el.type === 'checkbox') one[f] = el.checked;
+  else if (el.type === 'range' || f === 'seconds') one[f] = Number(el.value);
+  else one[f] = el.value;
+  saveEffectList(list);
+});
+
+document.getElementById('fx-box').addEventListener('click', async (e) => {
+  const state = e.target.closest('[data-fx-state]');
+  if (state) { saveEffects({ state: state.dataset.fxState }); return; }
+  const act = e.target.closest('[data-fx-act]');
+  if (act) {
+    const out = await alertPost('/api/reward-effects/' + act.dataset.fxAct);
+    if (out) { fx.status = out; paintEffectStatus(); }
+    return;
+  }
+  const row = e.target.closest('[data-fx-i]');
+  if (!row) return;
+  const list = fx.status.effects.map(x => ({ ...x }));
+  const i = Number(row.dataset.fxI);
+  if (e.target.closest('[data-fx-test]')) { await alertPost('/api/reward-effects/test', { rewardId: list[i].rewardId }); return; }
+  if (e.target.closest('[data-fx-remove]')) { list.splice(i, 1); saveEffectList(list); return; }
+  const unsound = e.target.closest('[data-fx-unsound]');
+  if (unsound) { list[i].sounds = list[i].sounds.filter(s => s !== unsound.dataset.fxUnsound); saveEffectList(list); }
+});
+
+// From the server: an effect started or ended, the queue changed, a mode paused them
+function onEffectsMessage(status) {
+  fx.status = status;
+  if (currentTab === 'alerts') paintEffectStatus();
+}
 
 // ── 👕 Outfits (server/outfits.js, veadotube.js) ───────────────────────────────
 // veadotube's windows and their avatar states as pictures: a click wears one, ☆ makes it the default
@@ -3867,7 +4241,7 @@ for (const id of ['outfit-windows', 'outfit-pick']) {
 // they're made. view = GET /api/modes: live = what the streaming app shows (read when the tab opens,
 // or ↻), issues = what each mode no longer finds and what's new in its scenes.
 const modes = { view: null, open: new Set(), busy: false, dragging: false };
-const MODE_PRESETS = [['🎤', 'sing', { holdClips: true, tab: 'queue' }], ['💬', 'talk', { tab: 'chat' }], ['☕', 'break', {}]];
+const MODE_PRESETS = [['🎤', 'sing', { holdClips: true, pauseEffects: true, tab: 'queue' }], ['💬', 'talk', { tab: 'chat' }], ['☕', 'break', {}]];
 const appName = app => ({ streamlabs: 'Streamlabs Desktop', obs: 'OBS Studio' })[app] || app;
 const modeById = id => modes.view && modes.view.modes.find(m => m.id === id);
 const modeUnit = m => m.app === 'obs' ? 'dB' : '%';
@@ -3906,9 +4280,65 @@ function paintModeBar() {
     const on = v.active === m.id;
     const issue = modeIssue(m);
     const tip = [on ? t('dash.modes.activeTip') : t('dash.modes.switchTip', { name: m.name }), on && v.held ? t('dash.modes.heldTip') : '', issue].filter(Boolean).join('\n');
-    return `<button class="chip mode-chip${on ? ' on' : ''}" data-mode="${esc(m.id)}" aria-pressed="${on}" title="${esc(tip)}">${esc(m.icon)} ${esc(m.name)}${issue ? ' ⚠' : ''}${on && v.held ? ' ⏸' : ''}</button>`;
+    return `<button class="chip mode-chip${on ? ' on' : ''}" data-mode="${esc(m.id)}" aria-pressed="${on}" title="${esc(tip)}">${esc(m.icon)} ${esc(m.name)}${issue ? ' ⚠' : ''}</button>`;
   }).join('');
+  paintWaiting();
 }
+
+// ── What the mode holds (top bar) ──────────────────────────────────────────────
+// While a mode holds clips (🎤 singing), !so / !watch clips and !tk / !endingtk rolls wait for the next
+// mode: "⏸ N waiting" shows them, each with ▶ Play now (at once, over the hold) and ✕ Drop (a !tk
+// roll's names go back on the !tk list). From server/media-queue.js.
+const held = { list: [], open: false };
+
+async function loadWaiting() {
+  try { onWaiting((await (await fetch('/api/media/waiting')).json()).waiting, false); } catch (_) {}
+}
+
+function onWaiting(list, live) {
+  const more = (list || []).length > held.list.length;
+  held.list = list || [];
+  if (!held.list.length) held.open = false;
+  paintWaiting(live && more);
+}
+
+function paintWaiting(flash = false) {
+  const box = document.getElementById('held-box');
+  if (!box) return;
+  const chip = document.getElementById('held-chip');
+  const panel = document.getElementById('held-panel');
+  box.hidden = !held.list.length;
+  chip.textContent = t('dash.held.chip', { n: held.list.length });
+  chip.setAttribute('aria-expanded', String(held.open));
+  panel.hidden = !held.open;
+  const m = modes.view && modeById(modes.view.active);
+  const mode = m ? `${m.icon ? m.icon + ' ' : ''}${m.name}` : t('dash.held.thisMode');
+  panel.innerHTML = held.list.map(w => `
+    <div class="held-row">
+      <span class="held-title">${esc(w.title)}</span>
+      <span class="held-meta">${esc(w.from)} · ${esc(new Date(w.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}</span>
+      <span class="held-actions">
+        <button class="chip" type="button" data-held-play="${w.id}">${esc(t('dash.held.play'))}</button>
+        <button class="chip" type="button" data-held-drop="${w.id}" title="${esc(t('dash.held.dropTip'))}">${esc(t('dash.held.drop'))}</button>
+      </span>
+    </div>`).join('') + `<div class="held-note">${esc(t('dash.held.note', { mode }))}</div>`;
+  if (flash) { chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash'); }
+}
+
+document.getElementById('held-chip').addEventListener('click', () => { held.open = !held.open; paintWaiting(); });
+document.getElementById('held-panel').addEventListener('click', async (e) => {
+  const play = e.target.closest('[data-held-play]');
+  const drop = e.target.closest('[data-held-drop]');
+  if (!play && !drop) return;
+  try {
+    const r = await modPost(play ? '/api/media/waiting/play' : '/api/media/waiting/drop', { id: Number((play || drop).dataset[play ? 'heldPlay' : 'heldDrop']) });
+    if (!r.ok) showToast(t('dash.held.gone'));
+  } catch (err) { showToast(err.message, true); }
+});
+// A click elsewhere closes the list
+document.addEventListener('click', (e) => {
+  if (held.open && !document.getElementById('held-box').contains(e.target)) { held.open = false; paintWaiting(); }
+});
 
 document.getElementById('mode-bar').addEventListener('click', (e) => {
   const btn = e.target.closest('[data-mode]');
@@ -4172,6 +4602,7 @@ function modeAppPart(m) {
     <div class="modes-row"><span>${esc(t('dash.modes.chat'))}</span>
       <input class="modes-input mode-chat" data-f="chat" maxlength="500" value="${esc(m.chat)}" placeholder="${esc(t('dash.modes.chatPlaceholder'))}"></div>
     <label class="setting"><input type="checkbox" data-f="holdClips"${m.holdClips ? ' checked' : ''}> <span>${esc(t('dash.modes.hold'))}</span></label>
+    <label class="setting"><input type="checkbox" data-f="pauseEffects"${m.pauseEffects ? ' checked' : ''}> <span>${esc(t('dash.modes.pauseEffects'))}</span></label>
     <p class="setting-hint">${esc(t('dash.modes.holdHint'))}</p>
     <div class="modes-row"><span>${esc(t('dash.modes.tab'))}</span>
       <select class="lang-select" data-f="tab">${['', 'queue', 'leihu', 'chat'].map(tab =>

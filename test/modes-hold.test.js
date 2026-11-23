@@ -21,6 +21,7 @@ test.mock.method(axios, 'get', async url => ({ data: { data: url.endsWith('/user
 test.mock.timers.enable({ apis: ['setTimeout'] });
 const queue = require('../server/media-queue');
 const modes = require('../server/modes');
+const rewardEffects = require('../server/reward-effects');
 const shoutout = require('../server/commands/shoutout').shoutout;
 const sent = [], changes = [];
 queue.init(message => sent.push(message));
@@ -78,4 +79,29 @@ test('restart restores the saved hold and editing it off releases clips without 
   modes.update({ ...(await modes.view({ live: false })).modes[0], holdClips: false });
   assert.equal(sent.at(-1).title, 'After restart');
   assert.equal((await modes.view({ live: false })).active, mode.id);
+});
+
+test('editing the active mode immediately updates reward-effect pause without reapplying scenes or chat', async () => {
+  const mode = await modes.create({ name: 'Singing', icon: '🎤' });
+  modes.update({ ...mode, pauseEffects: true }); await modes.apply(mode.id);
+  assert.equal(rewardEffects.status().modePaused, true);
+  effects.length = 0;
+  modes.update({ ...mode, pauseEffects: false, chat: 'Do not send while editing' });
+  assert.equal(rewardEffects.status().modePaused, false);
+  assert.deepEqual(effects, []);
+  modes.update({ ...mode, pauseEffects: true });
+  modes.init(message => changes.push(message));
+  assert.equal(rewardEffects.status().modePaused, true);
+});
+
+test('legacy SO repair still works independently of the new reward-effects module', () => {
+  const legacy = fs.readFileSync(path.join(__dirname, '../repair/shoutout-hold/modes.js'));
+  assert.ok(!legacy.includes(Buffer.from("require('./reward-effects')")));
+  const project = path.join(folder, 'legacy'); fs.mkdirSync(path.join(project, 'server'), { recursive: true });
+  const target = path.join(project, 'server/modes.js'); fs.writeFileSync(target, legacy);
+  const { install } = require('../repair/shoutout-hold/install');
+  assert.equal(install(project).unchanged, true);
+  const customized = Buffer.concat([legacy, Buffer.from('\n// local customization\n')]); fs.writeFileSync(target, customized);
+  assert.throws(() => install(project), /Unrecognized/);
+  assert.deepEqual(fs.readFileSync(target), customized);
 });

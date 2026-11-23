@@ -309,4 +309,5 @@ Node.js 是點歌系統執行時需要的程式，裝一次就好。
 | 觀眾點的歌一直進「待審核」 | 那首歌可能不在你的歌單，或名字差很多。加到試算表後 5 分鐘內就會生效 |
 | 版主打指令沒反應 | 只有版主和你本人能用；Clip Player 來源要加到 OBS 才看得到 |
 
-還是解決不了？到 [GitHub 的 Issues](https://github.com/sheng7337/twitch-song-request-system/issues) 留言，附上黑色視窗裡的錯誤訊息（**不要**貼 `.env` 或 .json 金鑰的內容）。
+還是解決不了？到 [GitHub 的 Issues](https://github.com/sheng7337/twitch-song-request-system/issues) 留言，附上黑色視窗裡的錯誤訊息（**不要**貼 `.env` 或 .json 金鑰的內容）。黑色視窗的內容也會存下來：點歌系統資料夾裡的 `logs`
+每次啟動有一個以日期時間命名的資料夾 —— 附上那場直播的 `app.log`（「🎨 外觀與疊加層」→「**📂 這次執行的紀錄**」會打開目前這個）。

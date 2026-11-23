@@ -47,6 +47,12 @@
         charity_donation: '{name} donated {amount} to {charity}!',
       },
     },
+    // 🔔 Alerts on stream (overlay/alerts.html); subs, gifts and raids use chatOverlay.notice
+    alerts: {
+      follow: '{name} followed!',
+      cheer: ({ name, bits }) => `${name} cheered ${bits} bit${bits === 1 ? '' : 's'}!`,
+      giftOne: '{name} gifted a sub!',
+    },
   },
   'zh-TW': {
     overlay: {
@@ -86,6 +92,11 @@
         bits_badge_tier: '{name} 解鎖了 {bitsTier} 小奇點徽章！',
         charity_donation: '{name} 為 {charity} 捐了 {amount}！',
       },
+    },
+    alerts: {
+      follow: '{name} 追隨了頻道！',
+      cheer: ({ name, bits }) => `${name} 送出了 ${bits} 小奇點！`,
+      giftOne: '{name} 送出了一份訂閱！',
     },
   },
 });

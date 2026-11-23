@@ -1,5 +1,7 @@
 // server/index.js
 require('dotenv').config();
+const appLog = require('./app-log');
+appLog.start();   // first: this run's log folder gets everything after (app-log.js)
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -11,7 +13,7 @@ const { isAllowedRequest } = require('./request-guard');
 const { startAutoRefresh } = require('./sheets');
 const { matchSong } = require('./matcher');
 const { registerClient, addSong, addPending, updatePending, acceptPending, skipSong, clearQueue, getState, deleteSong, moveSong, redrawSong, broadcastSettings, broadcastRaw, setRedemptionHook, forgetRedemption } = require('./queue');
-const { connect: connectTwitch, setEventHandler, setChatHandler, setModerationHandler, setNoticeHandler, setFollowHandler, setRewardHandler, setStreamHandler, followStatus } = require('./twitch');
+const { connect: connectTwitch, setEventHandler, setChatHandler, setModerationHandler, setNoticeHandler, setFollowHandler, setRewardHandler, setStreamHandler, setReconnectHandler, replayRedemption, followStatus } = require('./twitch');
 const { registerCommand, handleChatEvent } = require('./chat-router');
 const chatLog = require('./chat-log');
 const chatBadges = require('./chat-badges');
@@ -33,6 +35,8 @@ const chatSend = require('./chat-send');
 const chatMod = require('./chat-mod');
 const modes = require('./modes');
 const outfits = require('./outfits');
+const alerts = require('./alerts');
+const rewardEffects = require('./reward-effects');
 const streamApp = require('./stream-app');
 const streamSession = require('./stream-session');
 const { generateIfMissing: generateSponsorVoice } = require('./sponsor-voice');
@@ -76,6 +80,7 @@ app.use('/overlay', express.static(path.join(__dirname, '..', 'overlay')));
 app.use('/dashboard', express.static(path.join(__dirname, '..', 'dashboard')));
 app.use('/setup', express.static(path.join(__dirname, '..', 'setup')));
 app.use('/clip-player', express.static(path.join(__dirname, '..', 'clip-player')));
+app.use('/alert-media', express.static(alerts.MEDIA_DIR));   // the alerts' pictures and sounds (alerts.js)
 app.use('/shared', express.static(path.join(__dirname, '..', 'shared')));   // language helper + strings
 app.use('/docs', express.static(path.join(__dirname, '..', 'docs')));       // starter guide, song list template
 
@@ -136,6 +141,7 @@ setupRouter.setConfigChangeCallback(() => activateServiceIfReady().catch(err => 
 
 // ── Chat command registration ─────────────────────────────────────────────────
 mediaQueue.init(broadcastRaw);
+mediaQueue.setWaitingListener(waiting => sendChat({ type: 'media-waiting', waiting }));   // the top bar's "⏸ N waiting"
 registerShoutout(registerCommand);
 registerWatch(registerCommand);
 registerReplay(registerCommand);
@@ -166,10 +172,22 @@ setRewardHandler((type, event) => {
 setRedemptionHook(redemptions.settle);
 // The stream went live / ended: the Chat tab's "to announce" starts a new session
 setStreamHandler(streamSession.onEvent);
+// Back after the connection to Twitch dropped: EventSub doesn't send what came meanwhile. Live or
+// not (a go-live / end may be missed), and the redemptions made during the gap (a little before
+// Twitch was last heard from, in case of clock differences; ones that did come in are skipped)
+setReconnectHandler(async ({ since }) => {
+  streamSession.refresh();
+  if (!since) return;
+  const missed = await redemptions.missedSince(since - 30000);
+  const handed = missed.filter(replayRedemption);
+  if (handed.length) console.log(`[event] ${handed.length} redemption(s) made while disconnected, handled now`);
+});
 streamSession.init(session => sendChat({ type: 'chat-session', ...session }));
 modes.init(msg => sendChat(msg));   // after mediaQueue.init: a mode may hold clips
 endingRaid.init(msg => sendChat(msg));
 outfits.init({ send: msg => sendChat(msg), saveEnv: values => setupRouter.writeEnvValues(values) });
+alerts.init(msg => sendAlerts(msg));
+rewardEffects.init({ toOverlays: msg => sendEffects(msg), toDashboards: msg => sendChat(msg) });
 
 // Returns the matching random-reward config object if the given rewardId is
 // a configured random reward, or null if it isn't.
@@ -650,6 +668,15 @@ app.post('/api/pending/add-to-sheet', async (req, res) => {
 app.get('/api/history', (req, res) => res.json(getHistory()));
 app.get('/api/node-status', (req, res) => res.json(nodeStatus()));
 app.get('/api/version', (req, res) => res.json({ version: APP_VERSION }));
+// This run's log folder (app-log.js): where it is, and open it in File Explorer for a bug report
+app.get('/api/logs', (req, res) => res.json({ folder: appLog.current() }));
+app.post('/api/logs/open', (req, res) => {
+  const folder = appLog.current();
+  if (!folder) return res.status(404).json({ error: 'No log folder this run' });
+  const opener = process.platform === 'win32' ? 'explorer.exe' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+  require('child_process').spawn(opener, [folder], { detached: true, stdio: 'ignore' }).on('error', () => {}).unref();
+  res.json({ ok: true, folder });
+});
 app.get('/api/songs', (req, res) => {
   const { getSongs } = require('./sheets');
   res.json(getSongs());
@@ -876,6 +903,10 @@ app.post('/api/chat/mod/unpin', modRoute(b => chatMod.unpin(b.id)));
 // GET → { modes, active, held, connection, live, issues }; live = what Streamlabs / OBS shows now.
 // ?live=0 leaves the streaming app alone. Refusals come back translated (400).
 app.get('/api/modes', async (req, res) => res.json(await modes.view({ live: req.query.live !== '0' })));
+// Clips waiting while a mode holds them (top bar): GET the list; ▶ play one now; ✕ drop one
+app.get('/api/media/waiting', (req, res) => res.json({ waiting: mediaQueue.waiting() }));
+app.post('/api/media/waiting/play', (req, res) => res.json({ ok: mediaQueue.playQueued(Number(req.body.id)) }));
+app.post('/api/media/waiting/drop', (req, res) => res.json({ ok: mediaQueue.dropQueued(Number(req.body.id)) }));
 app.post('/api/modes/switch', modRoute(b => modes.apply(b.id)));
 app.post('/api/modes/new', modRoute(b => modes.create(b)));
 app.post('/api/modes/save', modRoute(b => modes.update(b.mode)));
@@ -954,6 +985,44 @@ app.post('/api/outfits/settings', (req, res) => {
   }
 });
 
+// 🔔 Alerts (server/alerts.js): settings, the alert-media files, the latest alerts; test, replay, skip
+app.get('/api/alerts', (req, res) => res.json(alerts.status()));
+app.post('/api/alerts/settings', (req, res) => {
+  try {
+    res.json(alerts.update(req.body || {}));
+  } catch (err) {
+    res.status(err.messageCode ? 400 : 500).json(errorBody(err));
+  }
+});
+app.post('/api/alerts/test', (req, res) => {
+  try {
+    res.json({ ok: true, alert: alerts.test(String(req.body.kind || ''), !!req.body.big) });
+  } catch (err) {
+    res.status(err.messageCode ? 400 : 500).json(errorBody(err));
+  }
+});
+app.post('/api/alerts/replay', (req, res) => res.json({ ok: !!alerts.replay(String(req.body.id || '')) }));
+app.post('/api/alerts/skip', (req, res) => { alerts.skip(); res.json({ ok: true }); });
+
+// 🎟 Reward effects (server/reward-effects.js): settings, the queue; test, skip, clear
+app.get('/api/reward-effects', (req, res) => res.json(rewardEffects.status()));
+app.post('/api/reward-effects/settings', (req, res) => {
+  try {
+    res.json(rewardEffects.update(req.body || {}));
+  } catch (err) {
+    res.status(err.messageCode ? 400 : 500).json(errorBody(err));
+  }
+});
+app.post('/api/reward-effects/test', (req, res) => {
+  try {
+    res.json({ ok: true, effect: rewardEffects.test(String(req.body.rewardId || '')) });
+  } catch (err) {
+    res.status(err.messageCode ? 400 : 500).json(errorBody(err));
+  }
+});
+app.post('/api/reward-effects/skip', (req, res) => { rewardEffects.skip(); res.json(rewardEffects.status()); });
+app.post('/api/reward-effects/clear', (req, res) => { rewardEffects.clear(); res.json(rewardEffects.status()); });
+
 // Chat ⚙: every reward, and taking over one made on Twitch ({ id, action: 'start' | 'finish' | 'cancel' })
 app.get('/api/rewards', async (req, res) => {
   try {
@@ -980,6 +1049,21 @@ function sendChat(msg) {
   }
 }
 
+// Alerts go to the alert overlays (overlay/alerts.html) and the dashboards (their list of the latest)
+// Reward effects go to the reward-effects overlays (overlay/reward-effects.html)
+function sendEffects(msg) {
+  const str = JSON.stringify(msg);
+  for (const client of wss.clients) if (client.wantsEffects && client.readyState === 1) client.send(str);
+}
+const countEffectOverlays = () => rewardEffects.setOverlays([...wss.clients].filter(c => c.wantsEffects && c.readyState === 1).length);
+
+function sendAlerts(msg) {
+  const str = JSON.stringify(msg);
+  for (const client of wss.clients) {
+    if ((client.wantsAlerts || client.wantsChat) && client.readyState === 1) client.send(str);
+  }
+}
+
 // ── WebSocket (overlay + clip-player + dashboard) ────────────────────────────
 wss.on('connection', (ws, req) => {
   console.log(`[ws] Client connected from ${req.socket.remoteAddress}`);
@@ -989,8 +1073,12 @@ wss.on('connection', (ws, req) => {
       const msg = JSON.parse(data.toString());
       if (msg.type === 'media-ended') mediaQueue.onEnded(msg.mediaId);
       if (msg.type === 'chat-subscribe') ws.wantsChat = true;
+      if (msg.type === 'alerts-subscribe') ws.wantsAlerts = true;
+      if (msg.type === 'reward-effects-subscribe') { ws.wantsEffects = true; countEffectOverlays(); }
+      if (msg.type === 'reward-effect-ended') rewardEffects.ended(String(msg.id || ''));
     } catch {}
   });
+  ws.on('close', () => { if (ws.wantsEffects) countEffectOverlays(); });
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
@@ -1009,7 +1097,15 @@ async function start() {
   }
 
   generateSponsorVoice();
-  await chatLog.init(sendChat).catch(err => console.error('[chat-log] Could not read the chat log:', err.message));
+  // Every new chat-log record may be an alert (a follow, sub, gift, cheer, raid, chosen redemption)
+  const sendChatAndAlert = (msg) => {
+    sendChat(msg);
+    if (msg.type !== 'chat') return;
+    try { alerts.fromRecord(msg.record); } catch (err) { console.error('[alerts] Could not make an alert:', err.message); }
+    try { rewardEffects.fromRecord(msg.record); } catch (err) { console.error('[reward-effects] Could not start an effect:', err.message); }
+  };
+  await chatLog.init(sendChatAndAlert).catch(err => console.error('[chat-log] Could not read the chat log:', err.message));
+  fs.mkdirSync(alerts.MEDIA_DIR, { recursive: true });
   leihu.start();
 
   server.listen(PORT, () => {

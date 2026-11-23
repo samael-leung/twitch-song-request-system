@@ -20,20 +20,38 @@ let noticeHandler = null;     // set by index.js via setNoticeHandler (subs, gif
 let followHandler = null;     // set by index.js via setFollowHandler
 let rewardHandler = null;     // set by index.js via setRewardHandler
 let streamHandler = null;     // set by index.js via setStreamHandler (stream went live / ended)
+let reconnectHandler = null;  // set by index.js via setReconnectHandler (back after the connection dropped)
 let follows = null;           // new followers: 'on' | 'no-permission' (authorized before it was asked) | 'failed'
 
 // Deduplicate EventSub notifications — Twitch guarantees at-least-once delivery
 // so the same message_id can arrive more than once after reconnects.
-const seenMessageIds = new Set();
 const SEEN_MAX = 500; // cap memory; old IDs beyond this are evicted FIFO
-const seenQueue = [];
-function isDuplicate(id) {
-  if (seenMessageIds.has(id)) return true;
-  seenMessageIds.add(id);
-  seenQueue.push(id);
-  if (seenQueue.length > SEEN_MAX) seenMessageIds.delete(seenQueue.shift());
-  return false;
+function seenOnce() {
+  const seen = new Set();
+  const order = [];
+  return (id) => {
+    if (seen.has(id)) return true;
+    seen.add(id);
+    order.push(id);
+    if (order.length > SEEN_MAX) seen.delete(order.shift());
+    return false;
+  };
 }
+const isDuplicate = seenOnce();
+// Redemptions by their ID: one fetched after a drop (replayRedemption) may have come in after all
+const isSeenRedemption = seenOnce();
+
+// After a drop: when a fully subscribed session last heard from Twitch (the redemptions since then
+// may be missing; a session that failed to subscribe doesn't count), and
+// the keepalive watchdog — Twitch sends something every keepalive_timeout_seconds; when nothing
+// comes, the connection is gone even though Windows hasn't closed it
+let lastMessageAt = 0;
+let connectedBefore = false;
+let keepaliveTimer = null;
+const KEEPALIVE_GRACE_S = 5;
+
+// A request that failed because Twitch couldn't be reached (rather than refused): worth trying again
+const unreachable = err => !err.response || err.response.status >= 500 || err.response.status === 429;
 
 // ── Token management ──────────────────────────────────────────────────────────
 
@@ -120,6 +138,10 @@ async function subscribeToEvents(sid) {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json',
   };
+  // The optional subscriptions below go on without one that fails, unless Twitch couldn't be
+  // reached: then the whole session is subscribed again (connectEventSub reconnects)
+  let lost = null;
+  const note = (err) => { if (unreachable(err)) lost = err; };
 
   await axios.post(`${TWITCH_API}/eventsub/subscriptions`, {
     type: 'channel.channel_points_custom_reward_redemption.add',
@@ -148,6 +170,7 @@ async function subscribeToEvents(sid) {
         transport: { method: 'websocket', session_id: sid },
       }, { headers });
     } catch (err) {
+      note(err);
       console.warn(`[twitch] Could not subscribe to ${type}:`, err.response?.data?.message || err.message);
     }
   }
@@ -160,6 +183,7 @@ async function subscribeToEvents(sid) {
       transport: { method: 'websocket', session_id: sid },
     }, { headers });
   } catch (err) {
+    note(err);
     console.warn('[twitch] Could not subscribe to channel.chat.notification:', err.response?.data?.message || err.message);
   }
 
@@ -172,6 +196,7 @@ async function subscribeToEvents(sid) {
         transport: { method: 'websocket', session_id: sid },
       }, { headers });
     } catch (err) {
+      note(err);
       console.warn(`[twitch] Could not subscribe to ${type}:`, err.response?.data?.message || err.message);
     }
   }
@@ -185,6 +210,7 @@ async function subscribeToEvents(sid) {
         transport: { method: 'websocket', session_id: sid },
       }, { headers });
     } catch (err) {
+      note(err);
       console.warn(`[twitch] Could not subscribe to ${type}:`, err.response?.data?.message || err.message);
     }
   }
@@ -201,8 +227,10 @@ async function subscribeToEvents(sid) {
     console.log('[twitch] Subscribed to new followers');
   } catch (err) {
     follows = err.response?.status === 403 ? 'no-permission' : 'failed';
+    note(err);
     console.warn('[twitch] Could not subscribe to new followers:', err.response?.data?.message || err.message);
   }
+  if (lost) throw lost;
 }
 
 const MODERATION_TYPES = ['channel.chat.message_delete', 'channel.chat.clear_user_messages', 'channel.chat.clear'];
@@ -210,29 +238,61 @@ const MODERATION_TYPES = ['channel.chat.message_delete', 'channel.chat.clear_use
 const REWARD_TYPES = ['channel.channel_points_custom_reward_redemption.update', 'channel.channel_points_custom_reward.remove'];
 const STREAM_TYPES = ['stream.online', 'stream.offline'];
 
+// url: Twitch's session_reconnect URL (the subscriptions move with it); none for a new session
 function connectEventSub(url) {
   const wsUrl = url || EVENTSUB_WS_URL;
   console.log('[twitch] Connecting to EventSub WebSocket...');
-  ws = new WebSocket(wsUrl);
+  const sock = ws = new WebSocket(wsUrl);
+  clearTimeout(keepaliveTimer);
 
   ws.on('open', () => {
     console.log('[twitch] EventSub WebSocket connected');
   });
 
+  let keepaliveS = 0;
+  let subscribed = false;
+  const watch = () => {
+    if (ws !== sock) return;   // an old socket (Twitch moved the session) leaves the new one's timer alone
+    clearTimeout(keepaliveTimer);
+    if (!keepaliveS) return;
+    keepaliveTimer = setTimeout(() => {
+      console.warn(`[twitch] Nothing from Twitch for ${keepaliveS + KEEPALIVE_GRACE_S}s — the connection is gone, reconnecting`);
+      sock.terminate();   // 'close' reconnects
+    }, (keepaliveS + KEEPALIVE_GRACE_S) * 1000);
+  };
+
   ws.on('message', async (data) => {
     let msg;
     try { msg = JSON.parse(data); } catch (_) { return; }
+    if (subscribed) lastMessageAt = Date.now();
+    watch();
 
     const type = msg.metadata?.message_type;
 
     if (type === 'session_welcome') {
       sessionId = msg.payload.session.id;
+      keepaliveS = Number(msg.payload.session.keepalive_timeout_seconds) || 0;
+      watch();
       console.log(`[twitch] Session ID: ${sessionId}`);
       try {
         await subscribeToEvents(sessionId);
+        const heardBefore = lastMessageAt;
+        subscribed = true;
+        lastMessageAt = Date.now();
+        // Back after a drop (not Twitch moving the session, which keeps its events):
+        // what came while the connection was down
+        if (connectedBefore && !url && reconnectHandler) {
+          Promise.resolve(reconnectHandler({ since: heardBefore })).catch(err => console.error('[twitch] After reconnecting:', err.message));
+        }
+        connectedBefore = true;
       } catch (err) {
         console.error('[twitch] Failed to subscribe:', err.response?.data || err.message);
-        if (err.response?.status === 401) {
+        if (unreachable(err) && ws === sock) {
+          // Twitch couldn't be reached partway (the network is still coming back): a session with
+          // only some subscriptions would miss chat or redemptions until a restart
+          console.warn('[twitch] Subscribing again on a new connection');
+          sock.terminate();   // 'close' reconnects (at once: a closing handshake may never get through)
+        } else if (err.response?.status === 401) {
           const expiresAt = parseInt(process.env.TWITCH_USER_TOKEN_EXPIRES_AT || '0');
           const tokenExpired = Date.now() >= expiresAt - 60000;
           if (tokenExpired) {
@@ -262,6 +322,7 @@ function connectEventSub(url) {
       }
       const subType = msg.metadata?.subscription_type;
       if (subType === 'channel.channel_points_custom_reward_redemption.add') {
+        if (msg.payload.event?.id && isSeenRedemption(msg.payload.event.id)) return;
         if (redemptionHandler) redemptionHandler(msg.payload.event);
       } else if (subType === 'channel.chat.message') {
         if (chatHandler) chatHandler(msg.payload.event);
@@ -292,7 +353,8 @@ function connectEventSub(url) {
   });
 
   ws.on('close', (code, reason) => {
-    console.log(`[twitch] WebSocket closed (${code}), reconnecting in 5s...`);
+    if (ws === sock) clearTimeout(keepaliveTimer);
+    console.log(`[twitch] WebSocket closed (${code}${reason?.length ? ` ${reason}` : ''}), reconnecting in 5s...`);
     setTimeout(() => connectEventSub(), 5000);
   });
 
@@ -327,6 +389,19 @@ function setRewardHandler(fn) {
 
 function setStreamHandler(fn) {
   streamHandler = fn;
+}
+
+// `fn({ since })` runs when the connection is back after a drop: since = when Twitch was last heard from
+function setReconnectHandler(fn) {
+  reconnectHandler = fn;
+}
+
+// A redemption fetched after a drop (redemptions.missedSince) goes on like one EventSub sent,
+// unless it came in after all. → whether it was handed on
+function replayRedemption(event) {
+  if (!event?.id || isSeenRedemption(event.id)) return false;
+  if (redemptionHandler) redemptionHandler(event);
+  return true;
 }
 
 function followStatus() {
@@ -366,4 +441,4 @@ async function connect() {
   connectEventSub();
 }
 
-module.exports = { connect, reconnect, setEventHandler, setChatHandler, setModerationHandler, setNoticeHandler, setFollowHandler, setRewardHandler, setStreamHandler, followStatus, ensureFreshToken, setEnvValue };
+module.exports = { connect, reconnect, setEventHandler, setChatHandler, setModerationHandler, setNoticeHandler, setFollowHandler, setRewardHandler, setStreamHandler, setReconnectHandler, replayRedemption, followStatus, ensureFreshToken, setEnvValue };

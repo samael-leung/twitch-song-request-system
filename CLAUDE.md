@@ -47,7 +47,9 @@ vtuber-song-queue/
 ├── server/
 │   ├── index.js           Express + WebSocket server, redemption routing, REST API, HLS/clip proxy
 │   ├── config.js          Tuneable behaviour settings (thresholds, excluded tabs, weights)
-│   ├── twitch.js          EventSub WebSocket client, token refresh (ensureFreshToken), dedupe
+│   ├── twitch.js          EventSub WebSocket client, token refresh (ensureFreshToken), dedupe; keepalive
+│                          watchdog, re-subscribes a half-subscribed session, setReconnectHandler({ since })
+│                          after a drop (index.js: stream-session refresh + redemptions.missedSince → replayRedemption)
 │   ├── twitch-clips.js    Clip lookup + signed playback URLs for !so / !watch
 │   ├── setup-routes.js    All /setup/api/* endpoints for the web setup wizard
 │   ├── request-guard.js   Blocks cross-site and DNS-rebinding requests (HTTP + WebSocket)
@@ -56,20 +58,22 @@ vtuber-song-queue/
 │   ├── queue.js           Queue state, broadcast to clients, persisted to queue-state.json
 │   ├── random.js          Weighted/pure random picker with tab filter and cooldown
 │   ├── leihu.js           Optional link to Leihu Singsing (backing tracks + lyrics), song-links.json
-│   ├── leihu-launcher.js  Starts Leihu without its window (dashboard Leihu tab), leihu-home.json
+│   ├── leihu-launcher.js  Starts Leihu without its window (dashboard Leihu tab), leihu-home.json; output → Leihu's logs/app.log + this run's leihu.log
 │   ├── link-finder.js     Finds YouTube links for the sheet (search job, review, writes the sheet)
 │   ├── link-score.js      Scores YouTube candidates against the lyric version (pure functions)
 │   ├── romaji.js          Matches romanized video titles to 漢字/かな song titles
 │   ├── data/han-readings.json  Pinyin + Japanese readings per 漢字 (generated from Unicode's Unihan)
-│   ├── history.js         Request history sheet (debounced 1.5s), startup snapshot
+│   ├── history.js         Request history sheet (debounced 1.5s, failed writes / new rows retried 5 s → 5 min), startup snapshot
 │   ├── chat-router.js     Dispatches chat messages to registered commands (mods-only by default)
+│   ├── app-log.js         logs/<start time>/: app.log (the console, secrets blanked) + leihu.log; 30 runs / 14 days
 │   ├── chat-log.js        Chat + redemption log for the dashboard Chat tab, chat-logs/YYYY-MM-DD.jsonl
 │   ├── song-notes.js      Song overlay note "last sung N days ago" when chat names a sheet song
 │   ├── song-tabs.js       Song Queue ⚙: sheet tabs left out (EXCLUDED_TABS, kept in order) and the random pick mode
 │   ├── look.js            🎨 Look & overlays: dashboard / overlay themes and text sizes (.env), checked
-│   ├── media-queue.js     Clip player queue (max 3; 10 while a mode holds it), mediaId matching, watchdog
+│   ├── media-queue.js     Clip player queue (max 3; 10 while a mode holds it), mediaId matching, watchdog;
+│                          waiting() while held → dashboard top bar "⏸ N waiting" (media-waiting, /api/media/waiting/play|drop)
 │   ├── media-history.js   Last played media, for !replay
-│   ├── shoutout-history.js  Broadcasters shouted out since the last !tk
+│   ├── shoutout-history.js  Broadcasters shouted out since the last !tk (restore(): a dropped roll's go back)
 │   ├── sponsor-voice.js   Generates the Japanese sponsor-roll voice line on first run
 │   ├── messages.js        Message codes for errors/notes the web pages show translated
 │   ├── node-check.js      Is Node.js below the secure minimum (`secureNode` in package.json)
@@ -82,19 +86,25 @@ vtuber-song-queue/
 │   ├── chat-badges.js     Badge pictures for the chat on stream (Helix /chat/badges, global + channel, read once)
 │   ├── veadotube.js       veadotube mini windows (~/.veadotube/instances → WebSocket): avatar states, set, thumbnails
 │   ├── outfits.js         👕 Outfit rewards: redemptions wait for the streamer's pick; time limit back to the default
+│   ├── alerts.js          🔔 Alerts from chat-log records (follow / sub / gift / cheer / raid); alerts.json
+│   ├── reward-effects.js  🎟️ Reward effects: a reward plays sounds / a picture (queue, pause, done / refund); reward-effects.json
 │   ├── modes.js           Modes (🎛 tab, top-bar buttons): save / apply the streaming app's state + this app's part
 │   ├── stream-app.js      Streamlabs Desktop (Remote Control JSON-RPC) / OBS (obs-websocket 5) on this PC
-│   ├── stream-session.js  When the stream went live (stream.online / Helix /streams), for "to announce"
+│   ├── stream-session.js  When the stream went live (stream.online / Helix /streams), for "to announce";
+│                          a go-live within 15 min of the end (a dropped stream) keeps the session
 │   ├── stream-window.js   The dashboard in its own Chrome / Edge window, so OBS can capture Leihu's sound
 │   └── commands/          shoutout.js (!so), watch.js (!watch), replay.js, stop.js, thanks.js (!tk), ending-thanks.js (!endingtk)
 ├── shared/                Served at /shared: i18n.js (language helper), i18n-server.js (server
 │                          messages), i18n-viewer.js (overlay + clip player strings), themes.css (the five
 │                          themes as role tokens: --accent, --good, --warn…, *-rgb for tints) and theme.js
-│                          (Theme.apply / scale / nameColor; ?theme= on an overlay URL)
+│                          (Theme.apply / scale / nameColor; ?theme= on an overlay URL), loudness.js
+│                          (the overlays even out every sound file to −16 LUFS as it plays; maths tested in Node)
 ├── dashboard/i18n-dashboard.js, dashboard/i18n-links.js   Page strings, EN + zh-TW
 ├── setup/                 Web setup wizard (index.html, setup.css, setup.js, i18n.js — EN + zh-TW)
 ├── overlay/index.html     OBS Browser Source — song queue, in the overlay theme (Neon: cyberpunk dark/neon)
 ├── overlay/chat.html      OBS Browser Source — the chat on stream (?style=panel | bubble | list | row)
+├── overlay/alerts.html    OBS Browser Source — 🔔 alerts, one at a time (?layout=vertical 800×600 | horizontal 1600×300)
+├── overlay/reward-effects.html  OBS Browser Source — 🎟️ reward effects over the whole scene (1920×1080)
 ├── overlay/break.html     OBS Browser Source — "休息中 / ON BREAK" card; ?card=opening "準備中 / STARTING SOON" (?min=N / ?at=HH:MM count down)
 ├── dashboard/index.html   Streamer control panel — tabs (Song Queue: 2×2 panels, drag/drop, history, manual add; Leihu; Chat), ⚙ per tab
 ├── dashboard/links.html   YouTube link finder review page
@@ -117,7 +127,8 @@ vtuber-song-queue/
 
 **Never commit** (all gitignored): `.env`, `google-credentials.json`, `song-cache.json`,
 `setup-progress.json`, `queue-state.json`, `song-links.json`, `leihu-home.json`, `chat-logs/`, `link-search.json`, `package-lock.json`,
-`ending-credits.json`, `reward-takeovers.json`, `stream-session.json`, `stream-modes.json`, `.env` backups.
+`ending-credits.json`, `reward-takeovers.json`, `stream-session.json`, `stream-modes.json`, `alerts.json`,
+`reward-effects.json`, `alert-media/`, `logs/`, `.env` backups.
 `setup-progress.json`, `queue-state.json` and `package-lock.json` contain personal info.
 
 ---
@@ -558,6 +569,18 @@ register it in index.js.
 | POST | `/api/outfits/drop` | `{ id, refund }` — refund a waiting redemption, or just close its card |
 | POST | `/api/outfits/keep` | Stop the time limit |
 | POST | `/api/outfits/settings` | `{ rewards?, default?, window?, minutes? }` (OUTFIT_* in .env) |
+| GET | `/api/alerts` | 🔔 Per-kind settings (sound '@default' = defaultSound), alert-media files and folder, the latest alerts (alerts.js) |
+| POST | `/api/alerts/settings` | `{ defaultSound?, kinds?: { follow?: { on?, min?, seconds?, image?, sound?, volume?, bigAt?, bigSeconds?, bigImage?, bigSound? } } }` |
+| POST | `/api/alerts/test` | `{ kind, big? }` — a made-up alert on stream only |
+| POST | `/api/alerts/replay` | `{ id }` — show a recent alert again |
+| POST | `/api/alerts/skip` | End the alert showing now |
+| GET | `/api/reward-effects` | 🎟️ `{ state, together, volume, effects, modePaused, overlays, playing, queue, sounds, pictures, folder }` (reward-effects.js) |
+| POST | `/api/reward-effects/settings` | `{ state?: on/paused/off, together?: queue/overlap/skip, volume?, effects?: [{ rewardId, title, on, sounds, image, place, size, seconds, volume, showName }] }` |
+| POST | `/api/reward-effects/test` | `{ rewardId }` — plays it on stream only |
+| POST | `/api/reward-effects/skip` | End the ones playing (done) |
+| POST | `/api/reward-effects/clear` | Refund the waiting ones |
+| GET | `/api/logs` | `{ folder }` — this run's log folder (app-log.js) |
+| POST | `/api/logs/open` | Opens this run's log folder in File Explorer on the PC |
 | GET | `/api/chat/days` | Days with a chat log, newest first |
 | GET | `/api/chat/log?day=YYYY-MM-DD` | One day's chat records, with deletions, redemption statuses, first messages and ✓ marks applied |
 | GET | `/api/credits` | `{follows, lastAt, groups}` — who `!endingtk` would thank now; follows: `on` / `no-permission` / `failed` |
