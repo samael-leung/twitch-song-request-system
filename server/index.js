@@ -540,8 +540,9 @@ app.post('/api/stream-window', (req, res) => {
   const lang = ['en', 'zh-TW'].includes(req.body.lang) ? `&lang=${req.body.lang}` : '';
   const tab = req.body.tab === 'queue' ? '' : '#leihu';
   try {
-    res.json(streamWindow.open(`http://localhost:${listeningPort}/dashboard?window=stream${lang}${tab}`));
+    res.json(streamWindow.open(`http://localhost:${server.address().port}/dashboard?window=stream${lang}${tab}`));
   } catch (err) {
+    console.error('[stream-window] Could not open the dashboard window:', err.message);
     res.status(400).json(errorBody(err));
   }
 });

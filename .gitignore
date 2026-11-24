@@ -29,6 +29,8 @@ twitch-session.json
 twitch-session.json.tmp
 server/modes.js.before-so-fix-*.bak
 server/modes.js.so-fix-*.tmp
+server/index.js.before-window-fix-*.bak
+server/index.js.window-fix-*.tmp
 alerts.json
 reward-effects.json
 alert-media/

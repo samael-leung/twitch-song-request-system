@@ -136,6 +136,10 @@ body { background-color: rgba(0, 0, 0, 0) !important; margin: 0px auto; overflow
 [MIT](LICENSE)。雷虎練唱台（Leihu Singsing）是另一個軟體，有它自己的授權。
 
 
+## 點歌系統獨立視窗修復（2026-11-25）
+
+若啟動後沒有獨立 Chrome／Edge 控制台，也沒有 `[stream-window] Opened the dashboard in its own window` 記錄，本分支已修正開視窗 API 引用作用域外 `listeningPort` 的錯誤。ZIP 安裝可套用 [Stream-Window-Fix.zip](repair/Stream-Window-Fix.zip)：先關閉點歌系統，解壓縮後執行 `Install.cmd` 並指定點歌專案資料夾，再雙擊專案的 `start_zh.bat`。修復包只修改已知錯誤運算式，備份原檔、保留其他自訂程式與所有設定；未完成初次設定時仍開安裝精靈。直接執行 `npm start` 僅啟動伺服器，獨立視窗由 Windows 啟動腳本呼叫。
+
 ## 整合分支與 Clip 修正
 
 `!so` 找到 Clip 卻沒有播放，若記錄顯示 `Queued ... held`，代表目前模式勾選了「這個模式時暫停播放 Clip」。可先切換到沒有暫停 Clip 的模式（例如聊天模式）；本分支也修正了編輯目前模式時取消勾選不會即時生效的問題，現在取消勾選便會立即播放佇列，且不會重套場景、音量或聊天室訊息。Twitch 因未開台或對自己 Shoutout 而拒絕公告，不影響 Clip 本身。
